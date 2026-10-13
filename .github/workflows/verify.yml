@@ -60,6 +60,20 @@ jobs:
           PYERROR
             exit 1
           fi
+      - name: Check packaged privacy permissions
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > apk-permissions.txt
+          python3 - <<'PYPERMISSIONS'
+          from pathlib import Path
+          import re
+          text = Path('apk-permissions.txt').read_text()
+          permissions = re.findall(r"uses-permission: name='([^']+)'", text)
+          forbidden = {'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
+                       'android.permission.MANAGE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE',
+                       'android.permission.WRITE_EXTERNAL_STORAGE'}
+          assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
+          print('::notice title=APK privacy::Packaged APK has no network or broad storage/media permissions.')
+          PYPERMISSIONS
       - name: Report tests and check generated schema
         run: |
           python3 - <<'PYREPORT'
@@ -91,4 +105,5 @@ jobs:
             app/schemas/
             verification.log
             sdk-setup.log
+            apk-permissions.txt
           if-no-files-found: warn

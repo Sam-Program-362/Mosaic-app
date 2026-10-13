@@ -78,6 +78,10 @@ private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
     var muted by remember(uri) { mutableStateOf(true) }
     var paused by remember(uri) { mutableStateOf(false) }
     val player = remember(uri) { ExoPlayer.Builder(context).build() }
+    val audioAttributes = remember {
+        AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
+    }
+    val viewHolder = remember(player) { object { var view: PlayerView? = null } }
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) { failed = true; loading = false }
@@ -93,13 +97,15 @@ private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
         player.addListener(listener)
         player.volume = 0f
         player.repeatMode = Player.REPEAT_MODE_ONE
-        player.setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
+        // Silent previews must not steal audio focus from the user's music.
+        player.setAudioAttributes(audioAttributes, false)
         player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
         player.prepare()
         player.playWhenReady = true
         onDispose {
             player.removeListener(listener)
+            viewHolder.view?.player = null
+            viewHolder.view = null
             player.release()
         }
     }
@@ -109,9 +115,10 @@ private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
                 this.player = player
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                viewHolder.view = this
             } },
             modifier = Modifier.fillMaxSize(),
-            onRelease = { it.player = null },
+            onRelease = { it.player = null; if (viewHolder.view === it) viewHolder.view = null },
         )
         if (failed || loading) {
             Text(if (failed) "Video is unavailable or cannot be played." else "Loading video…",
@@ -123,7 +130,11 @@ private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
                 TextButton(onClick = { paused = !paused; player.playWhenReady = !paused }) {
                     Text(if (paused) "Play" else "Pause")
                 }
-                TextButton(onClick = { muted = !muted; player.volume = if (muted) 0f else 1f }) {
+                TextButton(onClick = {
+                    muted = !muted
+                    player.volume = if (muted) 0f else 1f
+                    player.setAudioAttributes(audioAttributes, !muted)
+                }) {
                     Text(if (muted) "Unmute" else "Mute")
                 }
             }
