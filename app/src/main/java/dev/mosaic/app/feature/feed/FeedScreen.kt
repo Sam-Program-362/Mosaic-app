@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.decode.BitmapFactoryDecoder
+import coil3.request.ImageRequest
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaKind
@@ -148,9 +151,15 @@ fun MediaPostCard(post: FeedPost, imageLoader: ImageLoader, active: Boolean, onP
 @Composable
 fun CommunityAvatar(label: String, uri: String?, imageLoader: ImageLoader) {
     val colors = LocalMosaicColors.current
+    val context = LocalContext.current
+    val request = remember(uri, context) {
+        uri?.let { ImageRequest.Builder(context).data(Uri.parse(it))
+            .memoryCacheKey("$it:avatar-static")
+            .decoderFactory(BitmapFactoryDecoder.Factory()).build() }
+    }
     Box(Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceRaised), contentAlignment = Alignment.Center) {
         Text(label.take(1).uppercase(), style = MaterialTheme.typography.labelLarge)
-        if (uri != null) AsyncImage(Uri.parse(uri), contentDescription = null, imageLoader = imageLoader,
+        if (request != null) AsyncImage(request, contentDescription = null, imageLoader = imageLoader,
             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
     }
 }

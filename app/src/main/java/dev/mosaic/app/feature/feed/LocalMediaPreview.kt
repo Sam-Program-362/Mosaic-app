@@ -20,6 +20,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.decode.BitmapFactoryDecoder
 import coil3.request.ImageRequest
 import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.ui.theme.LocalMosaicColors
@@ -37,7 +38,8 @@ fun LocalMediaPreview(post: FeedPost, active: Boolean, imageLoader: ImageLoader,
                 document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = LocalMosaicColors.current.textSecondary)
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,
-                    description = mediaTitle(document.fullName), onRatio = { ratio = it },
+                    description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
+                    onRatio = { ratio = it },
                 )
             }
         }
@@ -45,10 +47,14 @@ fun LocalMediaPreview(post: FeedPost, active: Boolean, imageLoader: ImageLoader,
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
-    val request = remember(uri, modified, context) {
-        ImageRequest.Builder(context).data(Uri.parse(uri)).memoryCacheKey("$uri@$modified").build()
+    val request = remember(uri, modified, animated, context) {
+        ImageRequest.Builder(context).data(Uri.parse(uri)).memoryCacheKey("$uri@$modified:$animated")
+            .apply {
+                // Static photos (including WebP) must not silently become extra animated formats.
+                if (!animated) decoderFactory(BitmapFactoryDecoder.Factory())
+            }.build()
     }
     var loading by remember(request) { mutableStateOf(true) }
     var failed by remember(request) { mutableStateOf(false) }
