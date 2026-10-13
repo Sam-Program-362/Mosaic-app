@@ -63,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import dev.mosaic.app.data.preferences.ThemeMode
@@ -241,27 +242,43 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                 }
             },
         ) { padding ->
-            val activeViewer = viewerSession
-            if (activeViewer != null) {
-                MediaViewer(
-                    snapshot = activeViewer.snapshot,
-                    initialPage = activeViewer.initialPage,
-                    imageLoader = imageLoader,
-                    onClose = { viewerSession = null },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (isFeed && !libraryReadFailed) {
-                FeedScreen(
-                    state = if (feed.folderId == expectedFolderId) feed else feed.copy(posts = emptyList(), loaded = false),
-                    folders = folders, busy = busy, listState = listState,
-                    playbackEnabled = !menuExpanded && drawerState.currentValue == DrawerValue.Closed &&
-                        drawerState.targetValue == DrawerValue.Closed,
-                    imageLoader = imageLoader, onSort = library::setSort,
-                    onRefresh = { library.refresh(expectedFolderId) }, onAddFolder = addFolder,
-                    onManageFolders = { destination = Destination.Folders },
-                    onOpenViewer = { snapshot, page -> viewerSession = ViewerSession(snapshot, page) },
-                    modifier = Modifier.padding(padding),
-                )
+            if (isFeed && !libraryReadFailed) {
+                Box(Modifier.fillMaxSize()) {
+                    FeedScreen(
+                        state = if (feed.folderId == expectedFolderId) feed else feed.copy(posts = emptyList(), loaded = false),
+                        folders = folders, busy = busy, listState = listState,
+                        playbackEnabled = viewerSession == null && !menuExpanded &&
+                            drawerState.currentValue == DrawerValue.Closed &&
+                            drawerState.targetValue == DrawerValue.Closed,
+                        imageLoader = imageLoader, onSort = library::setSort,
+                        onRefresh = { library.refresh(expectedFolderId) }, onAddFolder = addFolder,
+                        onManageFolders = { destination = Destination.Folders },
+                        onOpenViewer = { snapshot, page -> viewerSession = ViewerSession(snapshot, page) },
+                        modifier = Modifier.padding(padding).then(
+                            if (viewerSession != null) Modifier.clearAndSetSemantics {} else Modifier
+                        ),
+                    )
+                    viewerSession?.let { activeViewer ->
+                        MediaViewer(
+                            snapshot = activeViewer.snapshot,
+                            initialPage = activeViewer.initialPage,
+                            imageLoader = imageLoader,
+                            onClose = { viewerSession = null },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+            } else if (viewerSession != null) {
+                val activeViewer = viewerSession
+                if (activeViewer != null) {
+                    MediaViewer(
+                        snapshot = activeViewer.snapshot,
+                        initialPage = activeViewer.initialPage,
+                        imageLoader = imageLoader,
+                        onClose = { viewerSession = null },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             } else {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(padding)
