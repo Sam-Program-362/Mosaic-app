@@ -1,12 +1,8 @@
 package dev.mosaic.app.feature.folders
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.test.assertExists
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.runOnIdle
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.data.preferences.ThemeMode
