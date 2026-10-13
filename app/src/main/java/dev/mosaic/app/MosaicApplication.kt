@@ -6,9 +6,12 @@ import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import androidx.room.Room
+import dev.mosaic.app.data.local.LIBRARY_DATABASE_NAME
 import dev.mosaic.app.data.local.LibraryDatabase
+import dev.mosaic.app.data.local.MIGRATION_1_2
 import dev.mosaic.app.data.local.RoomLibraryStore
 import dev.mosaic.app.data.repository.LibraryRepository
+import dev.mosaic.app.data.repository.SavedCopyRepository
 import dev.mosaic.app.data.source.SafFolderSource
 
 class MosaicApplication : Application() {
@@ -20,10 +23,17 @@ class MosaicApplication : Application() {
         }.build()
     }
 
+    val libraryDatabase: LibraryDatabase by lazy {
+        Room.databaseBuilder(applicationContext, LibraryDatabase::class.java, LIBRARY_DATABASE_NAME)
+            .addMigrations(MIGRATION_1_2)
+            .build()
+    }
+
     val libraryRepository: LibraryRepository by lazy {
-        val database = Room.databaseBuilder(
-            applicationContext, LibraryDatabase::class.java, "library.db",
-        ).build()
-        LibraryRepository(RoomLibraryStore(database), SafFolderSource(contentResolver))
+        LibraryRepository(RoomLibraryStore(libraryDatabase), SafFolderSource(contentResolver))
+    }
+
+    val savedCopyRepository: SavedCopyRepository by lazy {
+        SavedCopyRepository(libraryDatabase.savedCopyDao(), contentResolver, filesDir)
     }
 }

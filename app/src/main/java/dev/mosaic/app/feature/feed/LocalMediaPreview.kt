@@ -51,7 +51,7 @@ fun LocalMediaPreview(
         val previewSize = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(previewHeight)
         Box(previewSize, contentAlignment = Alignment.Center) {
             when {
-                document.kind == MediaKind.Video && active -> VideoPreview(document.contentUri) { ratio = it }
+                document.kind == MediaKind.Video && active -> VideoPreview(document.contentUri, viewer) { ratio = it }
                 document.kind == MediaKind.Video -> Text("MP4 · playback paused", color = LocalMosaicColors.current.textSecondary)
                 document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = LocalMosaicColors.current.textSecondary)
                 else -> LocalImage(
@@ -94,7 +94,7 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
 /** Only composed for the one visible animation while the app/feed is active. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
+private fun VideoPreview(uri: String, viewer: Boolean, onRatio: (Float) -> Unit) {
     val context = LocalContext.current.applicationContext
     val colors = LocalMosaicColors.current
     var failed by remember(uri) { mutableStateOf(false) }
@@ -150,7 +150,8 @@ private fun VideoPreview(uri: String, onRatio: (Float) -> Unit) {
                 color = colors.textPrimary)
         }
         if (!failed) {
-            Row(Modifier.align(Alignment.BottomEnd).background(colors.surfaceRaised)) {
+            Row(Modifier.align(if (viewer) Alignment.CenterEnd else Alignment.BottomEnd)
+                .background(colors.surfaceRaised)) {
                 TextButton(onClick = { paused = !paused; player.playWhenReady = !paused }) {
                     Text(if (paused) "Play" else "Pause")
                 }

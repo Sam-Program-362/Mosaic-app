@@ -8,6 +8,7 @@ import dev.mosaic.app.core.model.MediaDocument
 import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.ui.theme.MosaicTheme
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -40,6 +41,28 @@ class MediaViewerUiTest {
         compose.onNodeWithText("2 / 2").assertExists()
         compose.onNodeWithContentDescription("Close full-screen viewer").assertExists().performClick()
         compose.runOnIdle { assertTrue(closed) }
+    }
+
+    @Test fun saveCopyActionForwardsTheCurrentPostOnEveryTap() {
+        val savedDocumentIds = mutableListOf<String>()
+        val snapshot = FeedSnapshot(
+            posts = listOf(post("first"), post("second")),
+            sort = FeedSort.Newest,
+            folderId = "folder",
+            epoch = 7L,
+        )
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                MediaViewer(
+                    snapshot, initialPage = 1, imageLoader = loader, onClose = {},
+                    onSaveCopy = { savedDocumentIds += it.media.document.documentId },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Save copy").performClick()
+        compose.onNodeWithText("Save copy").performClick()
+        compose.runOnIdle { assertEquals(listOf("second", "second"), savedDocumentIds) }
     }
 
     @Test fun verticalSwipeAdvancesThroughTheFrozenSnapshotOrder() {

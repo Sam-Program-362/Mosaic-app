@@ -11,12 +11,15 @@ fit without cropping; avatars may crop. Bounded placeholders contain decode fail
 One visible GIF/video plays at a time, only while foreground/unobscured; MP4 starts
 muted, has clear playback/sound controls and releases on leaving view. Decorative
 counts are explicitly not votes and have no click semantics. There are no comments.
-Save copy is disabled with a feed explanation. Tapping a preview opens a full-screen
-vertical pager at that item, frozen to the exact feed snapshot/order. Current page
-alone may play GIF/video while RESUMED; Android Back and accessible toolbar Back close
-the viewer. The feed stays composed beneath it with playback and accessibility
-semantics disabled, preserving the original scroll position. Viewer hides system bars
-and restores their prior visibility on exit.
+Phase 5 source enables Save copy on feed cards and viewer chrome; each tap requests a
+new independent app-managed copy. Saved opens a newest-first local feed with the same
+media card/viewer behavior and an explanatory empty state. Viewer taps refer to the
+current item in its frozen feed snapshot. Tapping a preview opens a full-screen vertical
+pager at that item, frozen to the exact feed snapshot/order. Current page alone may play
+GIF/video while RESUMED; Android Back and accessible toolbar Back close the viewer. The
+feed stays composed beneath it with playback and accessibility semantics disabled,
+preserving the original scroll position. Viewer hides system bars and restores their
+prior visibility on exit. Phase 5 source is not yet build/test/device verified.
 Drawer/container roles use semantic neutral colors (fixing purple defaults in the
 user's initial screenshot). Settings persists Light/Dark. Folder management retains
 picker/retry/reselection and now has a confirmed **Remove from Mosaic** action. This
@@ -27,16 +30,20 @@ The user confirmed Phase 2 restart retention (two folders, 295 media) and report
 the Phase 3 phone check that photos display in Home, folder selection shows only its
 media, and videos play. GIF, video mute/offscreen/background behavior and Phase 4
 viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests,
-lint, schema and APK privacy checks. No pixel-match, physical paging, provider
-permission-release or hardware-codec acceptance claim.
+lint, schema and APK privacy checks. Phase 5 copy/migration tests and build have not
+run yet. No pixel-match, physical paging, provider permission-release, hardware-codec
+or Phase 5 device-acceptance claim.
 
-## Required later UI
-Enable Save copy only when independent copy storage is implemented; every invocation
-must create another independent copy. Custom community creation names/selects/reviews
-folder membership. Local deterministic folder artwork uses first static image by
-case-insensitive name; neutral placeholder otherwise. Custom artwork policy unresolved.
-Provide no-folder, accessible-empty, unavailable-folder, slow-provider, decode/missing
-media and source-safe save-failure states. Saved reuses media/feed/viewer conventions.
+## Remaining UI scope and Phase 5 verification
+Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed
+built only from app-managed copies. Verify repeated taps create separate copies, Saved
+items render/play after original removal or lost access, and failures leave no record or
+partial destination file. The save-result snackbar states success or that the original
+was left unchanged. Saved-copy removal is out of scope. Custom community creation
+names/selects/reviews folder membership; custom artwork policy remains unresolved.
+Local deterministic folder artwork uses first static image by case-insensitive name,
+with neutral initials otherwise. Existing no-folder, unavailable, decode/missing-media,
+and empty states remain. Device acceptance and Phase 5 CI are pending.
 
 ## Central semantic colors
 Defined in `ui/theme/MosaicTheme.kt`; values are starting points, not pixel-verified

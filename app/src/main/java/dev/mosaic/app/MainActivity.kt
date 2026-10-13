@@ -23,7 +23,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val preferences = ThemePreferences(applicationContext)
         val factory = viewModelFactory {
-            initializer { LibraryViewModel((application as MosaicApplication).libraryRepository) }
+            initializer {
+                val app = application as MosaicApplication
+                LibraryViewModel(app.libraryRepository, app.savedCopyRepository)
+            }
         }
         val library = ViewModelProvider(this, factory)[LibraryViewModel::class.java]
         setContent {

@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.FolderSummary
+import dev.mosaic.app.core.model.IndexedMedia
+import dev.mosaic.app.core.model.SAVED_MEDIA_FOLDER_ID
+import dev.mosaic.app.core.model.toIndexedMedia
 import dev.mosaic.app.data.repository.LibraryRepository
+import dev.mosaic.app.data.repository.SavedCopyRepository
 import dev.mosaic.app.data.source.FolderAccessException
 import dev.mosaic.app.feature.feed.FeedSort
 import dev.mosaic.app.feature.feed.FeedState
@@ -16,15 +20,20 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class LibraryViewModel(private val repository: LibraryRepository) : ViewModel() {
+class LibraryViewModel(
+    private val repository: LibraryRepository,
+    private val savedCopyRepository: SavedCopyRepository,
+) : ViewModel() {
     private val mutableBusy = MutableStateFlow(false)
     val busy = mutableBusy.asStateFlow()
     private val mutableMessage = MutableStateFlow<String?>(null)
@@ -63,6 +72,35 @@ class LibraryViewModel(private val repository: LibraryRepository) : ViewModel() 
             mutableReadFailed.value = true
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FeedState())
+
+    val savedFeed = savedCopyRepository.savedCopies.map { copies ->
+        val posts = buildFeed(
+            copies.map { it.toIndexedMedia() }, SAVED_MEDIA_FOLDER_ID, FeedSort.Newest, epoch = 0L,
+        )
+        FeedState(posts, FeedSort.Newest, SAVED_MEDIA_FOLDER_ID, epoch = 0L, loaded = true)
+    }.flowOn(Dispatchers.Default)
+        .catch { error ->
+            if (error is CancellationException) throw error
+            mutableMessage.value = "Saved copies could not be loaded."
+            emit(FeedState(sort = FeedSort.Newest, folderId = SAVED_MEDIA_FOLDER_ID, loaded = true))
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000),
+            FeedState(sort = FeedSort.Newest, folderId = SAVED_MEDIA_FOLDER_ID))
+
+    private val mutableSaveNotifications = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    val saveNotifications = mutableSaveNotifications.asSharedFlow()
+
+    fun saveCopy(media: IndexedMedia) {
+        viewModelScope.launch {
+            try {
+                savedCopyRepository.saveCopy(media)
+                mutableSaveNotifications.emit("A new independent copy was added to Saved.")
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                mutableSaveNotifications.emit("Could not save a copy. The original media was not changed.")
+            }
+        }
+    }
 
     fun selectFolder(folderId: String?) { mutableFolderId.value = folderId }
     fun setSort(sort: FeedSort) { mutableSort.value = sort }

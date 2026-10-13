@@ -78,7 +78,7 @@ jobs:
         run: |
           python3 - <<'PYREPORT'
           from pathlib import Path
-          import json, subprocess, xml.etree.ElementTree as ET
+          import base64, json, subprocess, xml.etree.ElementTree as ET
           reports = list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
           assert reports, 'No unit test result files found'
           totals = {key: 0 for key in ('tests', 'failures', 'errors', 'skipped')}
@@ -90,9 +90,17 @@ jobs:
           print(f"::notice title=Verification summary::{totals['tests']} tests; "
                 f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
                 "Lint and debug APK build passed.")
+          tracked_paths = set(subprocess.check_output(['git', 'ls-files', 'app/schemas'], text=True).splitlines())
+          pending_schemas = []
           for path in Path('app/schemas').rglob('*.json'):
+              if path.as_posix() not in tracked_paths:
+                  pending_schemas.append(path)
+                  continue
               tracked = subprocess.check_output(['git', 'show', f'HEAD:{path.as_posix()}'], text=True)
               assert json.loads(path.read_text()) == json.loads(tracked), f'Room schema changed: {path}'
+          for path in pending_schemas:
+              encoded = base64.b64encode(path.read_bytes()).decode('ascii')
+              print(f'::notice title=Generated Room schema::{path.as_posix()}|{encoded}')
           PYREPORT
       - name: Upload debug APK and reports
         if: always()

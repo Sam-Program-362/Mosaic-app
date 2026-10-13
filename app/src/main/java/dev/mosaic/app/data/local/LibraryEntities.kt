@@ -41,6 +41,17 @@ data class MediaEntity(
     val sizeBytes: Long?,
 )
 
+@Entity(tableName = "saved_copies", indices = [Index(value = ["savedAtMillis"])])
+data class SavedCopyEntity(
+    @PrimaryKey val id: String,
+    val fileName: String,
+    val fullName: String,
+    val mimeType: String,
+    val kind: MediaKind,
+    val savedAtMillis: Long,
+    val sizeBytes: Long,
+)
+
 data class FolderOverview(
     @Embedded val folder: FolderEntity,
     @ColumnInfo(name = "mediaCount") val mediaCount: Int,

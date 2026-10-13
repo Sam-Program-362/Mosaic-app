@@ -6,7 +6,7 @@ that presents user-selected local photos, animated GIFs, and MP4 videos in a
 compact Reddit-inspired feed. Reddit is an interaction reference, not branding
 or proprietary assets to copy.
 
-## Required first-release behavior (mostly not implemented yet)
+## Required first-release behavior (incrementally implemented; see status below)
 - Native SAF folder picker; persist read grants where supported; no broad storage access.
 - Index direct children only. Nested directories require separate explicit selection.
 - Provider-recognized static images, GIFs, and MP4 only. Exclude unsupported media safely.
@@ -46,7 +46,9 @@ display on Home, folder selection isolates that folder's media, and videos play.
 GIF, mute, offscreen/background playback behavior have not been confirmed on-device.
 Phase 4 implements a frozen-order full-screen viewer and confirmed folder removal;
 its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
-phone acceptance is pending. Independent Saved copies and custom communities remain
+phone acceptance is pending. Phase 5 Save copy/Saved-feed source is now in progress:
+private streaming copies, Room v2 migration, feed/viewer actions and tests are authored,
+but no Phase 5 build/test/CI verification has run yet. Custom communities remain
 planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.

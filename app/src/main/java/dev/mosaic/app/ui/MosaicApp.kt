@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 import java.io.IOException
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 private enum class Destination(val title: String) {
@@ -91,9 +92,12 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
     val snackbar = remember { SnackbarHostState() }
     val colors = LocalMosaicColors.current
     val feed by library.feed.collectAsStateWithLifecycle()
+    val savedFeed by library.savedFeed.collectAsStateWithLifecycle()
     val artwork by library.artwork.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val savedListState = rememberLazyListState()
     val isFeed = destination == Destination.Home || destination == Destination.Community
+    val isSaved = destination == Destination.Saved
     val expectedFolderId = if (destination == Destination.Community) selectedCommunityId else null
     LaunchedEffect(destination, selectedCommunityId) {
         if (isFeed) library.selectFolder(expectedFolderId)
@@ -130,6 +134,9 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
         val text = message ?: return@LaunchedEffect
         snackbar.showSnackbar(text)
         library.dismissMessage()
+    }
+    LaunchedEffect(library) {
+        library.saveNotifications.collect { snackbar.showSnackbar(it) }
     }
 
     val drawerColors = NavigationDrawerItemDefaults.colors(
@@ -243,18 +250,28 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                 }
             },
         ) { padding ->
-            if (isFeed && !libraryReadFailed) {
+            if ((isFeed && !libraryReadFailed) || isSaved) {
                 Box(Modifier.fillMaxSize()) {
                     FeedScreen(
-                        state = if (feed.folderId == expectedFolderId) feed else feed.copy(posts = emptyList(), loaded = false),
-                        folders = folders, busy = busy, listState = listState,
+                        state = if (isSaved) savedFeed else if (feed.folderId == expectedFolderId) feed
+                            else feed.copy(posts = emptyList(), loaded = false),
+                        folders = if (isSaved) emptyList() else folders,
+                        busy = !isSaved && busy,
+                        listState = if (isSaved) savedListState else listState,
                         playbackEnabled = viewerSession == null && !menuExpanded &&
                             drawerState.currentValue == DrawerValue.Closed &&
                             drawerState.targetValue == DrawerValue.Closed,
                         imageLoader = imageLoader, onSort = library::setSort,
-                        onRefresh = { library.refresh(expectedFolderId) }, onAddFolder = addFolder,
-                        onManageFolders = { destination = Destination.Folders },
+                        onRefresh = { if (!isSaved) library.refresh(expectedFolderId) },
+                        onAddFolder = { if (!isSaved) addFolder() },
+                        onManageFolders = { if (!isSaved) destination = Destination.Folders },
                         onOpenViewer = { snapshot, page -> viewerSession = ViewerSession(snapshot, page) },
+                        onSaveCopy = { post -> library.saveCopy(post.media) },
+                        showFeedControls = !isSaved,
+                        emptyTitle = if (isSaved) "No saved copies yet" else null,
+                        emptyDescription = if (isSaved) {
+                            "Save a separate copy from any post to keep it here, even if its source folder is removed."
+                        } else null,
                         modifier = Modifier.padding(padding).then(
                             if (viewerSession != null) Modifier.clearAndSetSemantics {} else Modifier
                         ),
@@ -265,6 +282,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                             initialPage = activeViewer.initialPage,
                             imageLoader = imageLoader,
                             onClose = { viewerSession = null },
+                            onSaveCopy = { post -> library.saveCopy(post.media) },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -277,6 +295,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                         initialPage = activeViewer.initialPage,
                         imageLoader = imageLoader,
                         onClose = { viewerSession = null },
+                        onSaveCopy = { post -> library.saveCopy(post.media) },
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -292,7 +311,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                         Text("Your existing records were not cleared. Please close and reopen Mosaic.",
                             color = colors.textSecondary)
                     } else when (destination) {
-                        Destination.Home, Destination.Community -> Unit
+                        Destination.Home, Destination.Community, Destination.Saved -> Unit
                         Destination.Folders -> FolderManagement(
                             folders = folders, loaded = loaded, busy = busy,
                             onAddFolder = addFolder,
@@ -300,13 +319,6 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                             onRestore = launchPicker,
                             onRemoveFolder = library::removeFolder,
                         )
-                        Destination.Saved -> {
-                            Text("No saved copies yet", style = MaterialTheme.typography.titleLarge)
-                            Text("Each Save copy action will create an independent copy inside Mosaic, " +
-                                "without changing the original.", color = colors.textSecondary)
-                            Text("Save copy will be implemented in a later phase. Originals will remain untouched.",
-                                color = colors.textSecondary)
-                        }
                         Destination.Settings -> {
                             Text("Appearance", style = MaterialTheme.typography.titleLarge)
                             Text("Choose a light or dark theme. This preference stays on this device.",

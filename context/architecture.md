@@ -18,8 +18,9 @@ Implemented layout:
 
 The shell's destination survives activity recreation through `rememberSaveable`.
 Back closes the drawer or returns non-Home screens to Home; Home delegates to Android.
-Room stores folder/media metadata (not bytes). Media players are owned by visible
-compositions, not by the ViewModel or application singleton.
+Room stores folder/media/saved-copy metadata; copied bytes stay in Mosaic's private
+files directory. Media players are owned by visible compositions, not by the ViewModel
+or application singleton.
 Backup is disabled to avoid implicit cloud transfer of future local media metadata/copies.
 
 ## Phase 2 implementation
@@ -53,7 +54,7 @@ sort last, ties by case-insensitive name then identity. Artwork chooses first st
 image case-insensitively per folder, never a GIF/video. Viewport geometry uses the
 preview's bounds, not merely card visibility; menus/drawer/background disable playback.
 All functional playback controls are distinct from decorative, noninteractive counts.
-Save copies remain unimplemented.
+Phase 5 adds an enabled Save copy action in feed cards and viewer chrome.
 
 ## Phase 4 implementation
 `feature/feed/MediaViewer.kt` receives a copied `FeedSnapshot` and tapped item index;
@@ -74,10 +75,28 @@ file is written, copied, moved, renamed or deleted. No schema/table version chan
 Phase 4 CI passed 53 tests, lint, Room schema consistency, packaged privacy checks
 and debug APK. Physical viewer/paging and permission-release acceptance is pending.
 
+## Phase 5 source in progress — Saved copies
+`SavedCopyRepository` opens the selected source URI read-only and streams it on
+`Dispatchers.IO` into a unique UUID-named file under the app-private `filesDir/saved-media`
+directory. It first writes a `.partial` file, rejects empty copies, flushes and renames
+before inserting a Room v2 `saved_copies` row. Ordinary failures remove incomplete or
+unrecorded destination files; metadata is inserted only for a completed copy. The row
+stores the display name, MIME type, kind, save time, size and private filename, not the
+source URI. Saved feed items are reconstructed with a stable app-managed file URI, so
+removing a source folder or losing its SAF grant does not affect the copy. Every Save
+invocation produces another UUID/file; no toggle or deduplication. Feed/viewer UI expose
+Save, and Saved uses the same local media card/viewer at newest-save-first order.
+Removal of saved copies and custom communities remain out of scope.
+
+Room database version 2 adds only the Saved table/index with an explicit v1→v2
+migration; existing folder/media data is retained. KSP's generated v2 schema must be
+captured from CI and checked in. Phase 5 tests/code are currently unverified; no build,
+unit test, lint, APK or phone result is claimed yet.
+
 ## Remaining planned architecture
-Room already stores folder/access status and source media metadata; it will also
-store community membership and Saved-copy destination records as those slices are
-implemented. Media bytes remain outside Room.
+Room already stores folder/access status, source media metadata and Saved-copy
+metadata; custom-community membership remains for a later slice. Media bytes remain
+outside Room.
 SAF operations belong in `data/source/`; reconciliation/copy orchestration in
 `data/repository/`, never composables. Coroutines/Flow offload provider/file I/O.
 Room, Coil and Media3 are now installed for implemented slices. Room exports schemas under `app/schemas`; retain generated versions and add

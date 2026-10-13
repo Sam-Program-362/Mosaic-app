@@ -34,5 +34,7 @@ The user reports Phase 3 photos appear in Home, folder feeds show only their fol
 media, and videos play. This does not verify GIFs, mute/audio focus, offscreen or
 background stop behavior, or every storage edge case. Phase 4 CI is not phone
 acceptance: actual vertical swiping/back/scroll restoration and confirmed removal
-still need device feedback. Keep disabled future features explicit; never claim
-Saved copies work just because their labels appear in the current feed.
+still need device feedback. Phase 5 Saved-copy code is currently unverified; do not
+claim it works until its migration/copy/UI tests, lint, privacy check and APK build pass.
+Keep custom communities and other future features explicit; a visible label alone is not
+proof of implementation.

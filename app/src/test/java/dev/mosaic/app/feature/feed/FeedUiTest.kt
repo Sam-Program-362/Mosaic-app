@@ -32,6 +32,25 @@ class FeedUiTest {
         compose.onNodeWithText("Save copy").assertIsNotEnabled()
         compose.onNodeWithText("Comments").assertDoesNotExist()
     }
+    @Test fun everySaveTapStartsAnotherIndependentCopyRequest() {
+        val media = IndexedMedia("folder", "Travel", MediaDocument("id", "content://missing/id", "summer.jpg",
+            "image/jpeg", MediaKind.Image, null, null))
+        var saveInvocations = 0
+        compose.setContent {
+            MosaicTheme(ThemeMode.Light) {
+                Column {
+                    MediaPostCard(
+                        FeedPost(media, DecorativeCounts(23, 5), null), loader, false,
+                        onSaveCopy = { saveInvocations++ },
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("Save copy").performClick()
+        compose.onNodeWithText("Save copy").performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(2, saveInvocations) }
+    }
+
     @Test fun emptyFeedOffersRealFolderActionAndVisibleSortControl() {
         var picked = false
         compose.setContent {

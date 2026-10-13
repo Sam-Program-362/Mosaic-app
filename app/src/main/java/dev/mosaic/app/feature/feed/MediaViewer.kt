@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +50,7 @@ fun MediaViewer(
     initialPage: Int,
     imageLoader: ImageLoader,
     onClose: () -> Unit,
+    onSaveCopy: ((FeedPost) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     if (snapshot.posts.isEmpty()) {
@@ -84,6 +86,7 @@ fun MediaViewer(
             page = pagerState.currentPage + 1,
             pageCount = snapshot.posts.size,
             onClose = onClose,
+            onSaveCopy = onSaveCopy,
             modifier = Modifier.fillMaxSize().zIndex(1f),
         )
     }
@@ -95,6 +98,7 @@ private fun ViewerChrome(
     page: Int,
     pageCount: Int,
     onClose: () -> Unit,
+    onSaveCopy: ((FeedPost) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier, verticalArrangement = Arrangement.SpaceBetween) {
@@ -115,13 +119,21 @@ private fun ViewerChrome(
             Text("$page / $pageCount", color = Color.White,
                 style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 12.dp))
         }
-        Text(
-            "Swipe up or down to browse",
-            Modifier.align(Alignment.Start).padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.68f)).padding(horizontal = 12.dp, vertical = 8.dp),
-            color = Color.White,
-            style = MaterialTheme.typography.labelMedium,
-        )
+        Row(
+            Modifier.align(Alignment.Start).fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.68f)).padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Swipe up or down to browse",
+                Modifier.weight(1f).padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+            )
+            onSaveCopy?.let { save ->
+                TextButton(onClick = { save(post) }) { Text("Save copy", color = Color.White) }
+            }
+        }
     }
 }
 

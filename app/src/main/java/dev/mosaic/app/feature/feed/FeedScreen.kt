@@ -48,6 +48,10 @@ fun FeedScreen(
     onAddFolder: () -> Unit,
     onManageFolders: () -> Unit,
     onOpenViewer: (FeedSnapshot, Int) -> Unit = { _, _ -> },
+    onSaveCopy: ((FeedPost) -> Unit)? = null,
+    showFeedControls: Boolean = true,
+    emptyTitle: String? = null,
+    emptyDescription: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
@@ -69,7 +73,7 @@ fun FeedScreen(
     // Intentional session changes scroll to the start; theme/menu changes do not.
     LaunchedEffect(state.folderId, state.sort, state.epoch) { listState.scrollToItem(0) }
     LazyColumn(state = listState, modifier = modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInRoot() }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item(key = "feed-controls") {
+        if (showFeedControls) item(key = "feed-controls") {
             Column(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
@@ -103,12 +107,14 @@ fun FeedScreen(
             Text("Loading media library…", Modifier.padding(16.dp), color = colors.textSecondary)
         } else if (state.posts.isEmpty() && !unavailable) item(key = "empty") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(if (folders.isEmpty()) "Your media, your communities" else "No supported media here",
+                Text(emptyTitle ?: if (folders.isEmpty()) "Your media, your communities" else "No supported media here",
                     style = MaterialTheme.typography.titleLarge)
-                Text(if (folders.isEmpty()) "Choose a folder of photos, GIFs, or MP4 videos. Your originals stay untouched."
+                Text(emptyDescription ?: if (folders.isEmpty()) "Choose a folder of photos, GIFs, or MP4 videos. Your originals stay untouched."
                     else "Only supported files directly inside selected, accessible folders appear.", color = colors.textSecondary)
-                if (folders.isEmpty()) Button(onClick = onAddFolder, enabled = !busy) { Text("Add folder") }
-                TextButton(onClick = onManageFolders) { Text("Manage folders") }
+                if (emptyTitle == null) {
+                    if (folders.isEmpty()) Button(onClick = onAddFolder, enabled = !busy) { Text("Add folder") }
+                    TextButton(onClick = onManageFolders) { Text("Manage folders") }
+                }
             }
         }
         itemsIndexed(state.posts, key = { _, post -> post.media.key.stableKey }) { index, post ->
@@ -118,6 +124,7 @@ fun FeedScreen(
                 onPreviewBounds = { bounds -> if (key in animatedKeys) previewBounds[key] = bounds },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
+                onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
             )
         }
     }
@@ -130,6 +137,7 @@ fun MediaPostCard(
     active: Boolean,
     onPreviewBounds: (Rect) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
+    onSaveCopy: (() -> Unit)? = null,
 ) {
     val colors = LocalMosaicColors.current
     Column(Modifier.fillMaxWidth().background(colors.surface)) {
@@ -155,7 +163,9 @@ fun MediaPostCard(
                 Modifier.clearAndSetSemantics {
                     contentDescription = "Decorative counts: ${post.counts.up} up, ${post.counts.down} down. Not real votes."
                 }, style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
-            TextButton(onClick = {}, enabled = false) { Text("Save copy") }
+            TextButton(onClick = { onSaveCopy?.invoke() }, enabled = onSaveCopy != null) {
+                Text("Save copy")
+            }
         }
         HorizontalDivider(color = colors.divider)
     }
