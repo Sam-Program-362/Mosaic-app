@@ -1,33 +1,26 @@
 # UI context
 
-## Implemented shell and Phase 2 folders
-Home shows the indexing summary (selected folders, available supported file count),
-unavailable warning, Add folder when empty, Refresh and Manage folders routes. Top-left
-hamburger opens the community drawer (including standard drawer gesture); Home,
-selected-folder labels, unavailable indicators and Manage folders are present.
-Labels are visible metadata, not working community feed controls yet. Top-right app menu
-routes to Saved, Manage folders, Settings; no account/profile screens.
-Non-Home screens have a back control returning to Home. Drawer/back state is handled.
-Saved explains independent copies but does not yet display or save media.
-Manage folders launches the native picker through Add folder, shows loading/scan
-progress, distinguishes accessible empty folders from unavailable ones, retains last
-indexed counts on failed scans, and offers per-folder refresh and same-tree access
-reselection. Read grants that cannot persist are labelled. Picker cancellation
-changes nothing; different-tree recovery selection is rejected. No mock media or
-misleading completed-feed/save states. Provider I/O stays outside composables.
-Settings offers persisted Light/Dark selection and save-error feedback. No system
-mode. Fresh/invalid theme preference defaults to Light. Scrollable layouts and
-Scaffold insets accommodate landscape, font scaling, and edge-to-edge system bars.
-System sans/Material 3 type scale is used; icons have accessible labels.
-Android compilation/lint and source/database tests passed in CI; no real-phone
-UI, picker or font/landscape acceptance is claimed. See `docs/phase-2-device-check.md`.
+## Implemented shell and Phase 3 feeds
+Home shows compact full-width media post cards instead of the indexing-only summary.
+Top-left drawer exposes Home and selectable automatic folder communities, local
+avatars/initials, unavailable labels and Manage folders. Top-right menu exposes Saved,
+Manage folders, Settings. Home/community share filename/media/action components.
+A visible Random/Newest control and Refresh preserve stable order until intentional
+scope/sort/session change. Titles wrap and omit recognized extension. Static previews
+fit without cropping; avatars may crop. Bounded placeholders contain decode failures.
+One visible GIF/video plays at a time, only while foreground/unobscured; MP4 starts
+muted, has clear playback/sound controls and releases on leaving view. Decorative
+counts are explicitly not votes and have no click semantics. There are no comments.
+Save copy is disabled with a feed explanation; fullscreen/viewer is not implemented.
+Drawer/container roles now explicitly use semantic neutral colors (fixing initial
+purple defaults in the user's screenshot). Settings still persists Light/Dark.
+Folder management retains Phase 2 picker/retry/reselection and accurate states.
+The user confirmed Phase 2 restart retention on phone (two folders, 295 media). Phase
+3 build/UI/decoder/playback checks pending; no pixel-match or hardware-codec claim.
 
 ## Required later UI
-Compact width-spanning Reddit-inspired feed, not grid or oversized promotional cards:
-community/avatar + metadata, filename title, aspect-preserving preview, decorative
-up/down counts, accessible Save copy. No comments. Stable loading placeholders.
-Home/community share post components; Random/Newest and refresh are discoverable.
-Community drawer retains unavailable communities with text state and recovery.
+Enable Save copy only when independent copy storage is implemented. Add the
+immersive viewer without changing feed snapshots or adding comments/voting.
 Custom community creation names/selects/reviews folder membership. Local deterministic
 folder artwork uses first static image by case-insensitive name; neutral placeholder
 otherwise. Custom artwork policy unresolved.

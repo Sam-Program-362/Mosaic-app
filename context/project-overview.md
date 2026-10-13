@@ -39,12 +39,13 @@ Saved removal, additional media formats, custom artwork controls, and tablet-spe
 multi-pane design are not required in v1.
 
 ## Status and decisions
-Phase 1 foundation and Phase 2 folder selection/indexing are implemented in source.
-All 30 tests, lint, schema consistency and debug build passed in GitHub CI; the
-sandbox lacks the Android toolchain. Physical-device/provider testing remains pending. This is not first-release completion.
-Media posts/playback/Saved copies/custom communities remain planned. See the tracker
-for exact evidence. Kotlin/Compose/Room are the adopted technical baseline under the
-user's delegation of routine technical decisions on 2026-10-14.
+Phase 1/2 passed CI (30 tests, lint, schema and debug APK); the user confirmed
+folder records/access survived a phone restart. Phase 3 source implements Home and
+automatic folder feeds, sorting, decorative counts and local inline media. Phase 3
+CI and real-phone playback checks are pending. This is not first-release completion.
+Immersive viewer, independent Saved copies and custom communities remain planned.
+Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
+routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
 provisional. Public naming/trademark review, release SDK policy, folder-community
 renaming/duplicate label policy, and custom-community artwork remain unresolved.

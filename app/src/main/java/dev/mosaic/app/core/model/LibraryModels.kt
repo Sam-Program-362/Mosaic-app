@@ -32,3 +32,12 @@ sealed interface ScanResult {
     data class Success(val media: List<MediaDocument>) : ScanResult
     data class Failed(val reason: ScanFailure) : ScanResult
 }
+
+data class MediaKey(val folderId: String, val documentId: String) {
+    // Length-prefixing prevents delimiter/filename collisions in UI/session keys.
+    val stableKey: String get() = "${folderId.length}:$folderId${documentId.length}:$documentId"
+}
+
+data class IndexedMedia(val folderId: String, val folderLabel: String, val document: MediaDocument) {
+    val key: MediaKey get() = MediaKey(folderId, document.documentId)
+}

@@ -37,7 +37,8 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
             MosaicTheme(theme) {
-                MosaicApp(theme = theme, onThemeSelected = preferences::setTheme, library = library)
+                MosaicApp(theme = theme, onThemeSelected = preferences::setTheme, library = library,
+                    imageLoader = (application as MosaicApplication).localImageLoader)
             }
         }
     }

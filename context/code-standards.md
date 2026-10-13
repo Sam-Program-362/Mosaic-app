@@ -31,3 +31,9 @@ use destructive migration fallback. Do not substitute XML/static checks for Andr
 Future coverage must include child-only indexing, media typing, ID collisions,
 successful vs failed reconciliation, membership isolation, sorting/viewer sequence,
 repeated independent saves, source deletion, playback lifecycle, themes and accessibility.
+
+Phase 3 tests additionally cover feed membership, stable random sessions, timestamp
+fallback/ties, display counts, artwork, titles, viewport animation ownership and
+Compose decorative-action semantics. Media players must remain composition-scoped;
+image loading must stay local-only. Do not equate CI with real hardware decoder or
+foreground/offscreen playback acceptance.

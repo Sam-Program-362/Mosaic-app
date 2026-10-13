@@ -73,6 +73,19 @@ class RoomLibraryStoreTest {
         assertEquals(listOf(1, 1), store.folders.first().map { it.mediaCount })
     }
 
+    @Test fun availableFeedExcludesUnavailableFoldersWithoutDeletingTheirIndex() = runTest {
+        store.putFolder(FolderRecord("one", "One", true))
+        store.putFolder(FolderRecord("two", "Two", true))
+        store.commitScan("one", listOf(media("first")))
+        store.commitScan("two", listOf(media("second")))
+        assertEquals(2, store.availableMedia.first().size)
+        store.markUnavailable("one", ScanFailure.PermissionLost)
+        assertEquals(listOf("two"), store.availableMedia.first().map { it.folderId })
+        assertEquals(1, database.libraryDao().getMedia("one").size)
+        store.commitScan("one", listOf(media("first")))
+        assertEquals(2, store.availableMedia.first().size)
+    }
+
     private fun media(id: String) = MediaDocument(id, "content://provider/$id", "same.jpg",
         "image/jpeg", MediaKind.Image, null, null)
 }

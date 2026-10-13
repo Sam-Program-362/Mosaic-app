@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 /** Serializes selection/refresh; a failed scan never reconciles media deletions. */
 class LibraryRepository(private val store: LibraryStore, private val source: FolderSource) {
     val folders = store.folders
+    val availableMedia = store.availableMedia
     private val operations = Mutex()
 
     suspend fun addFolder(selection: FolderSelection): Boolean = operations.withLock {

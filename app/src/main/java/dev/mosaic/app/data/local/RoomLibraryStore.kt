@@ -1,6 +1,7 @@
 package dev.mosaic.app.data.local
 
 import androidx.room.withTransaction
+import dev.mosaic.app.core.model.IndexedMedia
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
@@ -13,6 +14,15 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
     private val dao = database.libraryDao()
     override val folders = dao.observeFolders().map { rows ->
         rows.map { FolderSummary(it.folder.toRecord(), it.mediaCount) }
+    }
+
+    override val availableMedia = dao.observeAvailableMedia().map { rows ->
+        rows.map { row ->
+            val media = row.media
+            IndexedMedia(media.folderId, row.folderLabel,
+                MediaDocument(media.documentId, media.contentUri, media.fullName, media.mimeType,
+                    media.kind, media.modifiedAtMillis, media.sizeBytes))
+        }
     }
 
     override suspend fun getFolders(): List<FolderRecord> = dao.getFolders().map { it.toRecord() }

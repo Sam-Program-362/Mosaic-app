@@ -89,6 +89,7 @@ class LibraryRepositoryTest {
 
     private class FakeStore : LibraryStore {
         override val folders = MutableStateFlow(emptyList<FolderSummary>())
+        override val availableMedia = MutableStateFlow(emptyList<IndexedMedia>())
         val records = linkedMapOf<String, FolderRecord>()
         val media = mutableMapOf<String, List<MediaDocument>>()
         override suspend fun getFolders() = records.values.toList()

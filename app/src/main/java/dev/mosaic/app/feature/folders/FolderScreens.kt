@@ -77,37 +77,3 @@ fun FolderManagement(
         }
     }
 }
-
-@Composable
-fun LibraryHome(
-    folders: List<FolderSummary>,
-    loaded: Boolean,
-    busy: Boolean,
-    onAddFolder: () -> Unit,
-    onManageFolders: () -> Unit,
-    onRefresh: () -> Unit,
-) {
-    val colors = LocalMosaicColors.current
-    Text("Your media, your communities", style = MaterialTheme.typography.headlineSmall)
-    if (!loaded) {
-        Text("Loading your library…")
-    } else if (folders.isEmpty()) {
-        Text("Choose a folder of photos, GIFs, or MP4 videos. Mosaic leaves your originals untouched.",
-            color = colors.textSecondary)
-        Button(onClick = onAddFolder, enabled = !busy) { Text("Add folder") }
-    } else {
-        val available = folders.filter { it.folder.status == FolderStatus.Available }
-        Text("${folders.size} selected folders · ${available.sumOf { it.mediaCount }} supported files available",
-            color = colors.textSecondary)
-        if (available.size != folders.size) {
-            Text("Some folders are unavailable. Their records have been retained.", color = colors.error)
-        } else if (available.sumOf { it.mediaCount } == 0) {
-            Text("Your folders are accessible but contain no supported direct-child media.", color = colors.textSecondary)
-        }
-        TextButton(onClick = onRefresh, enabled = !busy) { Text("Refresh library") }
-    }
-    if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    TextButton(onClick = onManageFolders) { Text("Manage folders") }
-    Text("Phase 2 · Folder selection and indexing. Media post cards and playback come next.",
-        style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-}

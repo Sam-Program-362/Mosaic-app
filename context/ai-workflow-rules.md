@@ -28,3 +28,8 @@ requested. Development dependency downloads are separate from offline runtime.
 The user delegated routine technical choices and explicitly approved pushing this
 work to the current session branch to run GitHub verification and produce a debug
 APK. This is not authorization to merge main, tag or publish a production release.
+
+Record user-reported phone results as user evidence, not agent-run device tests.
+The Phase 2 restart report does not verify Phase 3 playback or all storage edge cases.
+Keep disabled future features explicit; never claim copies or fullscreen are working
+just because their labels appear in the current feed.

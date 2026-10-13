@@ -18,7 +18,8 @@ Implemented layout:
 
 The shell's destination survives activity recreation through `rememberSaveable`.
 Back closes the drawer or returns non-Home screens to Home; Home delegates to Android.
-No playback resources exist yet. Room now stores folder/media metadata (not bytes).
+Room stores folder/media metadata (not bytes). Media players are owned by visible
+compositions, not by the ViewModel or application singleton.
 Backup is disabled to avoid implicit cloud transfer of future local media metadata/copies.
 
 ## Phase 2 implementation
@@ -37,14 +38,29 @@ labelled. Same-tree reselection restores access without duplicate identity. Life
 resume/explicit refresh scan serialized operations; no background service/WorkManager.
 Null/missing-required-column/loading/error cursors never authorize deletion.
 
+## Phase 3 implementation
+`feature/feed/` owns pure feed ordering/count/title/artwork/visibility rules, lazy
+post UI, local image/GIF preview and composition-scoped MP4 players. Coil 3.1.0 uses
+Compose/GIF modules without a network fetcher; an application-context ImageLoader
+provides bounded shared caching. Media3 1.6.1 creates at most one inline player for
+visible foreground media, muted by default and disposed offscreen/inactive.
+Room joined projections filter Available status before UI; no schema version change.
+ViewModel combines available metadata + scope + sort + session epoch off main thread.
+Random rank/count seed depends on epoch + length-prefixed folder/document identity;
+unchanged metadata/ordinary recomposition cannot reshuffle it. Newest unknown dates
+sort last, ties by case-insensitive name then identity. Artwork chooses first static
+image case-insensitively per folder, never a GIF/video. Viewport geometry uses the
+preview's bounds, not merely card visibility; menus/drawer/background disable playback.
+All functional playback controls are distinct from decorative, noninteractive counts.
+Save and immersive viewer remain unimplemented; future viewer must freeze a snapshot.
+
 ## Remaining planned architecture
 Room already stores folder/access status and source media metadata; it will also
 store community membership and Saved-copy destination records as those slices are
 implemented. Media bytes remain outside Room.
 SAF operations belong in `data/source/`; reconciliation/copy orchestration in
 `data/repository/`, never composables. Coroutines/Flow offload provider/file I/O.
-Room is now installed; add image/GIF loader and Media3 only with their implementation
-slice. Room exports schemas under `app/schemas`; retain generated versions and add
+Room, Coil and Media3 are now installed for implemented slices. Room exports schemas under `app/schemas`; retain generated versions and add
 explicit migrations when changing the database. No WorkManager or background scanning without a later need.
 
 ## Mandatory invariants
@@ -60,6 +76,5 @@ explicit migrations when changing the database. No WorkManager or background sca
 - Visible/foreground-only playback with lifecycle-scoped player/decoder ownership.
 - Do not retain activities, open streams, or player instances in inappropriate scopes.
 
-Unresolved: final identity/SDK policy, missing timestamp ordering fallback,
-community renaming and custom artwork. Static folder artwork default: first supported
+Unresolved: final identity/SDK policy, community renaming and custom artwork. Static folder artwork default: first supported
 static image by case-insensitive filename; neutral initials when none exists.

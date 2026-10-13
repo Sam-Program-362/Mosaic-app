@@ -45,3 +45,9 @@ data class FolderOverview(
     @Embedded val folder: FolderEntity,
     @ColumnInfo(name = "mediaCount") val mediaCount: Int,
 )
+
+/** Query projection only; no new table or schema version. */
+data class IndexedMediaEntity(
+    @Embedded val media: MediaEntity,
+    val folderLabel: String,
+)

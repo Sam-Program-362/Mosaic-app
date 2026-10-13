@@ -1,7 +1,7 @@
 # Mosaic
 
 An offline Android local-media browser with a Reddit-inspired feed structure and
-its own identity. **Phase 2 adds safe folder indexing**, not yet a complete media browser.
+its own identity. **Phase 3 adds local media feeds**, not yet a complete media browser.
 
 ## Current implementation
 
@@ -9,11 +9,15 @@ its own identity. **Phase 2 adds safe folder indexing**, not yet a complete medi
 - Home, community drawer, app menu, Saved placeholder, folder management, and Settings.
 - Persisted light/dark appearance using Preferences DataStore.
 - Native folder picker, retained read grants, direct-child media scanning.
+- Compact media feeds, deterministic local artwork, lifecycle-scoped muted video.
 - Room metadata, refresh/resume reconciliation, unavailable-folder retention/retry.
 - No runtime network, broad storage permissions, accounts, or telemetry.
 
-Media post cards, community feeds/custom communities, playback, and independent
-Saved copies are **not implemented yet**. Home currently reports indexing counts.
+Home and automatic folder feeds now show photos, animated GIFs and MP4 previews,
+with Random/Newest sorting and noninteractive decorative counts. Newest uses local
+modification dates, unknown dates last. Refresh starts a new display session.
+Immersive viewer, custom communities and independent Saved copies are **not
+implemented yet**; Save copy is explicitly disabled. Phase 3 CI verification pending.
 Manage folders supports Add folder, refresh and original-folder access reselection.
 Only explicit selections are scanned, and only their direct supported media children.
 Failed/incomplete scans retain previously indexed metadata; originals are read-only.

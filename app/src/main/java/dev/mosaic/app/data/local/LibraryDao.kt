@@ -16,6 +16,13 @@ interface LibraryDao {
     """)
     fun observeFolders(): Flow<List<FolderOverview>>
 
+    @Query("""
+        SELECT media.*, folders.label AS folderLabel FROM media
+        INNER JOIN folders ON media.folderId = folders.id
+        WHERE folders.status = :status ORDER BY media.folderId, media.documentId
+    """)
+    fun observeAvailableMedia(status: FolderStatus = FolderStatus.Available): Flow<List<IndexedMediaEntity>>
+
     @Query("SELECT * FROM folders ORDER BY id")
     suspend fun getFolders(): List<FolderEntity>
 

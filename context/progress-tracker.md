@@ -1,10 +1,10 @@
 # Progress tracker
 
 ## Current phase
-Phase 2 — selected folders and safe local indexing implemented in source.
-Date: 2026-10-14. Android verification passed for the final Phase 2 source: 30 tests, lint, schema
-consistency and debug APK build. No first-release or physical-device verification
-is claimed.
+Phase 3 — Home/folder feeds, sorting and inline local media implemented in source.
+Date: 2026-10-14. Phase 3 CI verification pending. Phase 2 previously passed 30 tests,
+lint, schema consistency and APK build; user has now confirmed retained folders on
+restart on a real phone. No complete first release or Phase 3 device playback verification.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
@@ -40,15 +40,43 @@ blocked before startup. Static XML/TOML/YAML/wrapper/manifest checks passed.
 - Room schema export configured and actual CI-generated version 1 JSON retained
   in source; CI checks its semantic consistency. No hand-authored schema.
 
+## Phase 2 user acceptance and Phase 3
+User reports the selected folders stayed after restarting. Supplied screenshots
+show two selected folders and 295 supported files. This establishes that selection,
+index population and restart retention worked on that phone/provider. It does not
+establish every deletion/unavailability/nested-folder edge case.
+
+Phase 3 source now includes:
+- Joined available-only Room feed metadata; no schema/table change or migration.
+- Home combines available folders; selectable automatic folder communities isolate
+  membership; unavailable communities remain visible and excluded from playback.
+- Random uses stable ID-based ranking per explicit session epoch, avoiding repeats
+  and accidental reshuffles from themes/menu/DB emissions. Refresh/resume starts a
+  new epoch and regenerates decorative counts; sort changes keep counts unchanged.
+- Newest uses modification time descending; missing timestamps last; deterministic
+  filename/identity ties. Filename title hides recognized extension, keeps full metadata.
+- Width-spanning compact post cards, local static artwork by deterministic filename,
+  non-action decorative count accessibility; Save copy remains explicitly disabled.
+- Coil 3 local photo/GIF loading, no network module. Fit previews, stable bounded
+  placeholders and contained decode errors. Media3 MP4 starts muted, loops and offers
+  Pause/Play/Mute/Unmute. Only one visible animation, based on preview bounds, runs
+  while RESUMED and no drawer/menu obscures it. Offscreen/inactive players released.
+- Semantic Material container/drawer tokens override purple defaults seen in screenshots.
+- Pure feed/session/visibility/title/artwork tests, available-only Room regression,
+  and Compose/Robolectric post/empty-feed accessibility smoke tests added.
+- CI caches its development signing key for subsequent APK updates. Initial upgrade
+  from the earlier uncached debug key may require uninstall/reselect; originals safe.
+
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/
 Material 3 baseline, JDK 17, AGP 8.9.2 / Gradle 8.11.1; add Room 2.7.1 + Kotlin-matched
-KSP 2.1.20-1.0.32, lifecycle ViewModel and test-only Robolectric. No image loader or
-Media3 until media rendering phase. Working Mosaic / `dev.mosaic.app`, min 26,
+KSP 2.1.20-1.0.32, lifecycle ViewModel and test-only Robolectric. Phase 3 adds Coil
+3.1.0 (Compose/GIF only, no network module), Media3 1.6.1 and Compose test tooling. Working Mosaic / `dev.mosaic.app`, min 26,
 compile/target 35 are still development defaults, not final public/release identity.
 Light default, explicit Light/Dark only. Unknown MIME values excluded rather than
 extension-guessed. Missing/nonpositive timestamps remain null for future sorting.
-No saved files, original writes, recursive queries, network access or media players.
+No saved files, original writes, recursive queries or runtime network permissions.
+Playback is composition/foreground/visibility scoped, never retained in the ViewModel.
 
 ## Verification and GitHub authorization
 - The user explicitly approved pushing to the session development branch to run
@@ -73,23 +101,20 @@ No saved files, original writes, recursive queries, network access or media play
   and annotations establish the recorded outcomes. Workflow emits useful error
   annotations and test totals for future API-visible diagnosis.
 - Local Android compilation/device testing remains unavailable in this sandbox.
-- No physical-device folder/provider behavior is claimed verified.
+- User verified Phase 2 folder persistence on their phone; Phase 3 actual media
+  rendering/playback/lifecycle behavior is not yet device-verified.
+- Phase 3 CI run: pending.
 
-## Still unimplemented
-Post cards/media rendering, Random/Newest and decorative counts, interactive
-community feeds/custom membership/artwork, viewer/paging/playback lifecycle,
-independent Saved copies, folder deselection, and full decode/save error states.
-
-## Next phase and manual acceptance
-Run/install CI debug APK; select a folder containing supported media + a nested
-folder; ensure count includes only direct media. Select an empty folder. Add/delete
-source media and refresh. Restart to check grant retention. Revoke/detach source and
-retry/reselect to check unavailable retention. Test picker cancellation, duplicate
-selection, themes and landscape/font scaling. CI cannot replace real provider checks.
-Then implement shared compact post cards, community feed isolation/sorting and
-local image/GIF/video rendering in a separate incremental slice.
+## Still unimplemented and next phase
+Immersive viewer/fullscreen/vertical paging, independent Saved copies, custom
+community membership/header artwork, folder deselection and full save-error states.
+After Phase 3 build verification, test Home/folder membership, sorting, local
+photo/GIF/MP4 rendering and stop/mute behavior on phone. Then add the immersive
+viewer using a frozen snapshot of the originating feed; implement real Saved copies
+in a later slice, never pretend the disabled Save action works.
 
 ## Open decisions
 Final branding/package/release SDK policy; community rename/duplicate-label policy,
-custom artwork, missing timestamp sort fallback. Shuffle-per-refresh and extension
+custom artwork. Missing timestamp fallback is now implemented: unknown dates last,
+then case-insensitive filename and stable identity. Shuffle-per-refresh and extension
 hiding remain documented defaults rather than separately finalized UX decisions.
