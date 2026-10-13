@@ -22,10 +22,16 @@ class LibraryViewModel(private val repository: LibraryRepository) : ViewModel() 
     val message = mutableMessage.asStateFlow()
     private val mutableLoaded = MutableStateFlow(false)
     val loaded = mutableLoaded.asStateFlow()
+    private val mutableReadFailed = MutableStateFlow(false)
+    val readFailed = mutableReadFailed.asStateFlow()
     val folders = repository.folders
-        .onEach { mutableLoaded.value = true }
+        .onEach {
+            mutableLoaded.value = true
+            mutableReadFailed.value = false
+        }
         .catch { error ->
             if (error is CancellationException) throw error
+            mutableReadFailed.value = true
             mutableMessage.value = "Could not load the local library. Please reopen Mosaic."
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList<FolderSummary>())

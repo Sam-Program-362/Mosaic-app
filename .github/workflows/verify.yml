@@ -15,29 +15,62 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Install Android 35 platform and build tools
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
+            echo "Android SDK ready"
+          else
+            python3 - <<'PYERROR'
+          from pathlib import Path
+          message = Path('sdk-setup.log').read_text()[-12000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Android SDK setup::{message}')
+          PYERROR
+            exit 1
+          fi
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
       - name: Unit tests, lint, and debug APK
-        run: ./gradlew testDebugUnitTest lint assembleDebug --stacktrace
+        shell: bash
+        run: |
+          if ./gradlew testDebugUnitTest lint assembleDebug --stacktrace 2>&1 | tee verification.log; then
+            echo "Android verification passed"
+          else
+            python3 - <<'PYERROR'
+          from pathlib import Path
+          message = Path('verification.log').read_text()[-50000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Android verification::{message}')
+          PYERROR
+            exit 1
+          fi
+      - name: Report generated schema for source retention
+        run: |
+          python3 - <<'PYSCHEMA'
+          from pathlib import Path
+          for path in Path('app/schemas').rglob('*.json'):
+              message = path.read_text().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::notice title=Generated Room schema::{message}')
+          PYSCHEMA
       - name: Upload debug APK and reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mosaic-debug-and-reports
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/reports/
             app/schemas/
+            verification.log
+            sdk-setup.log
           if-no-files-found: warn

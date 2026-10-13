@@ -80,6 +80,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
     val folders by library.folders.collectAsStateWithLifecycle()
     val busy by library.busy.collectAsStateWithLifecycle()
     val loaded by library.loaded.collectAsStateWithLifecycle()
+    val libraryReadFailed by library.readFailed.collectAsStateWithLifecycle()
     val message by library.message.collectAsStateWithLifecycle()
     var restoreFolderId by rememberSaveable { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(FolderPickerContract()) { selection ->
@@ -194,7 +195,12 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                     .verticalScroll(rememberScrollState()).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                when (destination) {
+                if (libraryReadFailed && destination in listOf(Destination.Home, Destination.Folders)) {
+                    Text("Local library could not be loaded", style = MaterialTheme.typography.titleLarge,
+                        color = colors.error)
+                    Text("Your existing records were not cleared. Please close and reopen Mosaic.",
+                        color = colors.textSecondary)
+                } else when (destination) {
                     Destination.Home -> LibraryHome(
                         folders = folders, loaded = loaded, busy = busy,
                         onAddFolder = addFolder,
