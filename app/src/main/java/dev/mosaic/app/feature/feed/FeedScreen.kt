@@ -5,7 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.geometry.Rect
 import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -45,9 +47,11 @@ fun FeedScreen(
     onRefresh: () -> Unit,
     onAddFolder: () -> Unit,
     onManageFolders: () -> Unit,
+    onOpenViewer: (FeedSnapshot, Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
+    val snapshot = remember(state.posts, state.sort, state.folderId, state.epoch) { state.toSnapshot() }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val animatedKeys = remember(state.posts) {
         state.posts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
@@ -80,7 +84,7 @@ fun FeedScreen(
                     }
                     TextButton(onClick = onRefresh, enabled = !busy) { Text("Refresh") }
                 }
-                Text("Simulated counts · Save copy and fullscreen viewing come next",
+                Text("Simulated counts · Tap a photo or video for full-screen viewing",
                     style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
@@ -107,18 +111,26 @@ fun FeedScreen(
                 TextButton(onClick = onManageFolders) { Text("Manage folders") }
             }
         }
-        items(state.posts, key = { it.media.key.stableKey }) { post ->
+        itemsIndexed(state.posts, key = { _, post -> post.media.key.stableKey }) { index, post ->
             val key = post.media.key.stableKey
             DisposableEffect(key) { onDispose { previewBounds.remove(key) } }
             MediaPostCard(post, imageLoader,
                 onPreviewBounds = { bounds -> if (key in animatedKeys) previewBounds[key] = bounds },
-                active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey)
+                active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
+                onOpenViewer = { onOpenViewer(snapshot, index) },
+            )
         }
     }
 }
 
 @Composable
-fun MediaPostCard(post: FeedPost, imageLoader: ImageLoader, active: Boolean, onPreviewBounds: (Rect) -> Unit = {}) {
+fun MediaPostCard(
+    post: FeedPost,
+    imageLoader: ImageLoader,
+    active: Boolean,
+    onPreviewBounds: (Rect) -> Unit = {},
+    onOpenViewer: (() -> Unit)? = null,
+) {
     val colors = LocalMosaicColors.current
     Column(Modifier.fillMaxWidth().background(colors.surface)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
@@ -135,7 +147,8 @@ fun MediaPostCard(post: FeedPost, imageLoader: ImageLoader, active: Boolean, onP
         }
         Text(mediaTitle(post.media.document.fullName), Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
             style = MaterialTheme.typography.titleMedium)
-        LocalMediaPreview(post, active, imageLoader, onPreviewBounds)
+        LocalMediaPreview(post, active, imageLoader, onPreviewBounds,
+            viewer = false, onOpenViewer = onOpenViewer)
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween) {
             Text("↑ ${post.counts.up}    ↓ ${post.counts.down}",

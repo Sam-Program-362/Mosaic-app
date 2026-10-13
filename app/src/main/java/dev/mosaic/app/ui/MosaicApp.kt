@@ -50,6 +50,8 @@ import dev.mosaic.app.data.source.FolderPickerContract
 import dev.mosaic.app.feature.folders.FolderManagement
 import dev.mosaic.app.feature.folders.LibraryViewModel
 import dev.mosaic.app.feature.feed.FeedScreen
+import dev.mosaic.app.feature.feed.FeedSnapshot
+import dev.mosaic.app.feature.feed.MediaViewer
 import dev.mosaic.app.feature.feed.CommunityAvatar
 import coil3.ImageLoader
 import androidx.compose.runtime.getValue
@@ -60,6 +62,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import dev.mosaic.app.data.preferences.ThemeMode
@@ -71,12 +74,15 @@ private enum class Destination(val title: String) {
     Home("Home"), Community("Community"), Saved("Saved"), Folders("Manage folders"), Settings("Settings")
 }
 
+private data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
+
 /** Navigation shell; all folder/provider operations stay in the data layer. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, library: LibraryViewModel, imageLoader: ImageLoader) {
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var selectedCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
+    var viewerSession by remember { mutableStateOf<ViewerSession?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -94,6 +100,13 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
     val busy by library.busy.collectAsStateWithLifecycle()
     val loaded by library.loaded.collectAsStateWithLifecycle()
     val libraryReadFailed by library.readFailed.collectAsStateWithLifecycle()
+    LaunchedEffect(folders, loaded, libraryReadFailed, selectedCommunityId) {
+        val selectedStillExists = selectedCommunityId?.let { id -> folders.any { it.folder.id == id } } ?: true
+        if (loaded && !libraryReadFailed && !selectedStillExists) {
+            selectedCommunityId = null
+            if (destination == Destination.Community) destination = Destination.Home
+        }
+    }
     val message by library.message.collectAsStateWithLifecycle()
     var restoreFolderId by rememberSaveable { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(FolderPickerContract()) { selection ->
@@ -123,13 +136,17 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
         selectedIconColor = colors.textPrimary, unselectedIconColor = colors.textSecondary,
     )
 
-    BackHandler(enabled = drawerState.isOpen || destination != Destination.Home) {
-        if (drawerState.isOpen) scope.launch { drawerState.close() }
-        else destination = Destination.Home
+    BackHandler(enabled = viewerSession != null || drawerState.isOpen || destination != Destination.Home) {
+        when {
+            viewerSession != null -> viewerSession = null
+            drawerState.isOpen -> scope.launch { drawerState.close() }
+            else -> destination = Destination.Home
+        }
     }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = viewerSession == null,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = colors.surface) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -184,45 +201,56 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
         },
     ) {
         Scaffold(
-            containerColor = colors.background,
+            containerColor = if (viewerSession == null) colors.background else Color.Black,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                TopAppBar(
-                    title = { Text(if (destination == Destination.Community)
-                        folders.firstOrNull { it.folder.id == selectedCommunityId }?.folder?.label ?: "Community"
-                        else destination.title) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface),
-                    navigationIcon = {
-                        if (isFeed) {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Open communities")
+                if (viewerSession == null) {
+                    TopAppBar(
+                        title = { Text(if (destination == Destination.Community)
+                            folders.firstOrNull { it.folder.id == selectedCommunityId }?.folder?.label ?: "Community"
+                            else destination.title) },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface),
+                        navigationIcon = {
+                            if (isFeed) {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Default.Menu, contentDescription = "Open communities")
+                                }
+                            } else {
+                                IconButton(onClick = { destination = Destination.Home }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home")
+                                }
                             }
-                        } else {
-                            IconButton(onClick = { destination = Destination.Home }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Home")
+                        },
+                        actions = {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Open app menu")
                             }
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { menuExpanded = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Open app menu")
-                        }
-                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                            listOf(Destination.Saved, Destination.Folders, Destination.Settings).forEach { target ->
-                                DropdownMenuItem(
-                                    text = { Text(target.title) },
-                                    onClick = {
-                                        destination = target
-                                        menuExpanded = false
-                                    },
-                                )
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                listOf(Destination.Saved, Destination.Folders, Destination.Settings).forEach { target ->
+                                    DropdownMenuItem(
+                                        text = { Text(target.title) },
+                                        onClick = {
+                                            destination = target
+                                            menuExpanded = false
+                                        },
+                                    )
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             },
         ) { padding ->
-            if (isFeed && !libraryReadFailed) {
+            val activeViewer = viewerSession
+            if (activeViewer != null) {
+                MediaViewer(
+                    snapshot = activeViewer.snapshot,
+                    initialPage = activeViewer.initialPage,
+                    imageLoader = imageLoader,
+                    onClose = { viewerSession = null },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (isFeed && !libraryReadFailed) {
                 FeedScreen(
                     state = if (feed.folderId == expectedFolderId) feed else feed.copy(posts = emptyList(), loaded = false),
                     folders = folders, busy = busy, listState = listState,
@@ -230,7 +258,9 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                         drawerState.targetValue == DrawerValue.Closed,
                     imageLoader = imageLoader, onSort = library::setSort,
                     onRefresh = { library.refresh(expectedFolderId) }, onAddFolder = addFolder,
-                    onManageFolders = { destination = Destination.Folders }, modifier = Modifier.padding(padding),
+                    onManageFolders = { destination = Destination.Folders },
+                    onOpenViewer = { snapshot, page -> viewerSession = ViewerSession(snapshot, page) },
+                    modifier = Modifier.padding(padding),
                 )
             } else {
                 Column(
@@ -250,6 +280,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                             onAddFolder = addFolder,
                             onRefresh = library::refresh,
                             onRestore = launchPicker,
+                            onRemoveFolder = library::removeFolder,
                         )
                         Destination.Saved -> {
                             Text("No saved copies yet", style = MaterialTheme.typography.titleLarge)

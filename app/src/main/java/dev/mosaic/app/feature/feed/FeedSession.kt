@@ -18,6 +18,16 @@ data class FeedState(
     val loaded: Boolean = false,
 )
 
+data class FeedSnapshot(
+    val posts: List<FeedPost>,
+    val sort: FeedSort,
+    val folderId: String?,
+    val epoch: Long,
+)
+
+/** Copy the exact visible order before any later refresh or sort emission can replace it. */
+fun FeedState.toSnapshot() = FeedSnapshot(posts.toList(), sort, folderId, epoch)
+
 /** Stable random ranking survives database emissions and unrelated UI changes. */
 fun buildFeed(media: List<IndexedMedia>, folderId: String?, sort: FeedSort, epoch: Long): List<FeedPost> {
     val eligible = media.filter { folderId == null || it.folderId == folderId }

@@ -31,6 +31,10 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
         dao.putFolder(FolderEntity(folder.id, folder.label, folder.persistedRead, folder.status, folder.failure))
     }
 
+    override suspend fun removeFolder(folderId: String) {
+        dao.deleteFolder(folderId)
+    }
+
     override suspend fun commitScan(folderId: String, media: List<MediaDocument>) {
         database.withTransaction {
             dao.clearMedia(folderId)

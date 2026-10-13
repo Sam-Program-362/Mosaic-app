@@ -2,6 +2,7 @@ package dev.mosaic.app.feature.feed
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -11,6 +12,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -26,12 +29,27 @@ import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 
 @Composable
-fun LocalMediaPreview(post: FeedPost, active: Boolean, imageLoader: ImageLoader, onBounds: (Rect) -> Unit = {}) {
+fun LocalMediaPreview(
+    post: FeedPost,
+    active: Boolean,
+    imageLoader: ImageLoader,
+    onBounds: (Rect) -> Unit = {},
+    viewer: Boolean = false,
+    onOpenViewer: (() -> Unit)? = null,
+) {
     val document = post.media.document
+    val colors = LocalMosaicColors.current
     var ratio by remember(document.contentUri, document.modifiedAtMillis) { mutableFloatStateOf(4f / 3f) }
-    BoxWithConstraints(Modifier.fillMaxWidth().onGloballyPositioned { onBounds(it.boundsInRoot()) }.background(LocalMosaicColors.current.mediaBackdrop)) {
-        val previewHeight = (maxWidth / ratio).coerceIn(120.dp, 520.dp)
-        Box(Modifier.fillMaxWidth().height(previewHeight), contentAlignment = Alignment.Center) {
+    val clickModifier = onOpenViewer?.let {
+        Modifier.clickable(role = Role.Button, onClickLabel = "Open full-screen viewer", onClick = it)
+    } ?: Modifier
+    val sizeModifier = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+    BoxWithConstraints(sizeModifier.then(clickModifier)
+        .onGloballyPositioned { onBounds(it.boundsInRoot()) }
+        .background(if (viewer) Color.Black else colors.mediaBackdrop)) {
+        val previewHeight = if (viewer) maxHeight else (maxWidth / ratio).coerceIn(120.dp, 520.dp)
+        val previewSize = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(previewHeight)
+        Box(previewSize, contentAlignment = Alignment.Center) {
             when {
                 document.kind == MediaKind.Video && active -> VideoPreview(document.contentUri) { ratio = it }
                 document.kind == MediaKind.Video -> Text("MP4 · playback paused", color = LocalMosaicColors.current.textSecondary)

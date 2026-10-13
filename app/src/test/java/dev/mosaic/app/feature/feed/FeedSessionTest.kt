@@ -63,6 +63,17 @@ class FeedSessionTest {
         assertNotEquals(MediaKey("a", "bc").stableKey, MediaKey("ab", "c").stableKey)
         assertNotEquals(MediaKey("x:y", "z").stableKey, MediaKey("x", "y:z").stableKey)
     }
+    @Test fun viewerSnapshotKeepsExactFeedOrderWhenLiveFeedChanges() {
+        val visibleOrder = buildFeed((0..19).map { item("folder", "$it") }, null, FeedSort.Random, 42)
+        val mutablePosts = visibleOrder.toMutableList()
+        val snapshot = FeedState(mutablePosts, FeedSort.Random, null, 42, loaded = true).toSnapshot()
+        val snapshotKeys = snapshot.posts.map { it.media.key.stableKey }
+        mutablePosts.reverse()
+
+        assertEquals(visibleOrder.map { it.media.key.stableKey }, snapshotKeys)
+        assertNotEquals(mutablePosts.map { it.media.key.stableKey }, snapshotKeys)
+        assertEquals(42L, snapshot.epoch)
+    }
     @Test fun onlyMostVisibleAnimatedPreviewPlays() {
         val visible = listOf(VisibleMedia("photo", 0, 500), VisibleMedia("gif", 450, 400), VisibleMedia("video", 750, 400))
         assertEquals("gif", activePreview(visible, 0, 1000, setOf("gif", "video")))

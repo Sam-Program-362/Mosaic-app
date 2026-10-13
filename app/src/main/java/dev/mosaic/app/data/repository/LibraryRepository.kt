@@ -31,6 +31,16 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         store.getFolders().filter { folderId == null || it.id == folderId }.forEach { scan(it.id) }
     }
 
+    /** Remove the local selection and its index; originals stay in their provider. */
+    suspend fun removeFolder(folderId: String): Boolean = operations.withLock {
+        if (store.getFolders().none { it.id == folderId }) return@withLock true
+        // Release first so a crash cannot leave an unselected, orphaned persisted grant.
+        // If revocation is unsupported, still remove the index and report that limitation to the user.
+        val grantReleased = source.releaseReadPermission(folderId)
+        store.removeFolder(folderId)
+        grantReleased
+    }
+
     private suspend fun scan(folderId: String) {
         when (val result = source.scan(folderId)) {
             is ScanResult.Success -> store.commitScan(folderId, result.media)

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -11,7 +12,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.mosaic.app.core.model.FolderStatus
@@ -27,8 +32,34 @@ fun FolderManagement(
     onAddFolder: () -> Unit,
     onRefresh: (String?) -> Unit,
     onRestore: (String) -> Unit,
+    onRemoveFolder: (String) -> Unit,
 ) {
     val colors = LocalMosaicColors.current
+    var pendingRemoval by remember { mutableStateOf<FolderSummary?>(null) }
+    pendingRemoval?.let { summary ->
+        AlertDialog(
+            onDismissRequest = { pendingRemoval = null },
+            title = { Text("Remove ${summary.folder.label}?") },
+            text = {
+                Text("This removes the folder's community, indexed details, and Mosaic's saved read access. " +
+                    "It will not delete, move, rename, or change any original files. You can add the folder again later.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRemoval = null
+                        onRemoveFolder(summary.folder.id)
+                    },
+                    enabled = !busy,
+                ) { Text("Remove folder") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoval = null }) { Text("Cancel") }
+            },
+            containerColor = colors.surfaceRaised,
+        )
+    }
+
     Text("Selected folders", style = MaterialTheme.typography.titleLarge)
     Text("Only supported media directly inside each selected folder is indexed. " +
         "Nested folders and original files are never changed.", color = colors.textSecondary)
@@ -72,6 +103,9 @@ fun FolderManagement(
                     TextButton(onClick = { onRestore(summary.folder.id) }, enabled = !busy) {
                         Text("Reselect original folder")
                     }
+                }
+                TextButton(onClick = { pendingRemoval = summary }, enabled = !busy) {
+                    Text("Remove from Mosaic")
                 }
             }
         }

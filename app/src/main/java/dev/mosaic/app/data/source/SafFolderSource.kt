@@ -53,6 +53,25 @@ class SafFolderSource(private val resolver: ContentResolver) : FolderSource {
         scanner.scan(treeUri)
     }
 
+    override suspend fun releaseReadPermission(treeUri: String): Boolean = withContext(Dispatchers.IO) {
+        val tree = Uri.parse(treeUri)
+        if (!DocumentsContract.isTreeUri(tree)) return@withContext false
+        val hasPersistedRead = try {
+            resolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission }
+        } catch (_: SecurityException) {
+            return@withContext false
+        }
+        if (!hasPersistedRead) return@withContext true
+        try {
+            resolver.releasePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            true
+        } catch (_: SecurityException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
+        }
+    }
+
     private fun readChildren(treeUri: String): List<ChildDocument> {
         try {
             val tree = Uri.parse(treeUri)

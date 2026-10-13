@@ -75,6 +75,19 @@ class LibraryViewModel(private val repository: LibraryRepository) : ViewModel() 
         }
     }
 
+    fun removeFolder(folderId: String) {
+        if (mutableBusy.value) return
+        runOperation {
+            val grantReleased = repository.removeFolder(folderId)
+            mutableEpoch.value = Random.nextLong()
+            mutableMessage.value = if (grantReleased) {
+                "Folder removed from Mosaic. Original media was left untouched."
+            } else {
+                "Folder removed from Mosaic, but Android could not confirm release of its saved read access."
+            }
+        }
+    }
+
     fun addFolder(selection: FolderSelection, expectedFolderId: String? = null) {
         if (expectedFolderId != null && selection.treeUri != expectedFolderId) {
             mutableMessage.value = "Choose the original folder to restore access. Use Add folder to select a different folder."

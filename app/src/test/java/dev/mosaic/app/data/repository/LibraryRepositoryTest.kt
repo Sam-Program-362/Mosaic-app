@@ -79,12 +79,44 @@ class LibraryRepositoryTest {
         assertEquals("Photos", store.records.getValue("tree").label)
     }
 
+    @Test fun removingFolderReleasesItsReadGrantAndCascadesOnlyItsMetadata() = runTest {
+        val store = FakeStore()
+        val source = FakeSource()
+        val repository = LibraryRepository(store, source)
+        source.result = ScanResult.Success(listOf(media("one")))
+        repository.addFolder(FolderSelection("tree-one", 0))
+        repository.addFolder(FolderSelection("tree-two", 0))
+
+        assertTrue(repository.removeFolder("tree-one"))
+        assertEquals(listOf("tree-one"), source.releasedTrees)
+        assertFalse("tree-one" in store.records)
+        assertFalse("tree-one" in store.media)
+        assertTrue("tree-two" in store.records)
+        assertEquals(listOf("one"), store.media.getValue("tree-two").map { it.documentId })
+    }
+
+    @Test fun removalStillDropsIndexWhenAndroidCannotConfirmGrantRelease() = runTest {
+        val store = FakeStore()
+        val source = FakeSource().apply { releaseSucceeded = false }
+        val repository = LibraryRepository(store, source)
+        repository.addFolder(FolderSelection("tree", 0))
+
+        assertFalse(repository.removeFolder("tree"))
+        assertFalse("tree" in store.records)
+    }
+
     private class FakeSource : FolderSource {
         var result: ScanResult = ScanResult.Success(emptyList())
         var persistent = true
         var label: String? = "Photos"
+        var releaseSucceeded = true
+        val releasedTrees = mutableListOf<String>()
         override suspend fun register(selection: FolderSelection) = FolderRegistration(label, persistent)
         override suspend fun scan(treeUri: String) = result
+        override suspend fun releaseReadPermission(treeUri: String): Boolean {
+            releasedTrees += treeUri
+            return releaseSucceeded
+        }
     }
 
     private class FakeStore : LibraryStore {
@@ -94,6 +126,10 @@ class LibraryRepositoryTest {
         val media = mutableMapOf<String, List<MediaDocument>>()
         override suspend fun getFolders() = records.values.toList()
         override suspend fun putFolder(folder: FolderRecord) { records[folder.id] = folder }
+        override suspend fun removeFolder(folderId: String) {
+            records.remove(folderId)
+            media.remove(folderId)
+        }
         override suspend fun commitScan(folderId: String, media: List<MediaDocument>) {
             this.media[folderId] = media
             records[folderId] = records.getValue(folderId).copy(status = FolderStatus.Available, failure = null)

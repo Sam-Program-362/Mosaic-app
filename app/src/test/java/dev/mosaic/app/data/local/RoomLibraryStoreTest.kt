@@ -73,6 +73,21 @@ class RoomLibraryStoreTest {
         assertEquals(listOf(1, 1), store.folders.first().map { it.mediaCount })
     }
 
+    @Test fun removingFolderCascadesOnlyItsMediaRowsAndLeavesOriginalUrisUnchanged() = runTest {
+        store.putFolder(FolderRecord("tree-one", "One", true))
+        store.putFolder(FolderRecord("tree-two", "Two", true))
+        store.commitScan("tree-one", listOf(media("one")))
+        store.commitScan("tree-two", listOf(media("two")))
+        val originalUri = database.libraryDao().getMedia("tree-two").single().contentUri
+
+        store.removeFolder("tree-one")
+
+        assertEquals(listOf("tree-two"), store.folders.first().map { it.folder.id })
+        assertTrue(database.libraryDao().getMedia("tree-one").isEmpty())
+        assertEquals(originalUri, database.libraryDao().getMedia("tree-two").single().contentUri)
+        assertEquals(listOf("tree-two"), store.availableMedia.first().map { it.folderId })
+    }
+
     @Test fun availableFeedExcludesUnavailableFoldersWithoutDeletingTheirIndex() = runTest {
         store.putFolder(FolderRecord("one", "One", true))
         store.putFolder(FolderRecord("two", "Two", true))

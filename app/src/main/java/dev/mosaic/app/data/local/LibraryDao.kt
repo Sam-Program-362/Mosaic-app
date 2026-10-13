@@ -32,6 +32,9 @@ interface LibraryDao {
     @Upsert
     suspend fun putFolder(folder: FolderEntity)
 
+    @Query("DELETE FROM folders WHERE id = :folderId")
+    suspend fun deleteFolder(folderId: String)
+
     @Query("DELETE FROM media WHERE folderId = :folderId")
     suspend fun clearMedia(folderId: String)
 
