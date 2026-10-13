@@ -30,11 +30,11 @@ The user confirmed Phase 2 restart retention (two folders, 295 media) and report
 the Phase 3 phone check that photos display in Home, folder selection shows only its
 media, and videos play. GIF, video mute/offscreen/background behavior and Phase 4
 viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests,
-lint, schema and APK privacy checks. Phase 5 CI exposed a Robolectric ContentProvider
-setup NPE and a separate test compile error from a removed provider-stub import. The
-provider is now explicitly attached and the import restored locally; no green Phase 5
-verification exists. No pixel-match, physical paging, provider permission-release,
-hardware-codec or Phase 5 device-acceptance claim.
+lint, schema and APK privacy checks. Phase 5 CI run 38468360143 passed 59 tests, lint,
+tracked-schema consistency, packaged privacy and debug APK build. Generated v2 schema
+capture/commit remains because the annotation was truncated and artifact retrieval
+failed. No pixel-match, physical paging, provider permission-release, hardware-codec or
+Phase 5 device-acceptance claim.
 
 ## Remaining UI scope and Phase 5 verification
 Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed

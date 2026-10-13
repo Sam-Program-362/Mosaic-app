@@ -100,7 +100,11 @@ jobs:
               assert json.loads(path.read_text()) == json.loads(tracked), f'Room schema changed: {path}'
           for path in pending_schemas:
               encoded = base64.b64encode(path.read_bytes()).decode('ascii')
-              print(f'::notice title=Generated Room schema::{path.as_posix()}|{encoded}')
+              chunk_size = 2500  # GitHub truncates individual check annotations at 4 KiB.
+              total = (len(encoded) + chunk_size - 1) // chunk_size
+              for index in range(total):
+                  chunk = encoded[index * chunk_size:(index + 1) * chunk_size]
+                  print(f'::notice title=Generated Room schema::{path.as_posix()}|{index + 1}/{total}|{chunk}')
           PYREPORT
       - name: Upload debug APK and reports
         if: always()

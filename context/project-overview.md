@@ -48,10 +48,10 @@ Phase 4 implements a frozen-order full-screen viewer and confirmed folder remova
 its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
 phone acceptance is pending. Phase 5 Save copy/Saved-feed source is now in progress:
 private streaming copies, Room v2 migration, feed/viewer actions and tests are authored.
-Phase 5 CI runs found a Robolectric ContentProvider setup NPE and, separately, a test
-compile error from a removed provider-stub import. The provider now attaches a
-ProviderInfo before registration and the import is restored locally. No passing Phase 5
-verification exists yet. Custom communities remain planned. This is not first-release completion.
+Phase 5 CI run 38468360143 passed 59 tests, lint, tracked-schema consistency, packaged
+privacy checks and debug APK build. The generated v2 schema notice was truncated and
+artifact retrieval failed; schema capture via chunked notices and commit remain. Custom
+communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

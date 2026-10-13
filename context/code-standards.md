@@ -53,7 +53,7 @@ Phase 5 copy code runs on Dispatchers.IO, streams to an app-private unique temp 
 flushes/renames only after a nonempty complete read, and inserts metadata only for a
 completed copy. On ordinary failures, remove temp/final files without touching source;
 every UI invocation remains a new copy. Saved views must use destination URIs, not
-source URIs. Keep the explicit Room v1→v2 migration and CI-generated schema. Two CI
-runs failed with a Robolectric NPE because the test ContentProvider lacked `attachInfo`;
-another run exposed a provider-stub import, which is restored. The stub now attaches a
-ProviderInfo before registration. A green rerun is still required.
+source URIs. Keep the explicit Room v1→v2 migration and CI-generated schema. CI run
+38468360143 passed 59 tests, lint, tracked-schema consistency, APK privacy and debug
+build. Its generated v2 schema annotation was truncated, and artifact retrieval failed;
+the reporter now splits generated schema output into small chunks for exact capture.
