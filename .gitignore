@@ -25,3 +25,7 @@ captures/
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Local tooling caches
+.cache/
+__pycache__/
