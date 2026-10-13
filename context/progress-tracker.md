@@ -2,8 +2,9 @@
 
 ## Current phase
 Phase 2 — selected folders and safe local indexing implemented in source.
-Date: 2026-10-14. Android CI verification is being initiated; no first-release
-completion or physical-device verification is claimed.
+Date: 2026-10-14. Android tests/lint/debug build passed for the main Phase 2 implementation; a final
+regression-test run is pending. No first-release or physical-device verification
+is claimed.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
@@ -35,8 +36,9 @@ blocked before startup. Static XML/TOML/YAML/wrapper/manifest checks passed.
 - Added pure scanner/repository tests and Robolectric SAF/Room integration tests
   for direct-child queries, cursor closure, empty vs failed, permissions, incomplete
   metadata, identity collisions, recovery, successful deletion reconciliation,
-  transaction rollback and upsert preservation. These await CI results below.
-- Room schema export configured; generated schema must be retained after CI.
+  transaction rollback and upsert preservation. Core tests passed in CI; additional picker/rollback checks await the final run.
+- Room schema export configured and actual CI-generated version 1 JSON retained
+  in source; CI checks its semantic consistency. No hand-authored schema.
 
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/
@@ -51,7 +53,16 @@ No saved files, original writes, recursive queries, network access or media play
 ## Verification and GitHub authorization
 - The user explicitly approved pushing to the session development branch to run
   GitHub tests/builds and create a debug test APK. No merge or release authorized.
-- CI results: pending. Update this section with exact run/results after completion.
+- Initial run 38447946849 failed at SDK setup, before compiling/testing app code.
+- Switched to fixed ubuntu-24.04 runner's preinstalled SDK; updated core actions.
+- Run 38448205363 (commit 2ea1bce): SUCCESS. `testDebugUnitTest`, `lint` and
+  `assembleDebug` all completed successfully. Debug APK/reports artifact uploaded.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38448205363
+- Final run for added native-picker/stronger rollback regression checks: pending.
+- Static manifest/XML/catalog/YAML/wrapper and shell/diff checks passed.
+- Full CI log downloads are blocked by sandbox host restrictions; API step results
+  and annotations establish the recorded outcomes. Workflow emits useful error
+  annotations and test totals for future API-visible diagnosis.
 - Local Android compilation/device testing remains unavailable in this sandbox.
 - No physical-device folder/provider behavior is claimed verified.
 

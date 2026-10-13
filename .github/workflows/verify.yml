@@ -1,8 +1,9 @@
-name: Verify Android foundation
+name: Verify Android
 
 on:
   push:
     branches: ['main', 'arena/**']
+    paths-ignore: ['context/**', 'docs/**', 'README.md', 'AGENTS.md']
   pull_request:
   workflow_dispatch:
 
@@ -54,14 +55,26 @@ jobs:
           PYERROR
             exit 1
           fi
-      - name: Report generated schema for source retention
+      - name: Report tests and check generated schema
         run: |
-          python3 - <<'PYSCHEMA'
+          python3 - <<'PYREPORT'
           from pathlib import Path
+          import json, subprocess, xml.etree.ElementTree as ET
+          reports = list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert reports, 'No unit test result files found'
+          totals = {key: 0 for key in ('tests', 'failures', 'errors', 'skipped')}
+          for path in reports:
+              root = ET.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(root.get(key, '0'))
+          assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0, totals
+          print(f"::notice title=Verification summary::{totals['tests']} tests; "
+                f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
+                "Lint and debug APK build passed.")
           for path in Path('app/schemas').rglob('*.json'):
-              message = path.read_text().replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print(f'::notice title=Generated Room schema::{message}')
-          PYSCHEMA
+              tracked = subprocess.check_output(['git', 'show', f'HEAD:{path.as_posix()}'], text=True)
+              assert json.loads(path.read_text()) == json.loads(tracked), f'Room schema changed: {path}'
+          PYREPORT
       - name: Upload debug APK and reports
         if: always()
         uses: actions/upload-artifact@v5

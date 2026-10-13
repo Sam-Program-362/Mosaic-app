@@ -19,6 +19,9 @@ interface LibraryDao {
     @Query("SELECT * FROM folders ORDER BY id")
     suspend fun getFolders(): List<FolderEntity>
 
+    @Query("SELECT * FROM media WHERE folderId = :folderId ORDER BY documentId")
+    suspend fun getMedia(folderId: String): List<MediaEntity>
+
     @Upsert
     suspend fun putFolder(folder: FolderEntity)
 

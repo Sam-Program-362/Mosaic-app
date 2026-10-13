@@ -40,8 +40,8 @@ multi-pane design are not required in v1.
 
 ## Status and decisions
 Phase 1 foundation and Phase 2 folder selection/indexing are implemented in source.
-Android verification is moving to GitHub CI because the sandbox lacks the toolchain;
-physical-device/provider testing remains pending. This is not first-release completion.
+Android tests, lint and debug build passed in GitHub CI because the sandbox lacks
+the toolchain; final regression and physical-device/provider testing remain pending. This is not first-release completion.
 Media posts/playback/Saved copies/custom communities remain planned. See the tracker
 for exact evidence. Kotlin/Compose/Room are the adopted technical baseline under the
 user's delegation of routine technical decisions on 2026-10-14.

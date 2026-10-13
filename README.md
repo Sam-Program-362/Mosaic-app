@@ -37,7 +37,8 @@ Gradle/dependency installation requires development-time internet; runtime does 
 The verification workflow runs tests, lint, and a debug build on pushes and PRs.
 The existing manual/tagged release workflow builds and externally signs the release
 APK using the existing GitHub signing secrets. Do not commit keystores or credentials.
-Verification is being run on the development branch; see the progress tracker for actual results.
+The core Phase 2 tests, lint and debug build passed on the development branch.
+See the progress tracker for actual run results and final regression status.
 
 ## Provisional project configuration
 
@@ -45,6 +46,9 @@ Working name: Mosaic. Namespace/application ID: `dev.mosaic.app`. Minimum API 26
 (Android 8.0), compile/target API 35. These are reversible development defaults,
 **not finalized public identity or release-target approval**. The user delegated routine technical choices; dependency versions
 are pinned in `gradle/libs.versions.toml` (no claim that they are the latest).
+
+See [the simple phone check](docs/phase-2-device-check.md) for installation and
+manual acceptance steps.
 
 See `AGENTS.md` and the six `context/` files for requirements, boundaries, actual
 verification status, and the next phase.

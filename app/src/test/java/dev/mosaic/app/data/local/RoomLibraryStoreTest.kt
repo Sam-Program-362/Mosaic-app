@@ -54,6 +54,7 @@ class RoomLibraryStoreTest {
         val retained = store.folders.first().single()
         assertEquals(1, retained.mediaCount)
         assertEquals(FolderStatus.Unavailable, retained.folder.status)
+        assertEquals(listOf("existing"), database.libraryDao().getMedia("tree").map { it.documentId })
     }
 
     @Test fun updatingFolderRecordDoesNotCascadeDeleteItsIndex() = runTest {
@@ -62,6 +63,14 @@ class RoomLibraryStoreTest {
         store.commitScan("tree", listOf(media("existing")))
         store.putFolder(folder.copy(label = "Photos renamed", status = FolderStatus.Available))
         assertEquals(1, store.folders.first().single().mediaCount)
+    }
+
+    @Test fun sameDocumentIdInDifferentTreesDoesNotCollide() = runTest {
+        store.putFolder(FolderRecord("tree-one", "Photos", true))
+        store.putFolder(FolderRecord("tree-two", "Photos", true))
+        store.commitScan("tree-one", listOf(media("same-id")))
+        store.commitScan("tree-two", listOf(media("same-id")))
+        assertEquals(listOf(1, 1), store.folders.first().map { it.mediaCount })
     }
 
     private fun media(id: String) = MediaDocument(id, "content://provider/$id", "same.jpg",
