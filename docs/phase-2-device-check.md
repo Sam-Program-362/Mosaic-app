@@ -5,7 +5,7 @@ or play videos yet**. That is the next phase. Home shows counts, not a gallery.
 
 ## Get the test app
 
-1. Open the successful **Verify Android** run on GitHub.
+1. Open [the successful Phase 2 build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38449832366).
 2. Under **Artifacts**, download **mosaic-debug-and-reports**. GitHub may require
    you to sign in to download it.
 3. Extract the ZIP and find `app-debug.apk` (the artifact also contains reports).

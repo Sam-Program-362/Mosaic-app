@@ -2,8 +2,8 @@
 
 ## Current phase
 Phase 2 — selected folders and safe local indexing implemented in source.
-Date: 2026-10-14. Android tests/lint/debug build passed for the main Phase 2 implementation; a final
-regression-test run is pending. No first-release or physical-device verification
+Date: 2026-10-14. Android verification passed for the final Phase 2 source: 30 tests, lint, schema
+consistency and debug APK build. No first-release or physical-device verification
 is claimed.
 
 ## Repository inspection and Phase 1
@@ -36,7 +36,7 @@ blocked before startup. Static XML/TOML/YAML/wrapper/manifest checks passed.
 - Added pure scanner/repository tests and Robolectric SAF/Room integration tests
   for direct-child queries, cursor closure, empty vs failed, permissions, incomplete
   metadata, identity collisions, recovery, successful deletion reconciliation,
-  transaction rollback and upsert preservation. Core tests passed in CI; additional picker/rollback checks await the final run.
+  transaction rollback and upsert preservation. All 30 tests passed in the final CI run.
 - Room schema export configured and actual CI-generated version 1 JSON retained
   in source; CI checks its semantic consistency. No hand-authored schema.
 
@@ -62,7 +62,12 @@ No saved files, original writes, recursive queries, network access or media play
   lint, debug APK build and generated schema consistency checks passed.
 - One final conservative guard/test added: even an empty cursor must expose both
   document-ID and MIME columns before it can authorize deletion reconciliation.
-  Verification of that 30-test snapshot is pending.
+- Final run 38449832366 (source commit 87f9815): SUCCESS, 30 tests;
+  0 failures, 0 errors, 0 skipped. `testDebugUnitTest`, `lint`, `assembleDebug`
+  and checked-in/generated schema consistency all passed. Debug APK/reports uploaded.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38449832366
+- Final documentation-only commit does not change the verified Android source;
+  docs-only changes are excluded from redundant push CI runs.
 - Static manifest/XML/catalog/YAML/wrapper and shell/diff checks passed.
 - Full CI log downloads are blocked by sandbox host restrictions; API step results
   and annotations establish the recorded outcomes. Workflow emits useful error

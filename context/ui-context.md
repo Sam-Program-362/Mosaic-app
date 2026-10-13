@@ -19,6 +19,8 @@ Settings offers persisted Light/Dark selection and save-error feedback. No syste
 mode. Fresh/invalid theme preference defaults to Light. Scrollable layouts and
 Scaffold insets accommodate landscape, font scaling, and edge-to-edge system bars.
 System sans/Material 3 type scale is used; icons have accessible labels.
+Android compilation/lint and source/database tests passed in CI; no real-phone
+UI, picker or font/landscape acceptance is claimed. See `docs/phase-2-device-check.md`.
 
 ## Required later UI
 Compact width-spanning Reddit-inspired feed, not grid or oversized promotional cards:

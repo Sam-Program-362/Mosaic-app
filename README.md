@@ -37,8 +37,9 @@ Gradle/dependency installation requires development-time internet; runtime does 
 The verification workflow runs tests, lint, and a debug build on pushes and PRs.
 The existing manual/tagged release workflow builds and externally signs the release
 APK using the existing GitHub signing secrets. Do not commit keystores or credentials.
-The core Phase 2 tests, lint and debug build passed on the development branch.
-See the progress tracker for actual run results and final regression status.
+Phase 2 verification passed: 30 tests, lint, schema consistency and debug build.
+[Successful build and test APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38449832366).
+Physical-device folder/provider behavior still needs the simple phone check below.
 
 ## Provisional project configuration
 
