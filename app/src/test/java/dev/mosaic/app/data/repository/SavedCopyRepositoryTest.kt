@@ -2,6 +2,7 @@ package dev.mosaic.app.data.repository
 
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -47,6 +48,10 @@ class SavedCopyRepositoryTest {
     private lateinit var repository: SavedCopyRepository
 
     @Before fun setUp() {
+        provider.attachInfo(context, ProviderInfo().apply {
+            authority = "saved.test"
+            grantUriPermissions = true
+        })
         ShadowContentResolver.registerProviderInternal("saved.test", provider)
         database = Room.inMemoryDatabaseBuilder(context, LibraryDatabase::class.java).build()
         dao = database.savedCopyDao()

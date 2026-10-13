@@ -90,9 +90,10 @@ Removal of saved copies and custom communities remain out of scope.
 
 Room database version 2 adds only the Saved table/index with an explicit v1→v2
 migration; existing folder/media data is retained. KSP's generated v2 schema must be
-captured from CI and checked in. The first CI run failed on a Robolectric source-open
-NPE; the replacement run failed test compilation because its provider stub still needed a
-removed import, now restored locally. No passing unit-test/lint/privacy/APK or phone
+captured from CI and checked in. The first and third CI runs hit a Robolectric NPE
+because the test provider was registered without `attachInfo`/`ProviderInfo`; a second
+run also exposed a removed provider-stub import, now restored. The test provider is now
+explicitly attached before registration. No passing unit-test/lint/privacy/APK or phone
 result is claimed yet.
 
 ## Remaining planned architecture
