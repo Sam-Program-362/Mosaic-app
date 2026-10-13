@@ -42,7 +42,8 @@ Null/missing-required-column/loading/error cursors never authorize deletion.
 `feature/feed/` owns pure feed ordering/count/title/artwork/visibility rules, lazy
 post UI, local image/GIF preview and composition-scoped MP4 players. Coil 3.1.0 uses
 Compose/GIF modules without a network fetcher; an application-context ImageLoader
-provides bounded shared caching. Media3 1.6.1 creates at most one inline player for
+provides bounded shared caching. Static photo/avatar requests explicitly select a
+static decoder; only GIF previews opt into animation. Media3 1.6.1 creates at most one inline player for
 visible foreground media, muted by default and disposed offscreen/inactive.
 Room joined projections filter Available status before UI; no schema version change.
 ViewModel combines available metadata + scope + sort + session epoch off main thread.
@@ -78,3 +79,8 @@ explicit migrations when changing the database. No WorkManager or background sca
 
 Unresolved: final identity/SDK policy, community renaming and custom artwork. Static folder artwork default: first supported
 static image by case-insensitive filename; neutral initials when none exists.
+
+Offline packaging guard: remove inherited INTERNET/ACCESS_NETWORK_STATE permissions
+with manifest tools:node="remove". CI checks built APK, not just source XML. Muted
+previews don't request audio focus; unmuted video enables Media3-managed focus.
+Detach PlayerView before releasing player on disposal.

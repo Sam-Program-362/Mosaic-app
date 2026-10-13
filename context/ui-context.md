@@ -16,7 +16,8 @@ Drawer/container roles now explicitly use semantic neutral colors (fixing initia
 purple defaults in the user's screenshot). Settings still persists Light/Dark.
 Folder management retains Phase 2 picker/retry/reselection and accurate states.
 The user confirmed Phase 2 restart retention on phone (two folders, 295 media). Phase
-3 build/UI/decoder/playback checks pending; no pixel-match or hardware-codec claim.
+3 final build/lint/45 tests and APK privacy checks passed.
+No pixel-match, physical scrolling, hardware-codec or audio-focus acceptance claim.
 
 ## Required later UI
 Enable Save copy only when independent copy storage is implemented. Add the

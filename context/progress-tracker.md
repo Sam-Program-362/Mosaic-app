@@ -2,7 +2,8 @@
 
 ## Current phase
 Phase 3 — Home/folder feeds, sorting and inline local media implemented in source.
-Date: 2026-10-14. Phase 3 CI verification pending. Phase 2 previously passed 30 tests,
+Date: 2026-10-14. Final Phase 3 CI verification passed: 45 tests, lint, schema,
+packaged privacy permissions and debug APK build. Phase 2 previously passed 30 tests,
 lint, schema consistency and APK build; user has now confirmed retained folders on
 restart on a real phone. No complete first release or Phase 3 device playback verification.
 
@@ -103,7 +104,22 @@ Playback is composition/foreground/visibility scoped, never retained in the View
 - Local Android compilation/device testing remains unavailable in this sandbox.
 - User verified Phase 2 folder persistence on their phone; Phase 3 actual media
   rendering/playback/lifecycle behavior is not yet device-verified.
-- Phase 3 CI run: pending.
+- Phase 3 initial run 38454091013 / commit 1283b43 passed: 45 tests,
+  0 failures/errors/skips; lint, schema consistency and APK build passed.
+- Final hardening: removed Media3's inherited ACCESS_NETWORK_STATE (and defensively
+  INTERNET) via manifest-merger rules; CI now checks actual APK permissions. Media3
+  safely falls back to unknown network type without that permission.
+- Silent videos request no audio focus until unmuted; surfaces detach before release.
+- Static image/avatar requests explicitly use static decoders, avoiding accidental
+  background animation of non-GIF formats or cached animated artwork.
+- Final hardened run 38455304642 / source commit 8f11853: SUCCESS, 45 tests,
+  0 failures, 0 errors, 0 skipped; lint, schema consistency, debug APK and packaged
+  APK privacy guard all passed. No network or broad storage/media permissions.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38455304642
+- Run 38454957427 was superseded/cancelled by the static-decoder hardening push;
+  no failed test/build result is claimed for that cancelled run.
+- Final doc-only commit does not change verified source; no merge/release created.
+  See docs/phase-3-device-check.md. Real phone media acceptance is still pending.
 
 ## Still unimplemented and next phase
 Immersive viewer/fullscreen/vertical paging, independent Saved copies, custom

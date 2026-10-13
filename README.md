@@ -17,7 +17,7 @@ Home and automatic folder feeds now show photos, animated GIFs and MP4 previews,
 with Random/Newest sorting and noninteractive decorative counts. Newest uses local
 modification dates, unknown dates last. Refresh starts a new display session.
 Immersive viewer, custom communities and independent Saved copies are **not
-implemented yet**; Save copy is explicitly disabled. Phase 3 CI verification pending.
+implemented yet**; Save copy is explicitly disabled. Phase 3 CI verification passed; phone playback acceptance is pending.
 Manage folders supports Add folder, refresh and original-folder access reselection.
 Only explicit selections are scanned, and only their direct supported media children.
 Failed/incomplete scans retain previously indexed metadata; originals are read-only.
@@ -41,9 +41,11 @@ Gradle/dependency installation requires development-time internet; runtime does 
 The verification workflow runs tests, lint, and a debug build on pushes and PRs.
 The existing manual/tagged release workflow builds and externally signs the release
 APK using the existing GitHub signing secrets. Do not commit keystores or credentials.
-Phase 2 verification passed: 30 tests, lint, schema consistency and debug build.
-[Successful build and test APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38449832366).
-Physical-device folder/provider behavior still needs the simple phone check below.
+Phase 3 verification passed: 45 tests, lint, schema consistency, packaged privacy
+permissions and debug build.
+[Successful Phase 3 build and test APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38455304642).
+The user confirmed Phase 2 folder restart retention; Phase 3 media/playback behavior
+still needs the phone check below.
 
 ## Provisional project configuration
 
@@ -52,7 +54,7 @@ Working name: Mosaic. Namespace/application ID: `dev.mosaic.app`. Minimum API 26
 **not finalized public identity or release-target approval**. The user delegated routine technical choices; dependency versions
 are pinned in `gradle/libs.versions.toml` (no claim that they are the latest).
 
-See [the simple phone check](docs/phase-2-device-check.md) for installation and
+See [the Phase 3 phone check](docs/phase-3-device-check.md) for installation and
 manual acceptance steps.
 
 See `AGENTS.md` and the six `context/` files for requirements, boundaries, actual

@@ -37,3 +37,7 @@ fallback/ties, display counts, artwork, titles, viewport animation ownership and
 Compose decorative-action semantics. Media players must remain composition-scoped;
 image loading must stay local-only. Do not equate CI with real hardware decoder or
 foreground/offscreen playback acceptance.
+
+Inspect merged APK permissions after adding media libraries; transitive manifests
+must not silently add network or broad storage/media access. Keep static artwork
+nonanimated, and request audio focus only for audible playback.
