@@ -47,9 +47,10 @@ GIF, mute, offscreen/background playback behavior have not been confirmed on-dev
 Phase 4 implements a frozen-order full-screen viewer and confirmed folder removal;
 its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
 phone acceptance is pending. Phase 5 Save copy/Saved-feed source is now in progress:
-private streaming copies, Room v2 migration, feed/viewer actions and tests are authored,
-but no Phase 5 build/test/CI verification has run yet. Custom communities remain
-planned. This is not first-release completion.
+private streaming copies, Room v2 migration, feed/viewer actions and tests are authored.
+First Phase 5 CI compiled app/test sources but failed one Robolectric source-open test;
+a cleanup-test adjustment is pending rerun. No passing Phase 5 verification exists yet.
+Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

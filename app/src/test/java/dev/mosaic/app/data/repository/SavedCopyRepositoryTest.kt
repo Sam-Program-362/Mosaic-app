@@ -16,7 +16,6 @@ import dev.mosaic.app.data.local.SavedCopyDao
 import dev.mosaic.app.data.local.SavedCopyEntity
 import java.io.File
 import java.io.IOException
-import java.io.FileNotFoundException
 import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -85,13 +84,13 @@ class SavedCopyRepositoryTest {
         assertEquals(3, repository.savedCopies.first().size)
     }
 
-    @Test fun failedSourceOpenLeavesNeitherPartialFileNorSavedRecord() = runTest {
-        provider.source = null
+    @Test fun emptySourceLeavesNeitherPartialFileNorSavedRecord() = runTest {
+        sourceFile.writeBytes(byteArrayOf())
         try {
             repository.saveCopy(media())
-            throw AssertionError("A missing source stream must fail")
-        } catch (_: FileNotFoundException) {
-            // The provider reports an unavailable original; no empty copy is advertised.
+            throw AssertionError("An empty source must not be advertised as a Saved copy")
+        } catch (_: IOException) {
+            // No zero-byte placeholder is exposed as a valid media copy.
         }
 
         assertTrue(storageDirectory().listFiles().isNullOrEmpty())

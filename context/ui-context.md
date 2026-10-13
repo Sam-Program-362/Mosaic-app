@@ -30,9 +30,10 @@ The user confirmed Phase 2 restart retention (two folders, 295 media) and report
 the Phase 3 phone check that photos display in Home, folder selection shows only its
 media, and videos play. GIF, video mute/offscreen/background behavior and Phase 4
 viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests,
-lint, schema and APK privacy checks. Phase 5 copy/migration tests and build have not
-run yet. No pixel-match, physical paging, provider permission-release, hardware-codec
-or Phase 5 device-acceptance claim.
+lint, schema and APK privacy checks. First Phase 5 CI compiled source/tests but one
+Robolectric source-open test failed; the test was adjusted to cover empty-stream cleanup
+and awaits rerun. No pixel-match, physical paging, provider permission-release,
+hardware-codec or Phase 5 device-acceptance claim.
 
 ## Remaining UI scope and Phase 5 verification
 Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed

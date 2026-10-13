@@ -90,8 +90,9 @@ Removal of saved copies and custom communities remain out of scope.
 
 Room database version 2 adds only the Saved table/index with an explicit v1→v2
 migration; existing folder/media data is retained. KSP's generated v2 schema must be
-captured from CI and checked in. Phase 5 tests/code are currently unverified; no build,
-unit test, lint, APK or phone result is claimed yet.
+captured from CI and checked in. First CI compiled source/tests but the test task failed
+on a Robolectric source-open NPE; a test now exercises empty-stream cleanup instead.
+No passing unit-test/lint/privacy/APK or phone result is claimed yet.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy
