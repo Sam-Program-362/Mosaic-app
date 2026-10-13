@@ -42,6 +42,25 @@ class MediaViewerUiTest {
         compose.runOnIdle { assertTrue(closed) }
     }
 
+    @Test fun verticalSwipeAdvancesThroughTheFrozenSnapshotOrder() {
+        val snapshot = FeedSnapshot(
+            posts = listOf(post("first"), post("second"), post("third")),
+            sort = FeedSort.Newest,
+            folderId = "folder",
+            epoch = 7L,
+        )
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                MediaViewer(snapshot, initialPage = 0, imageLoader = loader, onClose = {})
+            }
+        }
+        compose.onNodeWithText("first").assertExists()
+        compose.onRoot().performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        compose.onNodeWithText("second").assertExists()
+        compose.onNodeWithText("2 / 3").assertExists()
+    }
+
     private fun post(id: String) = FeedPost(
         media = IndexedMedia("folder", "Pictures", MediaDocument(
             id, "content://missing/$id", "$id.jpg", "image/jpeg", MediaKind.Image, null, null,
