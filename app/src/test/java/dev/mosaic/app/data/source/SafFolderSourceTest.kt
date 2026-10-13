@@ -66,6 +66,11 @@ class SafFolderSourceTest {
         assertEquals(ScanResult.Failed(ScanFailure.ProviderUnavailable), source.scan(TREE))
     }
 
+    @Test fun missingIdColumnIsNotACompletedEmptyListing() = runTest {
+        provider.listing = MatrixCursor(arrayOf(DocumentsContract.Document.COLUMN_MIME_TYPE))
+        assertEquals(ScanResult.Failed(ScanFailure.ProviderUnavailable), source.scan(TREE))
+    }
+
     @Test fun permissionLossIsDistinguishedFromProviderFailure() = runTest {
         provider.denied = true
         assertEquals(ScanResult.Failed(ScanFailure.PermissionLost), source.scan(TREE))

@@ -69,7 +69,9 @@ class SafFolderSource(private val resolver: ContentResolver) : FolderSource {
             val cursor = resolver.query(children, projection, null, null, null)
                 ?: throw FolderAccessException(ScanFailure.ProviderUnavailable)
             return cursor.use {
-                if (it.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE) < 0) {
+                if (it.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE) < 0 ||
+                    it.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID) < 0
+                ) {
                     throw FolderAccessException(ScanFailure.ProviderUnavailable)
                 }
                 val rows = mutableListOf<ChildDocument>()

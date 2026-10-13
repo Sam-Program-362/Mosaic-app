@@ -38,8 +38,9 @@ resume/explicit refresh scan serialized operations; no background service/WorkMa
 Null/missing-required-column/loading/error cursors never authorize deletion.
 
 ## Remaining planned architecture
-Room stores metadata, not media bytes: folders/access status, community membership,
-source URI/document identities, media metadata, Saved-copy destination records.
+Room already stores folder/access status and source media metadata; it will also
+store community membership and Saved-copy destination records as those slices are
+implemented. Media bytes remain outside Room.
 SAF operations belong in `data/source/`; reconciliation/copy orchestration in
 `data/repository/`, never composables. Coroutines/Flow offload provider/file I/O.
 Room is now installed; add image/GIF loader and Media3 only with their implementation

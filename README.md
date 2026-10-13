@@ -6,7 +6,7 @@ its own identity. **Phase 2 adds safe folder indexing**, not yet a complete medi
 ## Current implementation
 
 - Native Kotlin / Jetpack Compose / Material 3 project and Gradle wrapper.
-- Home, community drawer, app menu, Saved/folder placeholders, and Settings.
+- Home, community drawer, app menu, Saved placeholder, folder management, and Settings.
 - Persisted light/dark appearance using Preferences DataStore.
 - Native folder picker, retained read grants, direct-child media scanning.
 - Room metadata, refresh/resume reconciliation, unavailable-folder retention/retry.
