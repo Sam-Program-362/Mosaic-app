@@ -1,26 +1,40 @@
 # Mosaic
 
 An offline Android local-media browser with a Reddit-inspired feed structure and
-its own identity. **Phase 3 adds local media feeds**, not yet a complete media browser.
+its own identity. **Phase 4 adds an immersive vertical viewer and safe folder removal**;
+this is still a development app, not a complete first release.
 
 ## Current implementation
 
-- Native Kotlin / Jetpack Compose / Material 3 project and Gradle wrapper.
-- Home, community drawer, app menu, Saved placeholder, folder management, and Settings.
-- Persisted light/dark appearance using Preferences DataStore.
-- Native folder picker, retained read grants, direct-child media scanning.
-- Compact media feeds, deterministic local artwork, lifecycle-scoped muted video.
-- Room metadata, refresh/resume reconciliation, unavailable-folder retention/retry.
-- No runtime network, broad storage permissions, accounts, or telemetry.
+- Native Kotlin / Jetpack Compose / Material 3 app and Gradle wrapper.
+- Home and automatic folder communities; exact folder-feed isolation.
+- Random/Newest local ordering, refresh, and decorative noninteractive counts.
+- Local photo/GIF/MP4 previews, plus a full-screen vertical viewer that opens at
+  the tapped post and uses a frozen copy of the originating feed order.
+- Viewer playback is limited to the current foreground page; MP4 starts muted.
+  Back closes the viewer and returns to the originating feed position.
+- Manage folders supports add, refresh, access recovery, and confirmed **Remove
+  from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
+  saved read grant; it never alters or deletes original media.
+- Room metadata, direct-child SAF scanning, refresh/resume reconciliation, and
+  unavailable-folder retention/retry.
+- Persistent light/dark appearance. No runtime network, broad storage permissions,
+  accounts, or telemetry.
 
-Home and automatic folder feeds now show photos, animated GIFs and MP4 previews,
-with Random/Newest sorting and noninteractive decorative counts. Newest uses local
-modification dates, unknown dates last. Refresh starts a new display session.
-Immersive viewer, custom communities and independent Saved copies are **not
-implemented yet**; Save copy is explicitly disabled. Phase 3 CI verification passed; phone playback acceptance is pending.
-Manage folders supports Add folder, refresh and original-folder access reselection.
-Only explicit selections are scanned, and only their direct supported media children.
-Failed/incomplete scans retain previously indexed metadata; originals are read-only.
+**Still not implemented:** independent Saved copies, custom communities, comments,
+real votes, and production release/signing. Save copy remains visibly disabled.
+
+## Verification and phone evidence
+
+[Phase 4 Android CI build and APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363)
+passed **53 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
+and packaged APK privacy checks**. The APK has no network or broad storage/media
+permissions.
+
+The user reports from the Phase 3 phone check that photos appear in Home, selecting
+a folder shows only its media, and videos play. GIF animation, sound/mute behavior,
+background/offscreen stopping, Phase 4 paging, and folder removal have not yet been
+confirmed on-device. See the [Phase 4 phone check](docs/phase-4-device-check.md).
 
 ## Build
 
@@ -40,12 +54,7 @@ Gradle/dependency installation requires development-time internet; runtime does 
 
 The verification workflow runs tests, lint, and a debug build on pushes and PRs.
 The existing manual/tagged release workflow builds and externally signs the release
-APK using the existing GitHub signing secrets. Do not commit keystores or credentials.
-Phase 3 verification passed: 45 tests, lint, schema consistency, packaged privacy
-permissions and debug build.
-[Successful Phase 3 build and test APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38455304642).
-The user confirmed Phase 2 folder restart retention; Phase 3 media/playback behavior
-still needs the phone check below.
+APK using existing GitHub signing secrets. Do not commit keystores or credentials.
 
 ## Provisional project configuration
 
@@ -54,8 +63,5 @@ Working name: Mosaic. Namespace/application ID: `dev.mosaic.app`. Minimum API 26
 **not finalized public identity or release-target approval**. The user delegated routine technical choices; dependency versions
 are pinned in `gradle/libs.versions.toml` (no claim that they are the latest).
 
-See [the Phase 3 phone check](docs/phase-3-device-check.md) for installation and
-manual acceptance steps.
-
-See `AGENTS.md` and the six `context/` files for requirements, boundaries, actual
-verification status, and the next phase.
+See `AGENTS.md` and the six `context/` files for requirements, safety boundaries,
+verification details, and later work.

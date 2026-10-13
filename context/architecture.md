@@ -53,7 +53,26 @@ sort last, ties by case-insensitive name then identity. Artwork chooses first st
 image case-insensitively per folder, never a GIF/video. Viewport geometry uses the
 preview's bounds, not merely card visibility; menus/drawer/background disable playback.
 All functional playback controls are distinct from decorative, noninteractive counts.
-Save and immersive viewer remain unimplemented; future viewer must freeze a snapshot.
+Save copies remain unimplemented.
+
+## Phase 4 implementation
+`feature/feed/MediaViewer.kt` receives a copied `FeedSnapshot` and tapped item index;
+vertical paging therefore follows the exact opening order even if the live Room feed
+later changes. The originating `FeedScreen` stays composed underneath, with semantics
+hidden and playback disabled, preserving feed scroll position on Back. Only the current
+RESUMED viewer page activates GIF/video playback; inactive pages do not retain players.
+Viewer-only system-bar hiding records/restores previous visibility. The viewer session
+is transient UI state, not persistent media/library state.
+
+Manage folders now offers an explicit confirmation before removing a selection.
+Repository operations serialize removal with refresh/add. `SafFolderSource` attempts
+to release only Mosaic's persisted read grant; Room deletes the folder row and its
+media metadata through the existing cascade. If grant release cannot be confirmed,
+metadata is still removed and UI warns the user. No scan is triggered and no original
+file is written, copied, moved, renamed or deleted. No schema/table version changed.
+
+Phase 4 CI passed 53 tests, lint, Room schema consistency, packaged privacy checks
+and debug APK. Physical viewer/paging and permission-release acceptance is pending.
 
 ## Remaining planned architecture
 Room already stores folder/access status and source media metadata; it will also
@@ -65,7 +84,9 @@ Room, Coil and Media3 are now installed for implemented slices. Room exports sch
 explicit migrations when changing the database. No WorkManager or background scanning without a later need.
 
 ## Mandatory invariants
-- Explicit read-only selected-folder access and direct-child enumeration only.
+- Explicit read-only selected-folder access and direct-child enumeration only. An
+  explicit removal releases Mosaic's saved read grant where possible and deletes
+  local index metadata only; source content is immutable.
 - Folder enumeration has distinct successful-empty / successful-content / failed
   outcomes. Reconcile stale items only on success; retain unavailable metadata.
 - URI/document-based stable identities prevent filename collisions.

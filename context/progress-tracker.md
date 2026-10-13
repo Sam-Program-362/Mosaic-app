@@ -1,11 +1,13 @@
 # Progress tracker
 
 ## Current phase
-Phase 3 — Home/folder feeds, sorting and inline local media implemented in source.
-Date: 2026-10-14. Final Phase 3 CI verification passed: 45 tests, lint, schema,
-packaged privacy permissions and debug APK build. Phase 2 previously passed 30 tests,
-lint, schema consistency and APK build; user has now confirmed retained folders on
-restart on a real phone. No complete first release or Phase 3 device playback verification.
+Phase 4 — frozen-order vertical media viewer and explicit folder removal implemented.
+Date: 2026-10-14. Final Phase 4 CI run 38463132363 passed 53 tests, 0 failures,
+0 errors, 0 skipped; lint, schema consistency, packaged privacy checks and debug APK
+build passed. The user reports Phase 3 phone evidence: photos display in Home, folder
+selection isolates that folder's media, and videos play. GIF, mute, offscreen/background
+playback, Phase 4 paging and folder-removal behavior remain unverified on-device. Phase
+2 folder restart retention was also confirmed. This is not a complete first release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
@@ -68,6 +70,38 @@ Phase 3 source now includes:
 - CI caches its development signing key for subsequent APK updates. Initial upgrade
   from the earlier uncached debug key may require uninstall/reselect; originals safe.
 
+## Phase 3 phone report and Phase 4 implementation
+The user reports that photos display in Home, selecting a folder shows only its media,
+and videos play. This is user phone evidence; it does not establish GIF decoding,
+muted/unmuted playback, offscreen/background stop behavior, audio focus, or every
+provider edge case.
+
+Phase 4 source adds:
+- Tapping a media preview captures a copied `FeedSnapshot` (exact visible ordering,
+  sort/scope/epoch) and the tapped index; a vertical pager opens that exact item.
+- The existing feed stays composed underneath while viewing, hidden from accessibility
+  and with playback disabled, preserving feed scroll position. Only the current
+  RESUMED viewer page activates GIF/video playback. Back button/system Back close it;
+  temporary system-bar hiding restores the previous visibility.
+- Manage folders presents an explicit cancel/confirm dialog for **Remove from Mosaic**.
+  Serialized repository removal attempts to release only the persisted read grant, then
+  Room deletes that folder record and cascades only local media metadata. Source media
+  stays unchanged; if grant release cannot be confirmed, UI warns but still removes
+  the folder index/community. No schema version change.
+- Added tests for immutable feed-order snapshots, initial viewer page/exit and vertical
+  swiping, cancellation/confirmation UI, folder-specific repository cleanup, failed
+  grant release and Room cascade; test total now 53.
+- New phone guide: `docs/phase-4-device-check.md`; Phase 3 guide marked historical.
+
+Phase 4 CI iterations:
+- Runs 38461010256 and 38461432410 exposed missing imports (first app source, then
+  Compose UI test imports); these were corrected, not represented as passing.
+- Run 38462313818 passed 52 tests plus lint/schema/privacy/APK.
+- Final run 38463132363 at source commit 02085fb passed 53 tests, 0 failures/errors/
+  skips; lint, schema consistency, packaged APK privacy and debug build passed.
+  Artifact `mosaic-debug-and-reports`, ID 11846947024, size 14,242,550 bytes.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363
+
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/
 Material 3 baseline, JDK 17, AGP 8.9.2 / Gradle 8.11.1; add Room 2.7.1 + Kotlin-matched
@@ -102,8 +136,9 @@ Playback is composition/foreground/visibility scoped, never retained in the View
   and annotations establish the recorded outcomes. Workflow emits useful error
   annotations and test totals for future API-visible diagnosis.
 - Local Android compilation/device testing remains unavailable in this sandbox.
-- User verified Phase 2 folder persistence on their phone; Phase 3 actual media
-  rendering/playback/lifecycle behavior is not yet device-verified.
+- User verified Phase 2 folder persistence. Phase 3 user report confirms photos show
+  on Home, folder feeds isolate correctly, and videos play; GIF, mute/audio focus and
+  offscreen/background lifecycle behavior remain unverified.
 - Phase 3 initial run 38454091013 / commit 1283b43 passed: 45 tests,
   0 failures/errors/skips; lint, schema consistency and APK build passed.
 - Final hardening: removed Media3's inherited ACCESS_NETWORK_STATE (and defensively
@@ -119,15 +154,14 @@ Playback is composition/foreground/visibility scoped, never retained in the View
 - Run 38454957427 was superseded/cancelled by the static-decoder hardening push;
   no failed test/build result is claimed for that cancelled run.
 - Final doc-only commit does not change verified source; no merge/release created.
-  See docs/phase-3-device-check.md. Real phone media acceptance is still pending.
+  See docs/phase-3-device-check.md for the historic feed check; Phase 4 phone acceptance remains pending.
 
 ## Still unimplemented and next phase
-Immersive viewer/fullscreen/vertical paging, independent Saved copies, custom
-community membership/header artwork, folder deselection and full save-error states.
-After Phase 3 build verification, test Home/folder membership, sorting, local
-photo/GIF/MP4 rendering and stop/mute behavior on phone. Then add the immersive
-viewer using a frozen snapshot of the originating feed; implement real Saved copies
-in a later slice, never pretend the disabled Save action works.
+Independent Saved copies, custom community membership/header artwork, full save-error
+states and release-ready branding/SDK/signing policy remain. First phone-check Phase 4
+paging, return-position, playback-stop and removal behavior using
+`docs/phase-4-device-check.md`. After that acceptance, implement real independent Saved
+copies in a separate slice; never pretend the disabled Save action works.
 
 ## Open decisions
 Final branding/package/release SDK policy; community rename/duplicate-label policy,

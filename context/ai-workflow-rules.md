@@ -30,6 +30,9 @@ work to the current session branch to run GitHub verification and produce a debu
 APK. This is not authorization to merge main, tag or publish a production release.
 
 Record user-reported phone results as user evidence, not agent-run device tests.
-The Phase 2 restart report does not verify Phase 3 playback or all storage edge cases.
-Keep disabled future features explicit; never claim copies or fullscreen are working
-just because their labels appear in the current feed.
+The user reports Phase 3 photos appear in Home, folder feeds show only their folder's
+media, and videos play. This does not verify GIFs, mute/audio focus, offscreen or
+background stop behavior, or every storage edge case. Phase 4 CI is not phone
+acceptance: actual vertical swiping/back/scroll restoration and confirmed removal
+still need device feedback. Keep disabled future features explicit; never claim
+Saved copies work just because their labels appear in the current feed.

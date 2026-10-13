@@ -41,3 +41,10 @@ foreground/offscreen playback acceptance.
 Inspect merged APK permissions after adding media libraries; transitive manifests
 must not silently add network or broad storage/media access. Keep static artwork
 nonanimated, and request audio focus only for audible playback.
+
+Phase 4 tests cover feed-snapshot preservation, viewer initial page/close/vertical
+paging, explicit removal confirmation, exact-folder cleanup, and metadata cascade.
+The viewer activates media only on its current RESUMED page, restores system-bar
+visibility on exit, and must leave the hidden originating feed's scroll position
+intact. Explicit folder removal may revoke only Mosaic's persisted read grant and
+deletes Room metadata; it must never invoke source-provider writes/deletes.

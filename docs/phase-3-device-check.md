@@ -1,8 +1,12 @@
-# Phase 3 phone check — actual media feeds
+# Phase 3 phone check — historical feed acceptance
 
-This is still a development build. Photos, GIFs and MP4 previews are implemented;
-fullscreen/vertical viewer, custom communities and independent Saved copies are not.
-Save copy is visibly disabled rather than pretending to save.
+This guide refers to the earlier Phase 3 test build. The user later reported that
+photos display on Home, selecting a folder shows only its media, and videos play.
+This does not verify GIFs, mute/audio-focus, or background/offscreen stopping.
+
+Phase 4 adds fullscreen vertical paging and confirmed folder removal; use the
+[current Phase 4 phone check](phase-4-device-check.md) for the latest build. Save
+copy remains disabled, and custom communities are still future work.
 
 ## Install
 
@@ -44,6 +48,7 @@ is sufficient; no need to share private media or local URI details.
   should be present in the packaged APK. Provider-specific cloud content may itself
   be unavailable offline; Mosaic does not fetch remote URLs.
 
-CI covers compilation, lint, metadata/ordering rules, viewport selection and a few
-Compose smoke tests. It cannot establish real-device codecs, audio focus, provider
-latency or physical scrolling; this small phone check supplies that evidence.
+Phase 3 CI covered compilation, lint, metadata/ordering rules, viewport selection
+and Compose smoke tests. It cannot establish real-device codecs, audio focus, provider
+latency or physical scrolling. The user's report confirms photos display, folder feeds
+isolate, and videos play; use the Phase 4 guide for remaining real-phone checks.

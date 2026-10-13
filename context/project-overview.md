@@ -40,11 +40,14 @@ multi-pane design are not required in v1.
 
 ## Status and decisions
 Phase 1/2 passed CI (30 tests, lint, schema and debug APK); the user confirmed
-folder records/access survived a phone restart. Phase 3 source implements Home and
-automatic folder feeds, sorting, decorative counts and local inline media. Phase 3
-CI passed 45 tests, lint, schema, packaged privacy and debug APK checks. Real-phone
-playback checks are pending. This is not first-release completion.
-Immersive viewer, independent Saved copies and custom communities remain planned.
+folder records/access survived a phone restart. Phase 3 CI passed 45 tests, lint,
+schema, packaged privacy and debug APK checks. The user reports on-phone that photos
+display on Home, folder selection isolates that folder's media, and videos play.
+GIF, mute, offscreen/background playback behavior have not been confirmed on-device.
+Phase 4 implements a frozen-order full-screen viewer and confirmed folder removal;
+its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
+phone acceptance is pending. Independent Saved copies and custom communities remain
+planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
