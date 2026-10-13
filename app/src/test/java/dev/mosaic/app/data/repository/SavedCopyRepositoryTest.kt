@@ -15,6 +15,7 @@ import dev.mosaic.app.data.local.LibraryDatabase
 import dev.mosaic.app.data.local.SavedCopyDao
 import dev.mosaic.app.data.local.SavedCopyEntity
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.async

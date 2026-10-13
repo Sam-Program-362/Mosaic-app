@@ -54,5 +54,6 @@ flushes/renames only after a nonempty complete read, and inserts metadata only f
 completed copy. On ordinary failures, remove temp/final files without touching source;
 every UI invocation remains a new copy. Saved views must use destination URIs, not
 source URIs. Keep the explicit Room v1→v2 migration and CI-generated schema. The first
-CI run compiled source/tests but failed a Robolectric source-open test (NPE); it has been
-replaced with an empty-stream cleanup case and needs a green rerun.
+CI run failed the source-open test with a Robolectric NPE; the replacement run then
+failed test compilation because its provider stub still needed the removed import. The
+import is restored; a green rerun is still required.
