@@ -74,3 +74,10 @@ log-correlated causality or proof that the crash is fixed. Never claim crash res
 preloading was removed. Unit tests, lint, privacy/schema checks, debug APK generation, CI status,
 and physical-device acceptance must be reported separately. A development APK is required for
 phone verification; no merge to main or release is authorized.
+
+The implementation at code commit `a4264dd` passed GitHub CI run `38624705844`: 96 tests
+(0 failures/errors/skips), lint, debug APK, packaged privacy and Room schema checks, plus the
+production-preloader source guard. Artifact `mosaic-debug-and-reports` ID `11923577241` contains
+the APK and checksum. The sandbox cannot copy the artifact from GitHub's storage host, so provide
+the user the workflow artifact link. Physical-device acceptance remains pending; do not claim the
+reported crash fixed.

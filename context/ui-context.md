@@ -1,6 +1,6 @@
 # UI context
 
-## Current 2026-10-15 focused media change — verification pending
+## Current 2026-10-15 focused media change — CI verified, phone pending
 Feed photos now use full available media width and their decoded/oriented intrinsic ratio for height;
 portrait, landscape, square, and panoramic ratios are not cropped to the video frame or arbitrarily
 clamped. Unknown/invalid dimensions use a safe temporary placeholder; the first valid ratio is
@@ -13,8 +13,12 @@ video frame policy, and the first-rendered-frame overlay correction are retained
 The user's prior report (preload-enabled scrolling sticky/crash; preload-disabled photos smooth and
 video loading fast enough) remains user-observed only. The prior video-loading position shift has
 not been rechecked against this focused change. Do not claim crash resolution from preloader removal.
-Tests, lint, privacy/schema checks, debug APK/CI and phone acceptance are separate; current CI and
-device results are pending. The single-APK phone procedure is in `docs/phase-5-device-check.md`.
+CI run [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at
+code commit `a4264dd` passed 96 tests (0 failures/errors/skips), lint, debug APK build, packaged
+privacy checks, Room schema consistency, and the production source guard. The debug APK and
+checksum are in `mosaic-debug-and-reports` artifact `11923577241` ([download](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241)).
+Phone acceptance remains pending; no crash-resolution claim is made. The single-APK phone
+procedure is in `docs/phase-5-device-check.md`.
 
 ## Implemented shell and Phase 3 feeds
 Home shows compact full-width media post cards instead of the indexing-only summary.

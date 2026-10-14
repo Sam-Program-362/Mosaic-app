@@ -43,13 +43,16 @@ and production release/signing.
 
 ## Verification and phone evidence
 
-The current focused change removes video-specific preloading from production and gives feed photos
-full-width natural-ratio geometry while preserving the dedicated video frame and playback flow.
-Its unit tests, lint, privacy/schema checks, debug APK build, and hosted CI are **pending**. Local
-Gradle verification is blocked because this checkout has no Java executable and `JAVA_HOME` is
-unset. Do not use older paired preload-mode APKs to accept this change; the current build has no
-preload toggle. See the [Phase 5 device check](docs/phase-5-device-check.md) for the single-APK
-phone sequence and exact acceptance criteria.
+The focused production change passed GitHub CI run
+[38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at verified
+commit `a4264dd`: 96 tests (0 failures/errors/skips), lint, debug APK build, packaged-permission
+privacy checks, Room schema consistency, and the source guard against video-preloader code. The
+`mosaic-debug-and-reports` artifact (ID `11923577241`) includes `app-debug.apk` and
+`app-debug.sha256`; download it from the [workflow artifact page](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
+Older paired preload-mode APKs are not valid acceptance builds; the current build has no preload
+toggle. The sandbox cannot fetch GitHub's artifact-storage host to copy the APK into this workspace,
+so use the GitHub Actions artifact link. Physical-device verification remains pending; local Gradle
+is blocked because Java is not installed and `JAVA_HOME` is unset. See the [Phase 5 device check](docs/phase-5-device-check.md) for the single-APK phone sequence and exact acceptance criteria.
 
 The user's earlier same-device comparison reported sticky photo scrolling and a crash with video
 preloading enabled; with it disabled, photos felt smooth and video loading was fast enough. A
@@ -78,7 +81,8 @@ Debug output: `app/build/outputs/apk/debug/app-debug.apk`.
 Release output: `app/build/outputs/apk/release/app-release-unsigned.apk`.
 Gradle/dependency installation requires development-time internet; runtime does not.
 
-The verification workflow runs tests, lint, and a debug build on pushes and PRs.
+The verification workflow runs unit tests, lint, the debug build, packaged-permission privacy,
+Room-schema and video-preloader source guards on pushes and PRs; it uploads the APK and reports.
 The existing manual/tagged release workflow builds and externally signs the release
 APK using existing GitHub signing secrets. Do not commit keystores or credentials.
 

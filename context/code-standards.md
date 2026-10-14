@@ -117,4 +117,8 @@ The user-reported preload-enabled stickiness/crash and preload-disabled smooth s
 enough video remain user evidence, not causality or proof of crash resolution. Earlier reported
 position shift at video activation remains separately unverified. Unit tests, lint, privacy/schema
 checks, APK build, CI, and physical-device acceptance are distinct; never claim phone or crash
-acceptance from CI alone. Verification for this focused change is pending.
+acceptance from CI alone. Code commit `a4264dd` passed CI run
+[38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
+(0 failures/errors/skips), lint, debug APK, packaged permissions, Room schema, and source guard.
+The APK/checksum are in artifact `mosaic-debug-and-reports` ID `11923577241`. Physical-device and
+crash acceptance remain pending.

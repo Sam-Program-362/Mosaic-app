@@ -74,19 +74,26 @@ preview's bounds, not merely card visibility; menus/drawer/background disable pl
 All functional playback controls are distinct from decorative, noninteractive counts.
 Phase 5 adds an enabled Save copy action in feed cards and viewer chrome.
 
-## 2026-10-15 focused feed-media geometry and preload removal — verification pending
-The former experimental build toggle and video preload manager/lifecycle are deleted, not kept
+## 2026-10-15 focused feed-media geometry and preload removal — CI verified, device pending
+The former experimental build toggle and video-preload manager/lifecycle are deleted, not kept
 as an opt-in. Nearby static-photo prefetch remains active; inactive video posters are visible-
 only and player preparation remains activation-only. Feed photo dimensions are independent of
-video layout: full media width divided by the first valid decoded intrinsic ratio, square safe
-placeholder only until dimensions are known, then a stable established height. Invalid ratios
-are ignored. Stable LazyColumn media keys remain unchanged, and media preparation/first-frame
-callbacks do not call the feed scroll API. The explicit session/sort/search reset remains the
-only feed programmatic scroll. User-reported prior crash/stickiness is not treated as resolved.
+video layout: natural height is available media width divided by the first valid decoded intrinsic
+ratio, with a square safe placeholder only until dimensions are known and a stable established
+height thereafter. Invalid ratios are ignored. Stable LazyColumn media keys remain unchanged, and
+media preparation/first-frame callbacks do not call the feed scroll API. The explicit
+session/sort/search reset remains the only feed programmatic scroll. User-reported prior crash/
+stickiness is not treated as resolved.
 
-Tests cover image ratios/delayed dimensions, unbounded natural photo heights, full-width Compose
-measurement, poster visibility, static-photo-only prefetch, reserved video-frame and first-frame
-fallback behavior, and photo/scroll-position stability. CI and device acceptance are pending.
+Tests cover image orientation/ratios and delayed dimensions, natural photo heights, full-width
+Compose measurement, poster visibility, static-photo-only prefetch, reserved video-frame and
+first-frame fallback behavior, playback controls, and photo/scroll-position stability. Code commit
+`a4264dd` passed CI run
+[38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
+(0 failures/errors/skips), lint, debug APK build, packaged-permission privacy checks, Room schema
+consistency, and the production source guard. Artifact `mosaic-debug-and-reports` ID `11923577241`
+contains the APK/checksum; physical-device acceptance remains pending. No crash-resolution claim
+is made.
 
 ## Phase 4 implementation
 `feature/feed/MediaViewer.kt` receives a copied `FeedSnapshot` and tapped item index;
@@ -135,7 +142,7 @@ passed run 38543107645 (67 tests, lint, schema, APK privacy and debug build). Ph
 acceptance for viewer, permissions, Saved copies, theme, search and refreshed controls
 remains pending.
 
-## Earlier video and warm-resume follow-up — CI verified; later correction pending
+## Historical video and warm-resume follow-up — later superseded
 The initial `nearbyMediaWindow` selected a bounded neighboring photo/video set; Coil
 prefetched local images/video frames and a composition-scoped Media3 `DefaultPreloadManager`
 buffered one second for neighboring video sources (not extra playing players). Inactive
@@ -151,8 +158,8 @@ service, network access or source writes were introduced. The prior implementati
 CI run 38556928293 at `a11fde2` (74 tests, lint, schema consistency, packaged privacy and
 debug build; artifact `11890760322`). That run predates the correctness/performance pass below.
 
-## Video transition correctness/performance pass — CI verified; device acceptance pending
-The current source chooses the dominant visible media item by viewport overlap across
+## Historical video transition/performance pass — CI verified, device acceptance pending
+At that checkpoint, the source chose the dominant visible media item by viewport overlap across
 photos, GIFs and videos. Playback requires that all-media anchor to be animated, then
 selects the most-visible animation that meets the 50% visible-fraction threshold; this lets
 an eligible landscape video take over when a taller portrait edge is the anchor but falls
@@ -190,9 +197,9 @@ that video-preload work contributes to photo-feed jank at aggregate level, but i
 Media3 buffering, nearby Coil video-frame prefetch, or offscreen poster decoding; it does not
 explain the separate video-triggered shift or establish crash safety.
 
-The current source keeps preloading disabled by default and requires explicit
-`-PmosaicVideoPreloading=true` to opt in. Static-photo prefetch, visible inactive-video posters,
-and active playback remain unchanged. `FeedScreen` now derives visible media positions from
+At that historical checkpoint, the source kept preloading disabled by default and required
+explicit `-PmosaicVideoPreloading=true` to opt in. Static-photo prefetch, visible inactive-video
+posters, and active playback remained unchanged. `FeedScreen` derived visible media positions from
 `LazyListState.layoutInfo` plus preview geometry relative to each keyed row. It avoids storing
 root coordinates in Compose state during scroll, and selection outputs remain stable item keys.
 A per-feed bounded aspect-ratio cache seeds later compositions; asynchronous image/thumbnail/video
@@ -218,7 +225,7 @@ run `38607037687` caught a diagnostic variable-scope compile error, fixed before
 A physical-device mixed portrait/landscape fast-scroll test remains necessary; no root cause or
 crash resolution is claimed until device evidence is captured and reviewed.
 
-## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
+## Retained first-frame loading correction; historical manager/crash instrumentation
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,
 not failed, and has not rendered its first frame. The thumbnail remains until that first
 rendered-frame callback; a failure suppresses loading and surfaces the existing error state.
@@ -241,7 +248,7 @@ at `a9703cb` passed 84 tests, lint, schema consistency, packaged privacy and deb
 available; crash resolution is not claimed. Exact logcat, PID/stall discrimination, and
 bugreport steps are in `docs/phase-5-device-check.md`.
 
-## Targeted portrait/landscape fast-scroll handoff follow-up — CI verified, device pending
+## Historical portrait/landscape fast-scroll handoff follow-up — CI verified, device pending
 The user reports that slow smooth scrolling makes the glitch subtle, while fast swipes expose
 it near a repeatable point relative to video height. The difficult crash has been observed
 around portrait/landscape videos near opposing viewport edges, and a single fast pass can

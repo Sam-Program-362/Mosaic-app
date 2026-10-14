@@ -1,28 +1,26 @@
 # Progress tracker
 
-## Current phase — focused production change, verification pending
+## Current phase — focused production change, CI verified, device pending
 The 2026-10-15 user request supersedes the earlier disabled-by-default/diagnostic video-preload
 approach. Production neighboring-video buffering, offscreen video-frame prefetch, speculative
-offscreen-video poster decoding, and the preload manager/toggle have been removed from the working tree.
-Bounded static-photo prefetch and visible video posters remain; players prepare only on activation.
-Feed photos now use full available width and their decoded/oriented intrinsic ratio for natural
-height, with safe unknown/invalid-dimension fallback and a first-valid-ratio lock. The dedicated
-video/GIF frame policy, playback controls/interactions, viewer, and first-rendered-frame overlay
-correction are to remain unchanged.
+offscreen-video poster decoding, and the preload manager/toggle have been removed. Bounded static-
+photo prefetch and visible video posters remain; players prepare only on activation. Feed photos use
+full available width and decoded/oriented intrinsic ratio for natural height, with safe
+unknown/invalid-dimension fallback and a first-valid-ratio lock. The dedicated video/GIF frame
+policy, playback controls/interactions, viewer, and first-rendered-frame overlay correction remain.
 
-Implementation is committed and pushed as `680c54c`; CI run
-[38622883418](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38622883418) failed in the
-combined Android verification step without exposing the failing case. The follow-up diagnostic
-workflow at `ddf3dad` yielded CI run
-[38623868370](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38623868370): 96 tests,
-1 failure, 0 errors/skips. `MediaGeometryTest.invalidAspectRatiosAreIgnoredAndCacheStaysBounded`
-failed because a cache miss evicted a valid ratio. The working tree now separates bounded unresolved
-observers from the LRU ratio entries; this fix is uncommitted and awaits CI. The production-source
-guard passed. Privacy/schema checks did not run, and neither failed CI run is a verified APK.
+Verified commit `a4264dd` passed CI run
+[38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests,
+0 failures/errors/skips; unit tests, lint, debug APK build, packaged-permission checks, Room schema
+consistency, and the production video-preload source guard passed. Artifact `mosaic-debug-and-reports`
+(ID `11923577241`) contains `app-debug.apk`, `app-debug.sha256`, and reports. The sandbox cannot
+fetch GitHub's artifact-storage host, so use the run's Artifacts section or [download the artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241). An earlier run found an LRU cache-miss regression; the fix is included in the verified
+commit. No physical-device run has been performed.
 
 Local `./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup
-because `JAVA_HOME` is unset and no `java` executable exists. CI rerun, verified debug APK, and
-physical-device results are pending. `google_drive/` is untracked user data and must remain
+because `JAVA_HOME` is unset and no `java` executable exists; hosted CI supplied the full build
+verification. Physical-device photo/video/position testing remains pending. The user-reported crash
+is not claimed fixed by removing preloading. `google_drive/` is untracked user data and remains
 untouched/unstaged.
 
 User-reported evidence remains: preload-enabled scrolling felt sticky and the app crashed; with
@@ -36,7 +34,8 @@ verification for this change. Historical implementation and CI records follow.
 - Build property `-PmosaicVideoPreloading=false` bypasses the Media3 neighboring-video
   preloader, nearby Coil video-frame prefetch, and offscreen video-poster decoding while
   retaining static-photo prefetch, visible inactive-video posters, active playback, and feed
-  selection. The previous default was enabled; the current source changes the default to off.
+  selection. The build default was set to off at that historical stage; the later 2026-10-15
+  change removed the video-preload property and manager entirely.
 - The previous diagnostic source captured scroll start/settle, visible row keys/offsets/sizes,
   preview/card changes, ratio callback source, and one frame/UI-thread summary per scroll. It
   passed CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)

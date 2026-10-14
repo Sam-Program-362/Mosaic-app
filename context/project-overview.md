@@ -98,9 +98,9 @@ checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11909443268`. T
 reports on-device that enabled preloading made photo scrolling sticky, disabled preloading made
 photos smoother, and a separate shift remains as a video begins loading; the disabled build has not
 crashed during their test. This is aggregate user-observed A/B evidence, not attribution to a
-specific prefetch operation, explanation of the shift, or proof of crash safety. The current source
-keeps video preloading off by default, reserves per-row geometry against asynchronous ratio updates,
-derives viewport positions from LazyList offsets plus row-relative media bounds, and adds
+specific prefetch operation, explanation of the shift, or proof of crash safety. That two-mode checkpoint
+kept video preloading off by default, reserved per-row geometry against asynchronous ratio updates,
+derived viewport positions from LazyList offsets plus row-relative media bounds, and added
 event-level before/after and player-transition logs. CI run
 [38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253) at `cacd82d`
 passed 93 tests (0 failures/errors/skips) in both modes, lint, both debug APK builds, schema
@@ -114,19 +114,26 @@ Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 r
 provisional. Public naming/trademark review, release SDK policy, folder-community
 renaming/duplicate label policy, and custom-community artwork remain unresolved.
 
-## 2026-10-15 focused production change — verification pending
+## 2026-10-15 focused production change — CI verified, device pending
 The user's new scope supersedes the former disabled-by-default/diagnostic video-preload
 approach. Production video-preload manager/lifecycle code, neighboring-video buffering,
-offscreen video-frame prefetch, and speculative offscreen-video poster decoding have been
-removed rather than retained behind a toggle. Bounded local static-photo prefetch and visible
-video posters remain; a video player prepares only when activated. The photo feed path now
-uses full available media width and intrinsic image ratio, with invalid/late dimensions handled
-by a temporary safe placeholder and first-valid-ratio lock. The separate video/GIF frame policy,
-playback controls, active-player path, viewer behavior, and first-frame overlay logic remain.
+offscreen video-frame prefetch, speculative offscreen-video poster decoding, and the build toggle
+have been removed. Bounded local static-photo prefetch and visible video posters remain; a video
+player prepares only when activated. Feed photos use full available media width and intrinsic image
+ratio, with invalid/late dimensions handled by a temporary safe placeholder and first-valid-ratio
+lock. The separate video/GIF frame policy, playback controls, active-player path, viewer behavior,
+and first-frame overlay logic remain.
+
+Verified code commit `a4264dd` passed CI run
+[38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
+(0 failures/errors/skips), lint, debug APK build, packaged-permission privacy checks, Room schema
+consistency, and the production source guard. The `mosaic-debug-and-reports` artifact (ID
+`11923577241`) includes the development APK and checksum; [download the workflow artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
+The sandbox cannot fetch the artifact-storage host into the workspace. Physical-device photo/video
+and feed-position acceptance remains pending.
 
 The reported enabled-build stickiness/crash and disabled-build smooth photos/fast-enough video
-remain user-observed evidence, not log-correlated causality or proof that the crash is fixed.
-The previously reported video-loading position shift also remains unverified against this code.
-Unit tests, lint, privacy/schema checks, debug build, CI, and physical-device acceptance are
-pending for this focused change. Local Gradle cannot start in this checkout because Java is
-unavailable. `google_drive/` is user data and must not be staged or modified.
+remain user-observed evidence, not log-correlated causality or proof that the crash is fixed. The
+previously reported video-loading position shift also remains unverified against this code. Local
+Gradle cannot start in this checkout because Java is unavailable; hosted CI supplied verification.
+`google_drive/` is user data and must not be staged or modified.

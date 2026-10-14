@@ -4,7 +4,7 @@
 
 This check applies only to the latest development APK built from the current session branch. The production video-preload manager, neighboring-video buffering, offscreen video-frame prefetch, and speculative offscreen-video poster decoding have been removed. Nearby static-photo prefetch remains. There is no longer a `mosaicVideoPreloading` Gradle property or an enabled/disabled APK pair; do not use an older artifact as acceptance evidence.
 
-The current implementation and APK still require CI verification and physical-device testing. Local Android verification is blocked in this checkout because Java is not installed (`JAVA_HOME` is unset). Once the workflow passes, record its run, commit, artifact name/ID, test count, APK SHA-256, and download location here.
+Code commit `a4264dd` passed GitHub CI run [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests (0 failures/errors/skips), lint, debug APK build, packaged-permission privacy checks, Room schema consistency, and the production source guard. The `mosaic-debug-and-reports` artifact (ID `11923577241`) contains `app-debug.apk`, `app-debug.sha256`, and reports. [Download the artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241), then verify the APK using the included checksum. The sandbox cannot retrieve GitHub's artifact-storage host directly; use the workflow artifact page. Physical-device testing is still pending. Local Gradle is blocked here because Java is not installed (`JAVA_HOME` is unset).
 
 ## User-reported evidence (not agent-run device testing)
 
@@ -16,7 +16,7 @@ These are user observations, not log-correlated causality. Removing video preloa
 
 ## Install and setup
 
-1. Download the single `app-debug.apk` from the latest successful `mosaic-debug-and-reports` CI artifact for the current commit. Verify its checksum if supplied.
+1. Download the single `app-debug.apk` from the CI artifact linked above (it verifies source commit `a4264dd`). Check `app-debug.sha256` in the same artifact.
 2. Install/update it in place; keep Mosaic's existing folder permissions, indexed media, and Saved data. Do not clear app data for this check.
 3. Use the same selected folder, feed/sort order, media set, and device orientation/refresh settings as the prior phone comparison where possible. Record device model, Android version, refresh rate, and build/commit.
 4. Do not pass a video-preload Gradle property. It has been removed from the app and build.
