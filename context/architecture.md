@@ -136,9 +136,11 @@ debug build; artifact `11890760322`). That run predates the correctness/performa
 
 ## Video transition correctness/performance pass — CI verified; device acceptance pending
 The current source chooses the dominant visible media item by viewport overlap across
-photos, GIFs and videos; playback is a separate rule and only activates the dominant
-animated item after a 50% visibility threshold. Candidate ranking/current indices use
-actual positions in the current Home or frozen viewer order. The bounded window considers
+photos, GIFs and videos. Playback requires that all-media anchor to be animated, then
+selects the most-visible animation that meets the 50% visible-fraction threshold; this lets
+an eligible landscape video take over when a taller portrait edge is the anchor but falls
+below threshold. A photo anchor still suppresses playback. Candidate ranking/current indices
+use actual positions in the current Home or frozen viewer order. The bounded window considers
 the nearest photo and nearest video independently on each side (max five including the
 center), so a photo/GIF cannot hide a nearby video. Manager entries are removed/re-ranked
 only after their active player releases its source; stale positions are reconciled against

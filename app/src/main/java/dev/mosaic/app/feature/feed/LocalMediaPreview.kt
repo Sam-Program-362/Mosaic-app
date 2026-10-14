@@ -63,6 +63,7 @@ internal fun LocalMediaPreview(
 ) {
     val document = post.media.document
     val colors = LocalMosaicColors.current
+    val diagnosticContext = LocalContext.current.applicationContext
     var ratio by remember(document.contentUri, document.modifiedAtMillis) { mutableFloatStateOf(4f / 3f) }
     var savedPositionMillis by remember(post.media.key.stableKey) { mutableLongStateOf(0L) }
     var savedPlayWhenReady by remember(post.media.key.stableKey) { mutableStateOf(true) }
@@ -73,7 +74,23 @@ internal fun LocalMediaPreview(
     BoxWithConstraints(sizeModifier.then(clickModifier)
         .onGloballyPositioned { onBounds(it.boundsInRoot()) }
         .background(if (viewer) Color.Black else colors.mediaBackdrop)) {
-        val previewHeight = if (viewer) maxHeight else (maxWidth / ratio).coerceIn(120.dp, 520.dp)
+        fun updateRatio(nextRatio: Float, source: String) {
+            if (!nextRatio.isFinite() || nextRatio <= 0f) return
+            val oldRatio = ratio
+            if (!viewer && kotlin.math.abs(nextRatio - oldRatio) >= 0.01f) {
+                MediaDiagnostics.log(
+                    diagnosticContext,
+                    "preview geometry pos=$feedPosition kind=${document.kind.name.lowercase()} " +
+                        "id=${MediaDiagnostics.shortId(post.media.key.stableKey)} source=$source " +
+                        "widthDp=${maxWidth.value} ratio=$oldRatio->$nextRatio " +
+                        "heightDp=${feedPreviewHeightDp(maxWidth.value, oldRatio)}->" +
+                        feedPreviewHeightDp(maxWidth.value, nextRatio),
+                )
+            }
+            ratio = nextRatio
+        }
+
+        val previewHeight = if (viewer) maxHeight else feedPreviewHeightDp(maxWidth.value, ratio).dp
         val previewSize = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(previewHeight)
         Box(previewSize, contentAlignment = Alignment.Center) {
             when {
@@ -91,18 +108,18 @@ internal fun LocalMediaPreview(
                         savedPositionMillis = position
                         savedPlayWhenReady = playWhenReady
                     },
-                    onRatio = { ratio = it },
+                    onRatio = { updateRatio(it, "player-video-size") },
                 )
                 document.kind == MediaKind.Video -> VideoThumbnail(
                     post = post,
                     imageLoader = imageLoader,
-                    onRatio = { ratio = it },
+                    onRatio = { updateRatio(it, "video-thumbnail") },
                 )
                 document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = colors.textSecondary)
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,
                     description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
-                    onRatio = { ratio = it },
+                    onRatio = { updateRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
         }
@@ -184,6 +201,14 @@ internal fun videoFrameFallback(hasRenderedFirstFrame: Boolean, failed: Boolean,
         showError = failed,
     )
 
+private fun playbackStateName(playbackState: Int): String = when (playbackState) {
+    Player.STATE_IDLE -> "IDLE"
+    Player.STATE_BUFFERING -> "BUFFERING"
+    Player.STATE_READY -> "READY"
+    Player.STATE_ENDED -> "ENDED"
+    else -> "UNKNOWN"
+}
+
 /** Only composed for the one visible video while the app/feed is active. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
@@ -220,7 +245,7 @@ private fun VideoPreview(
     val (player, playerDiagnosticToken) = remember(stableKey, uri, videoPreloader) {
         try {
             val createdPlayer = videoPreloader?.createPlayer() ?: ExoPlayer.Builder(context).build()
-            createdPlayer to MediaDiagnostics.playerCreated(context)
+            createdPlayer to MediaDiagnostics.playerCreated(context, feedPosition, stableKey)
         } catch (error: Exception) {
             MediaDiagnostics.log(
                 context,
@@ -241,12 +266,15 @@ private fun VideoPreview(
     }
 
     val latestPreloadingEnabled = rememberUpdatedState(preloadingEnabled)
+    val latestRatioCallback = rememberUpdatedState(onRatio)
     DisposableEffect(player, stableKey, uri, videoPreloader) {
         val activationStartedAt = SystemClock.elapsedRealtime()
         MediaDiagnostics.log(
             context,
             "player active token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
                 "id=${MediaDiagnostics.shortId(stableKey)} viewer=$viewer " +
+                "state=${playbackStateName(player.playbackState)} firstFrame=$hasRenderedFirstFrame failed=$failed " +
+                "overlayLoading=${videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading} " +
                 "unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
         )
         val listener = object : Player.Listener {
@@ -255,25 +283,24 @@ private fun VideoPreview(
                 loading = false
                 MediaDiagnostics.log(
                     context,
-                    "player error pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
-                        "code=${error.errorCodeName} activationToErrorMs=${SystemClock.elapsedRealtime() - activationStartedAt} " +
+                    "player error token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                        "id=${MediaDiagnostics.shortId(stableKey)} code=${error.errorCodeName} " +
+                        "state=${playbackStateName(player.playbackState)} firstFrame=$hasRenderedFirstFrame failed=$failed " +
+                        "overlayLoading=${videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading} " +
+                        "activationToErrorMs=${SystemClock.elapsedRealtime() - activationStartedAt} " +
                         "cause=${MediaDiagnostics.causeTypes(error.cause)}",
                 )
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 loading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
-                val stateName = when (playbackState) {
-                    Player.STATE_IDLE -> "IDLE"
-                    Player.STATE_BUFFERING -> "BUFFERING"
-                    Player.STATE_READY -> "READY"
-                    Player.STATE_ENDED -> "ENDED"
-                    else -> "UNKNOWN"
-                }
+                val stateName = playbackStateName(playbackState)
                 MediaDiagnostics.log(
                     context,
-                    "player state=$stateName pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
-                        "activationMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
+                    "player state=$stateName token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                        "id=${MediaDiagnostics.shortId(stableKey)} firstFrame=$hasRenderedFirstFrame failed=$failed " +
+                        "overlayLoading=${videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading} " +
+                        "playWhenReady=${player.playWhenReady} activationMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
                 )
             }
 
@@ -282,7 +309,9 @@ private fun VideoPreview(
                     hasRenderedFirstFrame = true
                     MediaDiagnostics.log(
                         context,
-                        "player first-frame pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                        "player first-frame token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                            "id=${MediaDiagnostics.shortId(stableKey)} firstFrame=true failed=$failed " +
+                            "state=${playbackStateName(player.playbackState)} overlayLoading=false " +
                             "activationToFirstFrameMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
                     )
                 }
@@ -294,7 +323,9 @@ private fun VideoPreview(
 
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 if (videoSize.width > 0 && videoSize.height > 0) {
-                    onRatio(videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio / videoSize.height)
+                    latestRatioCallback.value(
+                        videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio / videoSize.height,
+                    )
                 }
             }
         }
@@ -320,6 +351,14 @@ private fun VideoPreview(
             )
         }
         onDispose {
+            val stateBeforeRelease = playbackStateName(player.playbackState)
+            MediaDiagnostics.log(
+                context,
+                "player release begin token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                    "id=${MediaDiagnostics.shortId(stableKey)} state=$stateBeforeRelease " +
+                    "firstFrame=$hasRenderedFirstFrame failed=$failed " +
+                    "overlayLoading=${videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading}",
+            )
             onPlaybackStateCaptured(player.currentPosition.coerceAtLeast(0L), player.playWhenReady)
             player.removeListener(listener)
             viewHolder.texture?.let { texture ->
@@ -332,12 +371,20 @@ private fun VideoPreview(
             viewHolder.texture = null
             viewHolder.frame = null
             player.release()
-            MediaDiagnostics.playerReleased(context, playerDiagnosticToken)
+            MediaDiagnostics.playerReleased(
+                context,
+                playerDiagnosticToken,
+                feedPosition,
+                stableKey,
+                stateBeforeRelease,
+                hasRenderedFirstFrame,
+            )
             videoPreloader?.releasePlayback(stableKey, latestPreloadingEnabled.value)
             MediaDiagnostics.log(
                 context,
-                "player cleanup complete pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
-                    "unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
+                "player cleanup complete token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                    "id=${MediaDiagnostics.shortId(stableKey)} state=$stateBeforeRelease " +
+                    "firstFrame=$hasRenderedFirstFrame unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
             )
         }
     }

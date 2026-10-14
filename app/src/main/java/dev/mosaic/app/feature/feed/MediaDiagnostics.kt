@@ -17,20 +17,37 @@ internal object MediaDiagnostics {
     }
 
     /** Count ExoPlayer instances from allocation through release, including failed preparation. */
-    fun playerCreated(context: Context): Long? {
+    fun playerCreated(context: Context, feedPosition: Int? = null, mediaKey: String? = null): Long? {
         if (!isDebuggable(context)) return null
         val token = nextPlayerToken.getAndIncrement()
         unreleasedPlayerTokens.add(token)
-        log(context, "player instance acquired token=$token unreleased=${unreleasedPlayerTokens.size}")
+        val identity = mediaKey?.let(::shortId)?.let { " pos=${feedPosition ?: -1} id=$it" }.orEmpty()
+        log(
+            context,
+            "player instance acquired token=$token$identity unreleased=${unreleasedPlayerTokens.size}",
+        )
         return token
     }
 
-    fun playerReleased(context: Context, token: Long?) {
+    fun playerReleased(
+        context: Context,
+        token: Long?,
+        feedPosition: Int? = null,
+        mediaKey: String? = null,
+        state: String? = null,
+        firstFrameRendered: Boolean? = null,
+    ) {
         if (token == null) return
         val removed = unreleasedPlayerTokens.remove(token)
+        val identity = mediaKey?.let(::shortId)?.let { " pos=${feedPosition ?: -1} id=$it" }.orEmpty()
+        val playback = listOfNotNull(state?.let { "state=$it" }, firstFrameRendered?.let { "firstFrame=$it" })
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(" ", prefix = " ")
+            .orEmpty()
         log(
             context,
-            "player instance released token=$token tracked=$removed unreleased=${unreleasedPlayerTokens.size}",
+            "player instance released token=$token$identity$playback tracked=$removed " +
+                "unreleased=${unreleasedPlayerTokens.size}",
         )
     }
 

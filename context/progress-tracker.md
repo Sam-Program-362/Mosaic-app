@@ -89,6 +89,25 @@ evidence, not an agent-run test. This is not a complete first release.
   Room schema checks; debug artifact `mosaic-debug-and-reports` is ID `11903168202`.
   This does not verify physical-device playback or resolve the reported crash.
 
+## Portrait/landscape fast-scroll and player-handoff investigation — implementation pending verification
+- New user-reported observations: the glitch is subtle during slow scrolling but clear on fast
+  swipes at a repeatable point relative to video height. Crash risk has been observed around
+  portrait/landscape videos at opposing viewport edges, and one fast pass can be sufficient.
+  No crash logs were supplied; this is not a confirmed cause or proof of resource pressure.
+- The follow-up exposes the existing ratio-driven feed height as a pure helper and logs
+  ratio/height changes from thumbnail and Media3 video-size callbacks. Viewport diagnostics now
+  report anchor vs active item, feed position/kind/hash, overlap, preview size, relative top and
+  visible fraction in coarse 10% buckets. Player lifecycle/state/first-frame logs include paired
+  tokens and hashed IDs; logs remain debug-only with no path/URI or per-frame output.
+- A targeted selection policy change avoids an empty handoff when a tall animated anchor is
+  below 50% visibility but another eligible animation is visible. Photo anchors still suppress
+  playback; the preload window and one-second target are unchanged. Regression tests cover
+  ratio-derived portrait/landscape heights, each orientation at top and bottom, forward/reverse
+  fast-scroll geometry, the threshold gap, and managed-source handoff until old-player release.
+- This test models visibility/selection and Media3 manager ownership, not a hardware fling or MP4
+  decode. CI verification is pending. No device run/log exists; overlay/frame diagnosis and crash
+  investigation remain separate, and no crash cause/resolution is claimed.
+
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
 and Media3 one-second neighboring-video buffers. Inactive MP4 cards request a local

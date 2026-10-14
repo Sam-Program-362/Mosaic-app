@@ -46,35 +46,49 @@ Run these checks on the verified debug APK linked above; CI does not replace the
 - Fully close/relaunch Mosaic and confirm a complete refresh is still allowed.
 - Repeat in the full-screen pager if convenient; only its current page should play.
 
-## First-frame loading overlay, transition timing and crash diagnostics — CI verified, device pending
+## Frame-rendering/loading-overlay diagnosis — separate from crash investigation
 
-The APK linked above includes the loading-overlay correction and diagnostics. CI does not
-replace device verification. `videoFrameFallback` shows loading only before the first
-rendered frame, while loading and not failed; after a frame, brief buffering does not cover
-the video. A player error stops loading and shows the error state. Unit tests cover all
-eight first-frame/loading/failure combinations. Debug builds emit the `MosaicMedia` tag only;
-identifiers are hashed and local URIs/paths are omitted.
-With USB debugging on a test phone, capture:
+The APK linked above includes the first-frame overlay correction. The fallback is loading
+only while loading, before the first rendered frame, and without failure. After the first
+frame, brief buffering must not cover the video; a playback error must stop loading and show
+the error. Unit tests cover all eight first-frame/loading/failure combinations. On device,
+compare these `MosaicMedia` fields to the actual overlay/frame: `state=BUFFERING/READY`,
+`firstFrame`, `failed` and `overlayLoading`. `STATE_READY` alone is not proof of a rendered
+frame. This rendering check is separate from the repeated-scroll crash investigation; no
+shared cause is assumed.
+
+## Aspect-ratio, visible-area and player-handoff sweep — targeted source tests added
+
+Use the same Home feed snapshot with one known portrait MP4 and one known landscape MP4.
+Record their feed positions from the UI so the hashed IDs in logs can be matched to your
+notes without exposing paths. With USB debugging, a filtered diagnostic capture is:
 
 ```sh
 adb logcat -c
 adb logcat -s MosaicMedia:D
 ```
 
-Repeat a fixed sequence from the same Home feed snapshot: open a known MP4, wait for its
-neighbor-preload completion, scroll one item at a time through a photo and the next MP4,
-then repeat from the same starting position. Relate `feed anchor` / `preload window`
-positions to `preload submitted`, `preload io-start`, `preload complete`, `playback handoff`,
-`player state=BUFFERING/READY`, and `player first-frame`. `STATE_READY` is not first-frame;
-use the `activationToFirstFrameMs` record for the latter. Check that a photo anchor does
-not activate a partially visible neighboring animation, an intervening photo does not
-exclude a nearby video candidate, and no more than one player is active.
+Run the following as separate passes from the same starting position:
 
-For before/after comparison, use the same device, Android version, selected local files,
-feed order, scroll cadence, orientation and cache condition on the prior and corrected
-builds. Record app/device details and time from each video becoming dominant to its first
-visible frame; do not increase the buffer target based only on a unit test or APK build.
-No device timing or actual scrolling/playback evidence is available in this workspace.
+1. Scroll slowly through portrait → landscape, then landscape → portrait, as a baseline.
+2. Fast-swipe portrait-to-landscape with the portrait preview clipped at the viewport top
+   and the landscape preview near the bottom. Reverse the setup: landscape clipped at the
+   top and portrait near the bottom. Also test each orientation near the top and bottom
+   edge on its own. A single fast swipe through the problem point is useful evidence; do
+   not require repeatedly triggering the visual glitch first.
+3. Compare `preview geometry` records (ratio and computed height before/after thumbnail or
+   player video-size callbacks) with `feed selection` records. The latter include anchor and
+   active positions/kinds, visible percentages, relative top, preview height and overlap.
+   `player instance acquired/active/state/first-frame/release begin/released` records include
+   a token, hashed media ID, player state and first-frame status. These events should reveal
+   whether a size update changes the dominant item, whether selection briefly has no player,
+   and whether old/new player lifetimes overlap during handoff. They are diagnostics, not a
+   pre-assigned cause; do not change preload duration/buffer based on this sweep alone.
+
+Source tests now cover ratio-derived portrait/landscape heights, each orientation at both
+viewport edges, rapid forward/reverse selection and managed-source handoff. They exercise
+the pure visibility/selection and Media3 manager rules, not a hardware fling or MP4 decode.
+No device timing or playback evidence is available in this workspace.
 
 ## Repeated-scroll crash capture — required before assigning a cause
 
@@ -100,11 +114,13 @@ leak or crash exists. Capture the failure before changing buffer sizes or preloa
    ```
 
 3. Launch Mosaic. Before reproducing, record the baseline PID with
-   `adb shell pidof dev.mosaic.app`, then run the user's sequence: enter a video before its
-   first frame is visible; scroll across at least 10 mixed photo/video posts; rapidly reverse
-   across several videos; repeat until the original symptom would normally occur; then return
-   to a previously viewed video. Do not clear the log until the sequence finishes or the app
-   stops responding.
+   `adb shell pidof dev.mosaic.app`. In addition to the targeted orientation sweep above,
+   run the original sequence: enter a video before its first frame is visible; scroll across
+   at least 10 mixed photo/video posts; rapidly reverse across several videos; continue through
+   the usual trouble point; then revisit a previously viewed video. Include a fast single
+   swipe through the portrait/landscape layout that previously risked a crash; do not require
+   repeatedly triggering the visual glitch. Do not clear the log until the sequence finishes
+   or the app stops responding.
 4. Immediately after the symptom, record `adb shell pidof dev.mosaic.app` again, then stop
    logcat capture with Ctrl+C. Check the `MosaicMedia` resource snapshots and `AndroidRuntime`,
    `libc`, `DEBUG`, `ExoPlayer`, `MediaCodec` and `Media3` records. A process

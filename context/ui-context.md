@@ -70,9 +70,11 @@ The source has not yet been checked on the user's phone; the original observatio
 user-reported, not an agent-run test.
 
 ## Video transition correctness/performance correction — CI verified, device acceptance pending
-The current Home anchor is the greatest viewport overlap across photos/GIFs/videos;
-playback eligibility is separate, requires the anchor itself to be animated, and uses a
-50% visibility threshold. Feed and frozen-viewer candidates now carry true ordered-snapshot
+The current Home anchor is the greatest viewport overlap across photos/GIFs/videos.
+Playback requires an animated anchor, then chooses the most-visible animated preview that
+meets the 50% visible-fraction threshold; an eligible neighboring landscape video can take
+over when a taller portrait edge is the anchor but below threshold. A photo anchor still
+suppresses playback. Feed and frozen-viewer candidates now carry true ordered-snapshot
 positions. The bounded window independently includes the nearest photo and nearest video
 within three positions on each side (max five including center). Active preload sources
 are protected from rank changes/removal until the player releases them; afterward the

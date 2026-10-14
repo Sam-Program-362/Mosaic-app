@@ -104,15 +104,28 @@ data class VisibleMedia(
     val feedIndex: Int = -1,
 )
 
-private fun visiblePixels(item: VisibleMedia, start: Int, end: Int): Int {
+/** Home feed's ratio-driven preview height, in dp; portrait items retain the existing cap. */
+internal fun feedPreviewHeightDp(widthDp: Float, aspectRatio: Float): Float =
+    (widthDp / aspectRatio).coerceIn(MIN_FEED_PREVIEW_HEIGHT_DP, MAX_FEED_PREVIEW_HEIGHT_DP)
+
+/** Pixel overlap between a preview and the measured viewport. */
+fun visibleOverlapPixels(item: VisibleMedia, start: Int, end: Int): Int {
     if (item.size <= 0 || end <= start) return 0
-    return (minOf(item.offset + item.size, end) - maxOf(item.offset, start)).coerceAtLeast(0)
+    return (minOf(item.offset + item.size, end) - maxOf(item.offset, start)).coerceIn(0, minOf(item.size, end - start))
+}
+
+/** Fraction of the preview that is visible, capped to the viewport for taller-than-screen media. */
+fun visibleFraction(item: VisibleMedia, start: Int, end: Int): Float {
+    val viewportHeight = (end - start).coerceAtLeast(0)
+    if (item.size <= 0 || viewportHeight == 0) return 0f
+    return (visibleOverlapPixels(item, start, end).toFloat() / minOf(item.size, viewportHeight))
+        .coerceIn(0f, 1f)
 }
 
 /** The viewport anchor uses the same visible-area rule for photos, GIFs, and videos. */
 fun dominantVisibleMedia(visible: List<VisibleMedia>, start: Int, end: Int): VisibleMedia? =
     visible.asSequence()
-        .map { item -> item to visiblePixels(item, start, end) }
+        .map { item -> item to visibleOverlapPixels(item, start, end) }
         .filter { (_, pixels) -> pixels > 0 }
         // On an exact half-way tie, prefer the later feed item so forward scrolls can warm it early.
         .maxWithOrNull(compareBy<Pair<VisibleMedia, Int>> { it.second }.thenBy { it.first.feedIndex })
@@ -130,17 +143,18 @@ fun activePreview(
     if (viewportHeight == 0) return null
     return visible.asSequence()
         .filter { it.key in animatedKeys && it.size > 0 }
-        .map { item -> item to visiblePixels(item, start, end) }
+        .map { item -> item to visibleOverlapPixels(item, start, end) }
         .filter { (_, pixels) -> pixels > 0 }
-        .filter { (item, pixels) ->
-            val relevantHeight = minOf(item.size, viewportHeight)
-            pixels.toFloat() / relevantHeight >= minimumVisibleFraction
-        }
+        .filter { (item, _) -> visibleFraction(item, start, end) >= minimumVisibleFraction }
         .maxWithOrNull(compareBy<Pair<VisibleMedia, Int>> { it.second }.thenBy { it.first.feedIndex })
         ?.first?.key
 }
 
-/** Playback is restricted to the all-media viewport anchor; preload anchoring stays independent. */
+/**
+ * Playback requires an animated all-media anchor. If that tall/edge animation is below the
+ * visibility threshold, hand off to the most-visible eligible animation instead of leaving
+ * a fully visible video idle; a photo anchor still suppresses playback.
+ */
 fun playbackPreviewForAnchor(
     anchorKey: String?,
     visible: List<VisibleMedia>,
@@ -149,10 +163,12 @@ fun playbackPreviewForAnchor(
     animatedKeys: Set<String>,
 ): String? {
     if (anchorKey == null || anchorKey !in animatedKeys) return null
-    return activePreview(visible, start, end, animatedKeys)?.takeIf { it == anchorKey }
+    return activePreview(visible, start, end, animatedKeys)
 }
 
 private const val MIN_ACTIVE_PREVIEW_VISIBLE_FRACTION = 0.5f
+private const val MIN_FEED_PREVIEW_HEIGHT_DP = 120f
+private const val MAX_FEED_PREVIEW_HEIGHT_DP = 520f
 
 /**
  * A bounded mixed-media window: current item plus the nearest photo and nearest video

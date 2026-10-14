@@ -3,6 +3,7 @@ package dev.mosaic.app.feature.feed
 import dev.mosaic.app.core.model.*
 import org.junit.Assert.*
 import org.junit.Test
+import kotlin.math.roundToInt
 
 class FeedSessionTest {
     @Test fun homeCombinesFoldersWhileCommunityIsIsolated() {
@@ -108,6 +109,68 @@ class FeedSessionTest {
         assertEquals("gif", activePreview(visible, 0, 1000, setOf("gif", "video")))
         assertNull(activePreview(listOf(VisibleMedia("edge-video", -395, 400, feedIndex = 1)),
             0, 1000, setOf("edge-video")))
+    }
+
+    @Test fun ratioDrivenPortraitAndLandscapePreviewsAreMeasuredAtBothViewportEdges() {
+        val portraitHeight = feedPreviewHeightDp(360f, 9f / 16f).roundToInt()
+        val landscapeHeight = feedPreviewHeightDp(360f, 16f / 9f).roundToInt()
+        assertEquals(520, portraitHeight)
+        assertEquals(203, landscapeHeight)
+
+        val cases = listOf(
+            VisibleMedia("portrait-top", -80, portraitHeight, feedIndex = 1) to 440,
+            VisibleMedia("portrait-bottom", 260, portraitHeight, feedIndex = 2) to 440,
+            VisibleMedia("landscape-top", -30, landscapeHeight, feedIndex = 3) to 173,
+            VisibleMedia("landscape-bottom", 527, landscapeHeight, feedIndex = 4) to 173,
+        )
+        for ((item, expectedOverlap) in cases) {
+            assertEquals(expectedOverlap, visibleOverlapPixels(item, 0, 700))
+            assertEquals(expectedOverlap.toFloat() / item.size, visibleFraction(item, 0, 700), 0.001f)
+            val anchor = dominantVisibleMedia(listOf(item), 0, 700)?.key
+            assertEquals(item.key, playbackPreviewForAnchor(anchor, listOf(item), 0, 700, setOf(item.key)))
+        }
+    }
+
+    @Test fun fastPortraitLandscapeHandoffsUseVisibleFractionsNotTallEdgeOverlapAlone() {
+        val portraitHeight = feedPreviewHeightDp(360f, 9f / 16f).roundToInt()
+        val landscapeHeight = feedPreviewHeightDp(360f, 16f / 9f).roundToInt()
+        val animated = setOf("portrait", "landscape")
+        fun selected(visible: List<VisibleMedia>): String? = playbackPreviewForAnchor(
+            dominantVisibleMedia(visible, 0, 700)?.key,
+            visible,
+            0,
+            700,
+            animated,
+        )
+
+        val portraitCentered = listOf(VisibleMedia("portrait", 100, portraitHeight, feedIndex = 7))
+        assertEquals("portrait", selected(portraitCentered))
+
+        // A fast forward jump leaves 46% of the tall portrait at the top while the landscape
+        // preview is fully visible at the bottom. The portrait has more raw pixels, but is below
+        // the activation threshold; it must not mask the eligible landscape player.
+        val portraitToLandscape = listOf(
+            VisibleMedia("portrait", -280, portraitHeight, feedIndex = 7),
+            VisibleMedia("landscape", 480, landscapeHeight, feedIndex = 8),
+        )
+        assertEquals("portrait", dominantVisibleMedia(portraitToLandscape, 0, 700)?.key)
+        assertEquals("landscape", selected(portraitToLandscape))
+        assertEquals(0.462f, visibleFraction(portraitToLandscape.first(), 0, 700), 0.002f)
+        assertEquals(1f, visibleFraction(portraitToLandscape.last(), 0, 700), 0f)
+
+        // Reverse direction: landscape is clipped at the top while portrait has crossed 50% at bottom.
+        val landscapeToPortrait = listOf(
+            VisibleMedia("landscape", -120, landscapeHeight, feedIndex = 8),
+            VisibleMedia("portrait", 430, portraitHeight, feedIndex = 7),
+        )
+        assertEquals("portrait", selected(landscapeToPortrait))
+
+        // A fast jump can leave both videos below 50%; no player should be handed off in that gap.
+        val betweenVideos = listOf(
+            VisibleMedia("portrait", -400, portraitHeight, feedIndex = 7),
+            VisibleMedia("landscape", 650, landscapeHeight, feedIndex = 8),
+        )
+        assertNull(selected(betweenVideos))
     }
 
     @Test fun zeroOverlapAndPrecomposedMediaCannotAnchorOrPlay() {

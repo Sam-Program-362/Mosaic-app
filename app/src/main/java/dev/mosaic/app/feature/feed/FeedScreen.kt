@@ -103,17 +103,48 @@ fun FeedScreen(
         }
     }
     val centerIndex = viewportAnchor?.feedIndex ?: -1
+    val anchorVisibleFraction = viewportAnchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
+    val activeVisibleMedia = activeKey?.let { key -> visibleMedia.firstOrNull { it.key == key } }
+    val activeVisibleFraction = activeVisibleMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
+    val anchorFractionBucket = (anchorVisibleFraction * 10f).roundToInt()
+    val activeFractionBucket = (activeVisibleFraction * 10f).roundToInt()
     val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
-    LaunchedEffect(viewportAnchor?.key, centerIndex, activeKey, preloadWindow, visibleState.sort, visibleState.epoch, searchQuery) {
+    LaunchedEffect(
+        viewportAnchor?.key,
+        centerIndex,
+        activeKey,
+        anchorFractionBucket,
+        activeFractionBucket,
+        preloadWindow,
+        visibleState.sort,
+        visibleState.epoch,
+        searchQuery,
+    ) {
         val candidateSummary = preloadWindow.joinToString(",") { candidate ->
             "${candidate.feedIndex}:${candidate.post.media.document.kind.name.lowercase()}:${candidate.direction}"
         }.ifBlank { "none" }
         val anchorKind = viewportAnchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
+        val activeIndex = activeKey?.let { feedIndexByKey[it] } ?: -1
+        val activeKind = activeKey?.let { key ->
+            visiblePosts.getOrNull(feedIndexByKey[key] ?: -1)?.media?.document?.kind?.name?.lowercase()
+        }
+        val visibleSummary = visibleMedia.sortedBy { it.feedIndex }.joinToString(";") { item ->
+            val kind = visiblePosts.getOrNull(item.feedIndex)?.media?.document?.kind?.name?.lowercase() ?: "unknown"
+            val overlap = visibleOverlapPixels(item, viewportStart, viewportEnd)
+            val fraction = (visibleFraction(item, viewportStart, viewportEnd) * 100f).roundToInt()
+            "pos=${item.feedIndex}:$kind:id=${MediaDiagnostics.shortId(item.key)} " +
+                "top=${item.offset - viewportStart}px height=${item.size}px overlap=${overlap}px visible=${fraction}%"
+        }.ifBlank { "none" }
         MediaDiagnostics.log(
             diagnosticContext,
-            "feed anchor pos=$centerIndex kind=${anchorKind ?: "none"} " +
-                "id=${viewportAnchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
-                "playback=${activeKey?.let(MediaDiagnostics::shortId) ?: "none"} candidates=$candidateSummary",
+            "feed selection viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
+                "anchorPos=$centerIndex anchorKind=${anchorKind ?: "none"} " +
+                "anchorId=${viewportAnchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "anchorVisible=${(anchorVisibleFraction * 100f).roundToInt()}% " +
+                "activePos=$activeIndex activeKind=${activeKind ?: "none"} " +
+                "activeId=${activeKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "activeVisible=${(activeVisibleFraction * 100f).roundToInt()}% " +
+                "candidates=$candidateSummary visible=$visibleSummary",
         )
     }
     var sorting by remember { mutableStateOf(false) }

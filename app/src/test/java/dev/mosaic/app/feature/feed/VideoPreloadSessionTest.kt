@@ -90,6 +90,45 @@ class VideoPreloadSessionTest {
         }
     }
 
+    @Test fun activePortraitSourceSurvivesRapidHandoffToLandscapeUntilOldPlayerReleases() {
+        val portrait = request("portrait-video", 7)
+        val landscape = request("landscape-video", 8)
+        val session = VideoPreloadSession(RuntimeEnvironment.getApplication())
+        val portraitPlayer = session.createPlayer()
+        val landscapePlayer = session.createPlayer()
+        var portraitReleased = false
+        try {
+            session.update(listOf(portrait, landscape), currentPosition = 7, startPreloading = false)
+            portraitPlayer.setMediaSource(
+                session.sourceForPlayback(portrait.key, portrait.uri, portrait.feedPosition)
+                    ?: error("The manager did not return the portrait source"),
+            )
+
+            // Model a fast swipe where the portrait leaves the bounded window as landscape activates.
+            session.update(listOf(request("landscape-video", 7)), currentPosition = 7, startPreloading = false)
+            landscapePlayer.setMediaSource(
+                session.sourceForPlayback(landscape.key, landscape.uri, feedPosition = 7)
+                    ?: error("The manager did not return the landscape source"),
+            )
+            assertEquals(2, session.managerSourceCount())
+            assertEquals(7, session.managedRequestSnapshot()[portrait.key]?.feedPosition)
+            assertEquals(7, session.managedRequestSnapshot()[landscape.key]?.feedPosition)
+
+            portraitPlayer.release()
+            portraitReleased = true
+            session.releasePlayback(portrait.key, startPreloading = false)
+
+            assertEquals(1, session.managerSourceCount())
+            assertEquals(setOf(landscape.key), session.managedRequestSnapshot().keys)
+        } finally {
+            if (!portraitReleased) portraitPlayer.release()
+            landscapePlayer.release()
+            session.releasePlayback(portrait.key, startPreloading = false)
+            session.releasePlayback(landscape.key, startPreloading = false)
+            session.release()
+        }
+    }
+
     @Test fun localUriUsesTheManagedMediaSourceAndSingleManagerBuiltPlayer() {
         val uri = "content://local-test/videos/clip.mp4"
         val request = request("clip", 6, uri)
