@@ -76,6 +76,7 @@ class MediaGeometryTest {
         val cache = MediaAspectRatioCache()
         val key = "unknown-dimensions-photo"
         val decodedRatio = intrinsicImageAspectRatio(900, 1_600) ?: error("Expected valid dimensions")
+        assertNull(cache.get(key)) // The photo may already be composed when prefetch finishes.
         assertTrue(cache.record(key, decodedRatio, "image-prefetch").changed)
         val establishedRatio = safePhotoAspectRatio(cache.get(key)?.ratio)
         assertEquals(9f / 16f, establishedRatio, 0.0001f)

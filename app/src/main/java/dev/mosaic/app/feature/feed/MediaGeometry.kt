@@ -44,11 +44,13 @@ internal data class AspectRatioCacheUpdate(
 )
 
 /**
- * Per-feed-session cache. Each key has an observable state so a dimension learned by static-photo
- * prefetch can seed a later LazyColumn composition. The cache is bounded for long feeds.
+ * Per-feed-session cache. Valid ratios are LRU-bounded; a separate bounded set of observable
+ * misses lets a later static-photo prefetch seed an item that is already composed without letting
+ * cache misses evict useful dimensions.
  */
 internal class MediaAspectRatioCache(private val maxEntries: Int = MAX_CACHED_MEDIA_ASPECT_RATIOS) {
-    private val entries = LinkedHashMap<String, MutableState<CachedMediaAspectRatio?>>(16, 0.75f, true)
+    private val entries = LinkedHashMap<String, CachedMediaAspectRatio>(16, 0.75f, true)
+    private val unresolvedObservers = LinkedHashMap<String, MutableState<CachedMediaAspectRatio?>>(16, 0.75f, true)
 
     init {
         require(maxEntries > 0)
@@ -56,32 +58,42 @@ internal class MediaAspectRatioCache(private val maxEntries: Int = MAX_CACHED_ME
 
     @Synchronized
     fun get(key: String): CachedMediaAspectRatio? {
-        val state = entries[key] ?: mutableStateOf<CachedMediaAspectRatio?>(null).also { entries[key] = it }
-        trimToBound()
+        entries[key]?.let { return it }
+        val state = unresolvedObservers[key]
+            ?: mutableStateOf<CachedMediaAspectRatio?>(null).also { unresolvedObservers[key] = it }
+        trimUnresolvedObservers()
         return state.value
     }
 
     @Synchronized
     fun record(key: String, ratio: Float, source: String): AspectRatioCacheUpdate {
-        val state = entries[key] ?: mutableStateOf<CachedMediaAspectRatio?>(null).also { entries[key] = it }
-        val previous = state.value
+        val previous = entries[key]
         if (!isValidMediaAspectRatio(ratio)) {
-            trimToBound()
             return AspectRatioCacheUpdate(previous, previous, changed = false)
         }
 
         val candidate = CachedMediaAspectRatio(ratio, source)
         val shouldReplace = previous == null ||
             (sourcePriority(source) > sourcePriority(previous.source) && abs(previous.ratio - ratio) >= MIN_ASPECT_RATIO_CHANGE)
-        if (shouldReplace) state.value = candidate
-        trimToBound()
-        return AspectRatioCacheUpdate(previous, state.value, changed = shouldReplace)
+        if (shouldReplace) {
+            entries[key] = candidate
+            unresolvedObservers.remove(key)?.value = candidate
+            trimEntries()
+        }
+        return AspectRatioCacheUpdate(previous, if (shouldReplace) candidate else previous, changed = shouldReplace)
     }
 
-    private fun trimToBound() {
+    private fun trimEntries() {
         while (entries.size > maxEntries) {
             val eldestKey = entries.entries.iterator().next().key
             entries.remove(eldestKey)
+        }
+    }
+
+    private fun trimUnresolvedObservers() {
+        while (unresolvedObservers.size > maxEntries) {
+            val eldestKey = unresolvedObservers.entries.iterator().next().key
+            unresolvedObservers.remove(eldestKey)
         }
     }
 

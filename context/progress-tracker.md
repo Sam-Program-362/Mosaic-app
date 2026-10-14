@@ -10,12 +10,15 @@ height, with safe unknown/invalid-dimension fallback and a first-valid-ratio loc
 video/GIF frame policy, playback controls/interactions, viewer, and first-rendered-frame overlay
 correction are to remain unchanged.
 
-Implementation and regression tests are committed and pushed as `680c54c`. CI run
-[38622883418](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38622883418) failed in
-"Unit tests, lint, and debug APK build" after reaching unit-test compilation; the precise failing
-task/case is not yet available from the job log. The production-source guard passed. Privacy/schema
-checks did not run, and there is no verified APK. The workflow failure annotation is being improved
-to report failed test names plus the Gradle log tail on the rerun.
+Implementation is committed and pushed as `680c54c`; CI run
+[38622883418](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38622883418) failed in the
+combined Android verification step without exposing the failing case. The follow-up diagnostic
+workflow at `ddf3dad` yielded CI run
+[38623868370](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38623868370): 96 tests,
+1 failure, 0 errors/skips. `MediaGeometryTest.invalidAspectRatiosAreIgnoredAndCacheStaysBounded`
+failed because a cache miss evicted a valid ratio. The working tree now separates bounded unresolved
+observers from the LRU ratio entries; this fix is uncommitted and awaits CI. The production-source
+guard passed. Privacy/schema checks did not run, and neither failed CI run is a verified APK.
 
 Local `./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup
 because `JAVA_HOME` is unset and no `java` executable exists. CI rerun, verified debug APK, and
