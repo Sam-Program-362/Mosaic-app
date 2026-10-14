@@ -10,10 +10,17 @@ height, with safe unknown/invalid-dimension fallback and a first-valid-ratio loc
 video/GIF frame policy, playback controls/interactions, viewer, and first-rendered-frame overlay
 correction are to remain unchanged.
 
-This working tree has implementation and regression-test changes, but none are verified yet. Local
-`./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup because
-`JAVA_HOME` is unset and no `java` executable exists. CI, debug APK, and physical-device results
-are pending. `google_drive/` is untracked user data and must remain untouched/unstaged.
+Implementation and regression tests are committed and pushed as `680c54c`. CI run
+[38622883418](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38622883418) failed in
+"Unit tests, lint, and debug APK build" after reaching unit-test compilation; the precise failing
+task/case is not yet available from the job log. The production-source guard passed. Privacy/schema
+checks did not run, and there is no verified APK. The workflow failure annotation is being improved
+to report failed test names plus the Gradle log tail on the rerun.
+
+Local `./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup
+because `JAVA_HOME` is unset and no `java` executable exists. CI rerun, verified debug APK, and
+physical-device results are pending. `google_drive/` is untracked user data and must remain
+untouched/unstaged.
 
 User-reported evidence remains: preload-enabled scrolling felt sticky and the app crashed; with
 preloading disabled, photo scrolling felt smooth and video loading was fast enough. A separate

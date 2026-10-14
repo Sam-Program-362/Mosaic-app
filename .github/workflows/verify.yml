@@ -64,7 +64,29 @@ jobs:
           else
             python3 - <<'PYERROR'
           from pathlib import Path
-          message = Path('verification.log').read_text()[-50000:]
+          import xml.etree.ElementTree as ET
+          reports = list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          failures = []
+          totals = {'tests': 0, 'failures': 0, 'errors': 0, 'skipped': 0}
+          for report in reports:
+              root = ET.parse(report).getroot()
+              for key in totals:
+                  totals[key] += int(root.get(key, '0'))
+              for case in root.iter('testcase'):
+                  for result in list(case):
+                      if result.tag in ('failure', 'error'):
+                          detail = (result.get('message') or result.tag).splitlines()[0][:180]
+                          failures.append(f"{case.get('classname')}.{case.get('name')}: {detail}")
+          summary = ''
+          if reports:
+              summary = 'Unit tests: ' + ', '.join(f'{key}={value}' for key, value in totals.items())
+              if failures:
+                  summary += '\nFailed cases: ' + '; '.join(failures[:8])
+          summary = summary[:1800]
+          log = Path('verification.log').read_text(errors='replace').splitlines()
+          separator = '\nGradle log tail:\n' if summary else ''
+          tail = '\n'.join(log[-35:])
+          message = summary + separator + tail[-(3500 - len(summary) - len(separator)):]
           message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
           print(f'::error title=Android verification::{message}')
           PYERROR
