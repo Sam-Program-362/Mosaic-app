@@ -1,7 +1,13 @@
 package dev.mosaic.app.feature.feed
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.MutableTransitionState
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.IndexedMedia
 import dev.mosaic.app.core.model.MediaDocument
@@ -22,6 +28,54 @@ import org.robolectric.annotation.Config
 class MediaViewerUiTest {
     @get:Rule val compose = createComposeRule()
     private val loader = ImageLoader.Builder(RuntimeEnvironment.getApplication()).build()
+
+    @Test fun animatedOverlayOpensAndClosesWithoutDroppingContentMidTransition() {
+        val visibility = MutableTransitionState(false)
+        val activeSession = mutableStateOf<ViewerSession?>(null)
+        val retainedSession = mutableStateOf<ViewerSession?>(null)
+        val session = ViewerSession(
+            FeedSnapshot(listOf(post("photo")), FeedSort.Newest, "folder", 1L),
+            initialPage = 0,
+        )
+        compose.mainClock.autoAdvance = false
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                Box(Modifier.fillMaxSize()) {
+                    Text("Feed remains composed")
+                    AnimatedMediaViewerOverlay(
+                        visibleState = visibility,
+                        session = activeSession.value,
+                        retainedSession = retainedSession.value,
+                        imageLoader = loader,
+                        onClose = {},
+                        onSaveCopy = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("photo").assertDoesNotExist()
+
+        compose.runOnIdle {
+            activeSession.value = session
+            retainedSession.value = session
+            visibility.targetState = true
+        }
+        compose.mainClock.advanceTimeBy(140)
+        compose.onNodeWithText("photo").assertExists()
+        compose.runOnIdle { assertTrue(!visibility.isIdle) }
+
+        compose.runOnIdle {
+            activeSession.value = null
+            visibility.targetState = false
+        }
+        compose.mainClock.advanceTimeBy(80)
+        compose.onNodeWithText("photo").assertExists()
+        compose.runOnIdle { assertTrue(!visibility.isIdle) }
+        compose.mainClock.advanceTimeBy(400)
+        compose.onNodeWithText("photo").assertDoesNotExist()
+        compose.runOnIdle { assertTrue(visibility.isIdle) }
+        compose.onNodeWithText("Feed remains composed").assertExists()
+    }
 
     @Test fun opensAtRequestedSnapshotItemAndProvidesAnAccessibleExit() {
         var closed = false

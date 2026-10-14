@@ -16,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -50,10 +51,11 @@ import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.data.source.FolderPickerContract
 import dev.mosaic.app.feature.folders.FolderManagement
 import dev.mosaic.app.feature.folders.LibraryViewModel
+import dev.mosaic.app.feature.feed.AnimatedMediaViewerOverlay
+import dev.mosaic.app.feature.feed.CommunityAvatar
 import dev.mosaic.app.feature.feed.FeedScreen
 import dev.mosaic.app.feature.feed.FeedSnapshot
-import dev.mosaic.app.feature.feed.MediaViewer
-import dev.mosaic.app.feature.feed.CommunityAvatar
+import dev.mosaic.app.feature.feed.ViewerSession
 import coil3.ImageLoader
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,8 +79,6 @@ private enum class Destination(val title: String) {
     Home("Home"), Community("Community"), Saved("Saved"), Folders("Manage folders"), Settings("Settings")
 }
 
-private data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
-
 /** Navigation shell; all folder/provider operations stay in the data layer. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +86,25 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var selectedCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerSession by remember { mutableStateOf<ViewerSession?>(null) }
+    var retainedViewerSession by remember { mutableStateOf<ViewerSession?>(null) }
+    val viewerVisibility = remember { MutableTransitionState(false) }
+    val viewerVisible = viewerVisibility.currentState || viewerVisibility.targetState || !viewerVisibility.isIdle
+    val openViewer: (FeedSnapshot, Int) -> Unit = { snapshot, page ->
+        val session = ViewerSession(snapshot, page)
+        retainedViewerSession = session
+        viewerSession = session
+        viewerVisibility.targetState = true
+    }
+    val closeViewer: () -> Unit = {
+        retainedViewerSession = viewerSession ?: retainedViewerSession
+        viewerSession = null
+        viewerVisibility.targetState = false
+    }
+    LaunchedEffect(viewerVisibility.currentState, viewerVisibility.targetState, viewerVisibility.isIdle) {
+        if (viewerVisibility.isIdle && !viewerVisibility.currentState && !viewerVisibility.targetState) {
+            retainedViewerSession = null
+        }
+    }
     var menuExpanded by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -145,9 +164,9 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
         selectedIconColor = colors.textPrimary, unselectedIconColor = colors.textSecondary,
     )
 
-    BackHandler(enabled = viewerSession != null || drawerState.isOpen || destination != Destination.Home) {
+    BackHandler(enabled = viewerVisible || drawerState.isOpen || destination != Destination.Home) {
         when {
-            viewerSession != null -> viewerSession = null
+            viewerVisible -> closeViewer()
             drawerState.isOpen -> scope.launch { drawerState.close() }
             else -> destination = Destination.Home
         }
@@ -155,7 +174,7 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = viewerSession == null,
+        gesturesEnabled = !viewerVisible,
         drawerContent = {
             ModalDrawerSheet(drawerContainerColor = colors.surface) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -210,10 +229,10 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
         },
     ) {
         Scaffold(
-            containerColor = if (viewerSession == null) colors.background else Color.Black,
+            containerColor = if (viewerVisible) Color.Black else colors.background,
             snackbarHost = { SnackbarHost(snackbar) },
             topBar = {
-                if (viewerSession == null) {
+                if (!viewerVisible) {
                     TopAppBar(
                         title = { Text(if (destination == Destination.Community)
                             folders.firstOrNull { it.folder.id == selectedCommunityId }?.folder?.label ?: "Community"
@@ -258,14 +277,14 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                         folders = if (isSaved) emptyList() else folders,
                         busy = !isSaved && busy,
                         listState = if (isSaved) savedListState else listState,
-                        playbackEnabled = viewerSession == null && !menuExpanded &&
+                        playbackEnabled = !viewerVisible && !menuExpanded &&
                             drawerState.currentValue == DrawerValue.Closed &&
                             drawerState.targetValue == DrawerValue.Closed,
                         imageLoader = imageLoader, onSort = library::setSort,
                         onRefresh = { if (!isSaved) library.refresh(expectedFolderId) },
                         onAddFolder = { if (!isSaved) addFolder() },
                         onManageFolders = { if (!isSaved) destination = Destination.Folders },
-                        onOpenViewer = { snapshot, page -> viewerSession = ViewerSession(snapshot, page) },
+                        onOpenViewer = openViewer,
                         onSaveCopy = { post -> library.saveCopy(post.media) },
                         showFeedControls = !isSaved,
                         emptyTitle = if (isSaved) "No saved copies yet" else null,
@@ -273,32 +292,27 @@ fun MosaicApp(theme: ThemeMode, onThemeSelected: suspend (ThemeMode) -> Unit, li
                             "Save a separate copy from any post to keep it here, even if its source folder is removed."
                         } else null,
                         modifier = Modifier.padding(padding).then(
-                            if (viewerSession != null) Modifier.clearAndSetSemantics {} else Modifier
+                            if (viewerVisible) Modifier.clearAndSetSemantics {} else Modifier
                         ),
                     )
-                    viewerSession?.let { activeViewer ->
-                        MediaViewer(
-                            snapshot = activeViewer.snapshot,
-                            initialPage = activeViewer.initialPage,
-                            imageLoader = imageLoader,
-                            onClose = { viewerSession = null },
-                            onSaveCopy = { post -> library.saveCopy(post.media) },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                }
-            } else if (viewerSession != null) {
-                val activeViewer = viewerSession
-                if (activeViewer != null) {
-                    MediaViewer(
-                        snapshot = activeViewer.snapshot,
-                        initialPage = activeViewer.initialPage,
+                    AnimatedMediaViewerOverlay(
+                        visibleState = viewerVisibility,
+                        session = viewerSession,
+                        retainedSession = retainedViewerSession,
                         imageLoader = imageLoader,
-                        onClose = { viewerSession = null },
+                        onClose = closeViewer,
                         onSaveCopy = { post -> library.saveCopy(post.media) },
-                        modifier = Modifier.fillMaxSize(),
                     )
                 }
+            } else if (viewerVisible) {
+                AnimatedMediaViewerOverlay(
+                    visibleState = viewerVisibility,
+                    session = viewerSession,
+                    retainedSession = retainedViewerSession,
+                    imageLoader = imageLoader,
+                    onClose = closeViewer,
+                    onSaveCopy = { post -> library.saveCopy(post.media) },
+                )
             } else {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(padding)

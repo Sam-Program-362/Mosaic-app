@@ -63,7 +63,11 @@ later changes. The originating `FeedScreen` stays composed underneath, with sema
 hidden and playback disabled, preserving feed scroll position on Back. Only the current
 RESUMED viewer page activates GIF/video playback; inactive pages do not retain players.
 Viewer-only system-bar hiding records/restores previous visibility. The viewer session
-is transient UI state, not persistent media/library state.
+is transient UI state, not persistent media/library state. The current Phase 4 follow-up
+uses `AnimatedVisibility` with a restrained scale/fade enter and reverse exit. A retained
+snapshot keeps the outgoing viewer composed through close; during both transitions the
+feed stays hidden from semantics, muted from playback, and scroll-stable. UI coverage
+for mid-transition visibility was added but the latest motion changes still need CI.
 
 Manage folders now offers an explicit confirmation before removing a selection.
 Repository operations serialize removal with refresh/add. `SafFolderSource` attempts
@@ -89,11 +93,10 @@ Save, and Saved uses the same local media card/viewer at newest-save-first order
 Removal of saved copies and custom communities remain out of scope.
 
 Room database version 2 adds only the Saved table/index with an explicit v1→v2
-migration; existing folder/media data is retained. KSP's generated v2 schema must be
-captured from CI and checked in. After fixing the Robolectric provider setup and its
-stub import, run 38468360143 passed 59 tests, lint, tracked-schema consistency, APK
-privacy checks and debug build. The generated v2 schema notice was truncated at 4 KiB
-and artifact download was blocked; CI now emits chunked notices for capture. Phone
+migration; existing folder/media data is retained. CI run 38469093930 passed 59 tests,
+lint, tracked-schema consistency, APK privacy and debug build. Its exact KSP-generated
+v2 schema was decoded from chunked CI annotations into source; no schema JSON was
+hand-authored. The current viewer-motion follow-up has not been verified yet. Phone
 acceptance is still pending.
 
 ## Remaining planned architecture

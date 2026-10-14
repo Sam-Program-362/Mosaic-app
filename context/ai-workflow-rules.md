@@ -34,7 +34,8 @@ The user reports Phase 3 photos appear in Home, folder feeds show only their fol
 media, and videos play. This does not verify GIFs, mute/audio focus, offscreen or
 background stop behavior, or every storage edge case. Phase 4 CI is not phone
 acceptance: actual vertical swiping/back/scroll restoration and confirmed removal
-still need device feedback. Phase 5 CI run 38468360143 passed migration/copy/UI tests,
-lint, packaged privacy and debug APK build; exact generated v2 schema capture/commit and
-phone acceptance remain pending. Keep custom communities and other future features
-explicit; a visible label alone is not proof of implementation.
+still need device feedback. Phase 5 CI run 38469093930 passed migration/copy/UI tests,
+lint, packaged privacy and debug APK build; the exact generated v2 schema has been
+captured and is awaiting commit with the current work. New viewer-motion changes still
+need CI. Keep custom communities and other future features explicit; a visible label
+alone is not proof of implementation.

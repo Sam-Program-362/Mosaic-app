@@ -19,22 +19,36 @@ pager at that item, frozen to the exact feed snapshot/order. Current page alone 
 GIF/video while RESUMED; Android Back and accessible toolbar Back close the viewer. The
 feed stays composed beneath it with playback and accessibility semantics disabled,
 preserving the original scroll position. Viewer hides system bars and restores their
-prior visibility on exit. Phase 5 source is not yet build/test/device verified.
+prior visibility on exit. Phase 5 Save-copy source passed CI run 38469093930 before
+these new viewer-motion edits; the current animation changes still need CI and device
+verification.
 Drawer/container roles use semantic neutral colors (fixing purple defaults in the
 user's initial screenshot). Settings persists Light/Dark. Folder management retains
 picker/retry/reselection and now has a confirmed **Remove from Mosaic** action. This
 removes local index/community and attempts to release Mosaic's saved read grant; it
 never changes original media. Failed permission release shows a warning.
 
+## User-provided frontend reference and Phase 4 motion
+The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
+specification: charcoal surfaces, warm orange actions, clear Home/Saved/community
+hierarchy, compact media metadata, and an immersive image viewer. The current Phase 4
+follow-up adds a restrained grow/fade into the viewer and a reverse close transition;
+the frozen feed order and scroll position remain stable, and the underlying feed stays
+semantically hidden with playback paused for the entire transition. Verify that motion
+on a phone. Do not copy web-only details into scope: counts stay decorative, the app
+stays offline/local, and comments, real votes, and unapproved settings remain excluded.
+Custom-community controls in the screenshots are a future phase, not part of this slice.
+
 The user confirmed Phase 2 restart retention (two folders, 295 media) and reports in
 the Phase 3 phone check that photos display in Home, folder selection shows only its
 media, and videos play. GIF, video mute/offscreen/background behavior and Phase 4
 viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests,
-lint, schema and APK privacy checks. Phase 5 CI run 38468360143 passed 59 tests, lint,
-tracked-schema consistency, packaged privacy and debug APK build. Generated v2 schema
-capture/commit remains because the annotation was truncated and artifact retrieval
-failed. No pixel-match, physical paging, provider permission-release, hardware-codec or
-Phase 5 device-acceptance claim.
+lint, schema and APK privacy checks. Phase 5 CI run 38469093930 passed 59 tests, lint,
+tracked-schema consistency, packaged privacy and debug APK build. The exact generated
+Room v2 schema was recovered from four CI annotation chunks (6,024 bytes; hash
+`9c5465636830273745be40f054484124`) and is being added to source. The current viewer
+motion edit is unverified. No pixel-match, physical paging, provider permission-release,
+hardware-codec or Phase 5 device-acceptance claim.
 
 ## Remaining UI scope and Phase 5 verification
 Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed
@@ -45,7 +59,8 @@ was left unchanged. Saved-copy removal is out of scope. Custom community creatio
 names/selects/reviews folder membership; custom artwork policy remains unresolved.
 Local deterministic folder artwork uses first static image by case-insensitive name,
 with neutral initials otherwise. Existing no-folder, unavailable, decode/missing-media,
-and empty states remain. Device acceptance and Phase 5 CI are pending.
+and empty states remain. Phase 5 CI passed before the current motion changes; final
+schema check and Phase 4/5 phone acceptance remain pending.
 
 ## Central semantic colors
 Defined in `ui/theme/MosaicTheme.kt`; values are starting points, not pixel-verified

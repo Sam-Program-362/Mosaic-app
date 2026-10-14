@@ -2,18 +2,19 @@
 
 ## Current phase
 Phase 5 — independent Save copy and Saved-feed implementation in progress.
-Date: 2026-10-14. Phase 4 remains the last verified source baseline: CI run 38463132363
-passed 53 tests, 0 failures/errors/skips, lint, schema consistency, packaged privacy
-checks and debug APK build at commit 02085fb. Phase 5 runs 38466413293 and 38467526012
-hit a Robolectric `ContentProvider.java:2771` NPE because the test provider was not
-attached; run 38467045590 separately caught a missing provider-stub import. Those fixes
-were applied. Green run 38468360143 at commit 0612422 passed 59 tests, lint, tracked
-schema consistency, packaged privacy check and debug APK build. The Room v2 schema was
-generated, but its check annotation was truncated at 4 KiB and artifact download failed
-with EOF; the CI reporter is being changed to emit smaller base64 chunks before exact
-schema capture/commit. Phase 5 phone acceptance remains unverified. The user's Phase 3 phone report confirms photos on Home, selected-folder
-isolation and video playback. GIF, mute, offscreen/background playback, Phase 4 paging
-and removal behavior remain unverified on-device. This is not a complete first release.
+Date: 2026-10-14. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
+APK privacy and debug build at commit 02085fb. Phase 5 CI iterations 38466413293 and
+38467526012 exposed an unattached Robolectric provider NPE; run 38467045590 caught a
+provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 tests,
+lint, schema consistency, APK privacy and debug build. Follow-up run 38469093930 also
+passed those checks; its exact generated Room v2 schema was decoded from four CI
+annotation chunks (6,024 bytes, identity hash `9c5465636830273745be40f054484124`).
+Schema is now in the working tree for commit. Latest changes add a Phase 4 viewer
+expand/fade and reverse transition, with a UI test; those edits are uncommitted and
+unverified. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
+confirms Home photos, folder isolation and video playback; GIF, mute, offscreen/background
+playback, viewer motion/paging and removal are not yet confirmed on-device. This is not
+a complete first release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
@@ -108,29 +109,26 @@ Phase 4 CI iterations:
   Artifact `mosaic-debug-and-reports`, ID 11846947024, size 14,242,550 bytes.
   https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363
 
-## Phase 5 source in progress (not yet verified)
-- Each Save tap in feed cards and the viewer invokes a new copy request; the Saved menu
-  destination shows an app-managed-copy feed ordered by save time. Saved items can be
-  viewed and can themselves be copied again. Removal of copies and custom communities
-  are not included.
+## Phase 5 source and CI; device acceptance pending
+- Each Save tap in feed cards and viewer starts a new request; Saved shows app-managed
+  copies newest-first. Saved items can be viewed and copied again. Saved-copy removal
+  and custom communities are excluded from this slice.
 - `SavedCopyRepository` streams from the selected content URI into a UUID-named private
-  file under `filesDir/saved-media`, first as a `.partial` file; it records Room metadata
-  only after a nonempty stream is flushed and renamed. On ordinary copy/insert failures
-  it deletes the temporary/final file and creates no advertised record. Original URIs
-  are not retained in Saved rows and source providers are only opened for reading.
-- Room v2 adds Saved metadata and explicit 1→2 migration; existing folder/media tables
-  are retained. Robolectric migration/copy tests and UI repeated-tap tests are authored.
-  First CI compiled tests and exposed the source-open test NPE; its empty-stream
-  replacement is pending rerun. CI reports a generated, untracked schema so the exact
-  KSP output can be retained, not hand-written.
-- Earlier CI iterations: 38466413293 and 38467526012 exposed an unattached Robolectric
-  provider NPE; 38467045590 exposed the missing provider-stub import. Provider attachment
-  and import fixes are included in the passing source.
-- CI run 38468360143 passed 59 tests, lint, tracked schema consistency, packaged APK
-  privacy checks and debug APK build; artifact ID 11850166636. The generated v2 schema
-  was emitted in an annotation truncated at 4 KiB; artifact download failed with EOF.
-  The workflow now chunks generated schema notices for exact capture. Generated schema
-  commit and device acceptance remain outstanding.
+  file under `filesDir/saved-media`, first as `.partial`; Room metadata follows only
+  after a nonempty stream is flushed and renamed. Ordinary failures clean temporary or
+  unrecorded files. Saved rows do not retain source URIs; source media is read-only.
+- Room v2 adds the Saved table/index with explicit v1→v2 migration and retains existing
+  folder/media tables. Earlier CI found provider setup/import issues; they were fixed.
+- CI run 38469093930 at commit 53314ef passed 59 tests, lint, tracked-schema
+  consistency, packaged APK privacy and debug APK build. KSP's exact generated v2 schema
+  was recovered from 4 chunked workflow annotations and saved at
+  `app/schemas/dev.mosaic.app.data.local.LibraryDatabase/2.json` (6,024 bytes,
+  identity hash `9c5465636830273745be40f054484124`). Schema and current viewer motion work
+  are uncommitted pending one final verification run.
+- New Phase 4 visual follow-up adds reversible grow/fade motion for opening/closing the
+  full-screen viewer and a UI transition test. It follows the user-supplied dark/orange
+  frontend reference without copying web-only functions. These latest edits have not
+  been tested. Phase 4/5 device acceptance remains pending.
 
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/
@@ -189,12 +187,13 @@ scoped, never retained in the ViewModel.
 
 ## Still unimplemented and next acceptance
 Custom community membership/header artwork and release-ready branding/SDK/signing
-policy remain. Phase 5 Saved-copy source is in progress and must first pass CI, retain
-its generated Room v2 schema and receive a passing verification run. Phone acceptance
-is separate: use `docs/phase-4-device-check.md` for the still-pending viewer/paging,
-return-position, playback-stop and removal checks, then verify Save from feed and viewer,
-repeated independent copies, app restart, and availability after source deletion/access
-loss. Never equate source/CI success with phone acceptance.
+policy remain. Phase 5 Save-copy code and Room v2 migration passed CI run 38469093930;
+the generated schema is captured locally, and the current viewer-motion follow-up still
+needs verification. Phone acceptance is separate: use `docs/phase-4-device-check.md`
+for viewer expansion/close, paging, return-position, playback-stop and removal, then
+verify Save from feed and viewer, repeated independent copies, app restart, and Saved
+availability after source deletion/access loss using `docs/phase-5-device-check.md`.
+Never equate source/CI success with phone acceptance.
 
 ## Open decisions
 Final branding/package/release SDK policy; community rename/duplicate-label policy,

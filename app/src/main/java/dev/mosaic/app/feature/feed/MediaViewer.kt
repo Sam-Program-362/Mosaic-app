@@ -3,6 +3,15 @@ package dev.mosaic.app.feature.feed
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +50,45 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
+
+internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
+
+/** Opens the viewer with a soft expand/fade and retains its content through the reverse close motion. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun AnimatedMediaViewerOverlay(
+    visibleState: MutableTransitionState<Boolean>,
+    session: ViewerSession?,
+    retainedSession: ViewerSession?,
+    imageLoader: ImageLoader,
+    onClose: () -> Unit,
+    onSaveCopy: (FeedPost) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visibleState = visibleState,
+        modifier = modifier,
+        enter = fadeIn(tween(150)) + scaleIn(
+            initialScale = 0.97f,
+            animationSpec = tween(270, easing = FastOutSlowInEasing),
+        ),
+        exit = fadeOut(tween(130)) + scaleOut(
+            targetScale = 0.985f,
+            animationSpec = tween(190, easing = FastOutLinearInEasing),
+        ),
+    ) {
+        (session ?: retainedSession)?.let { activeViewer ->
+            MediaViewer(
+                snapshot = activeViewer.snapshot,
+                initialPage = activeViewer.initialPage,
+                imageLoader = imageLoader,
+                onClose = onClose,
+                onSaveCopy = onSaveCopy,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
 
 /** Full-screen vertical paging over a frozen copy of the exact feed order opened by the user. */
 @OptIn(ExperimentalFoundationApi::class)

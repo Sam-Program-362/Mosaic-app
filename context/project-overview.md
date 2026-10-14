@@ -46,12 +46,12 @@ display on Home, folder selection isolates that folder's media, and videos play.
 GIF, mute, offscreen/background playback behavior have not been confirmed on-device.
 Phase 4 implements a frozen-order full-screen viewer and confirmed folder removal;
 its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
-phone acceptance is pending. Phase 5 Save copy/Saved-feed source is now in progress:
-private streaming copies, Room v2 migration, feed/viewer actions and tests are authored.
-Phase 5 CI run 38468360143 passed 59 tests, lint, tracked-schema consistency, packaged
-privacy checks and debug APK build. The generated v2 schema notice was truncated and
-artifact retrieval failed; schema capture via chunked notices and commit remain. Custom
-communities remain planned. This is not first-release completion.
+phone acceptance remains pending, and the user has now asked for a smoother grow/fade
+viewer transition based on supplied screenshots. Phase 5 Save copy/Saved-feed, Room v2
+migration and feed/viewer actions passed CI run 38469093930 (59 tests, lint, tracked
+schema consistency, packaged privacy and debug APK build). The exact KSP-generated v2
+schema has been captured into source. The newest viewer-motion changes still need CI.
+Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
