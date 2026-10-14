@@ -85,3 +85,13 @@ attributing repeated-scroll crashes; unit tests, lint, and APK builds do not res
 current correction passed CI run [38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
 with 84 tests, lint, packaged privacy/schema checks and debug APK build; device verification
 remains separate.
+
+For fast-scroll investigations involving different aspect ratios, test the shared ratio-to-height
+formula, visible pixels and fraction at both viewport edges, selection across forward/reverse
+portrait/landscape jumps, and managed-source handoff. Keep viewport/preload ranking separate
+from which eligible animation plays; a photo anchor still suppresses animation. Add debug-only,
+coarse visibility-transition logs with hashed IDs and paired player lifecycle/state/first-frame
+records, never per-frame output or local paths/URIs. The focused follow-up passed CI run
+[38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533): 87 tests,
+lint, schema/privacy checks and debug APK build. Physical fling/codec/crash verification remains
+separate.

@@ -1,12 +1,13 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the latest debug APK from [CI run 38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
-on `arena/b0f3e3cf-mosaic-app` at `a9703cb`; it includes Room v2, Saved, viewer motion,
-the reference-inspired UI/search, playback controls, the video-transition correction,
-the first-frame loading-overlay fix, and debug-only lifecycle counters. The workflow passed
-84 tests, lint, schema consistency, packaged privacy checks, and the debug APK build.
-Download the `mosaic-debug-and-reports` artifact (ID `11903168202`). The older APK artifacts
-`11899788396`, `11898528123` and `11890760322` predate the first-frame fix.
+Use the latest debug APK from [CI run 38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533)
+on `arena/b0f3e3cf-mosaic-app` at `ce78b37`; it includes Room v2, Saved, viewer motion,
+the reference-inspired UI/search, playback controls, the first-frame loading-overlay fix,
+ratio-aware visibility/active-video handoff tests, and expanded debug-only geometry/player
+diagnostics. The workflow passed 87 tests, lint, schema consistency, packaged privacy checks,
+and the debug APK build. Download the `mosaic-debug-and-reports` artifact (ID `11905094822`).
+Earlier APK artifacts `11903168202`, `11899788396`, `11898528123` and `11890760322` predate
+the targeted portrait/landscape handoff follow-up.
 This is a test build, not a release. No physical-device acceptance has been recorded yet.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing
@@ -57,7 +58,7 @@ compare these `MosaicMedia` fields to the actual overlay/frame: `state=BUFFERING
 frame. This rendering check is separate from the repeated-scroll crash investigation; no
 shared cause is assumed.
 
-## Aspect-ratio, visible-area and player-handoff sweep — targeted source tests added
+## Aspect-ratio, visible-area and player-handoff sweep — CI verified, device pending
 
 Use the same Home feed snapshot with one known portrait MP4 and one known landscape MP4.
 Record their feed positions from the UI so the hashed IDs in logs can be matched to your
@@ -85,8 +86,10 @@ Run the following as separate passes from the same starting position:
    and whether old/new player lifetimes overlap during handoff. They are diagnostics, not a
    pre-assigned cause; do not change preload duration/buffer based on this sweep alone.
 
-Source tests now cover ratio-derived portrait/landscape heights, each orientation at both
-viewport edges, rapid forward/reverse selection and managed-source handoff. They exercise
+Tests cover ratio-derived portrait/landscape heights, each orientation at both viewport
+edges, rapid forward/reverse selection and managed-source handoff. CI run
+[38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533)
+passed 87 tests, lint, Room schema, packaged privacy and debug APK build. These tests exercise
 the pure visibility/selection and Media3 manager rules, not a hardware fling or MP4 decode.
 No device timing or playback evidence is available in this workspace.
 

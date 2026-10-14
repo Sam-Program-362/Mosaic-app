@@ -79,8 +79,14 @@ snapshot-position ranking/reconciliation, active-source removal timing, first-fr
 fallback, error semantics and debug diagnostics. Final CI run 38575809505 at `50132da` passed
 83 tests, lint, schema consistency, packaged privacy checks and debug APK build (artifact
 `11899788396`). No before/after device measurement, actual MP4 decode, or real scrolling /
-playback evidence is available; CI does not establish that transitions are smoother. Custom
-communities remain planned. This is not first-release completion.
+playback evidence is available; CI does not establish that transitions are smoother. A further
+user-reported follow-up says slow scrolling masks a glitch that is clear on fast swipes near a
+video-height boundary, with crash risk around portrait/landscape videos at opposite viewport
+edges; these are observations, not a confirmed cause. A focused ratio/visible-fraction/player
+handoff correction and debug diagnostics now cover that path without changing preload bounds or
+duration. CI run 38586848533 at `ce78b37` passed 87 tests, lint, schema/privacy checks and debug
+APK build (artifact `11905094822`). No device fling, MP4 decode, crash log or root cause is
+verified. Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

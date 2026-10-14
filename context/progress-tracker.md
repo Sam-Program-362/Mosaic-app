@@ -26,11 +26,15 @@ acceptance for the new theme/feed/navigation UI remains pending. User-reported P
 and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
 removal are not yet confirmed on-device. The user now reports smooth photos but sticky video
 loading/advance and a paused placeholder for inactive videos. This is user-reported device
-evidence, not an agent-run test. This is not a complete first release.
+evidence, not an agent-run test. This is not a complete first release. The subsequent focused portrait/landscape fast-scroll
+follow-up passed CI run 38586848533 at `ce78b37` (87 tests, lint, schema/privacy checks and
+debug APK); hardware-fling and crash evidence remain unavailable.
 
-## Video transition correctness/performance correction — implemented, verification pending
-- Home viewport anchoring now selects the largest overlap across all media; playback is
-  separately restricted to the dominant animated anchor with a 50% visibility threshold.
+## Video transition correctness/performance correction — CI verified, device pending
+- Home viewport anchoring uses the largest overlap across all media. Playback requires an
+  animated anchor, then selects the most-visible animation meeting the 50% visible-fraction
+  threshold; a tall sub-threshold animated edge cannot mask an eligible video. Photo anchors
+  still suppress playback.
 - The mixed window is current plus nearest photo and nearest video on each side within
   three feed positions (at most five). Feed/viewer requests and Media3 ranking use true
   positions in the current ordered snapshot; image/frame requests remain independent.
@@ -89,7 +93,7 @@ evidence, not an agent-run test. This is not a complete first release.
   Room schema checks; debug artifact `mosaic-debug-and-reports` is ID `11903168202`.
   This does not verify physical-device playback or resolve the reported crash.
 
-## Portrait/landscape fast-scroll and player-handoff investigation — implementation pending verification
+## Portrait/landscape fast-scroll and player-handoff investigation — CI verified, device pending
 - New user-reported observations: the glitch is subtle during slow scrolling but clear on fast
   swipes at a repeatable point relative to video height. Crash risk has been observed around
   portrait/landscape videos at opposing viewport edges, and one fast pass can be sufficient.
@@ -104,9 +108,14 @@ evidence, not an agent-run test. This is not a complete first release.
   playback; the preload window and one-second target are unchanged. Regression tests cover
   ratio-derived portrait/landscape heights, each orientation at top and bottom, forward/reverse
   fast-scroll geometry, the threshold gap, and managed-source handoff until old-player release.
-- This test models visibility/selection and Media3 manager ownership, not a hardware fling or MP4
-  decode. CI verification is pending. No device run/log exists; overlay/frame diagnosis and crash
-  investigation remain separate, and no crash cause/resolution is claimed.
+- This models visibility/selection and Media3 manager ownership, not a hardware fling or MP4
+  decode. Local `./gradlew testDebugUnitTest` stopped before Gradle because `JAVA_HOME` is unset
+  and no `java` executable exists. Pushed code commit `ce78b37`; CI run
+  [38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533) passed
+  87 tests (0 failures/errors/skips), lint, `assembleDebug`, packaged privacy and Room schema
+  checks. Debug artifact `mosaic-debug-and-reports` is ID `11905094822`. No device run/log exists;
+  overlay/frame diagnosis and crash investigation remain separate, and no crash cause/resolution
+  is claimed.
 
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,

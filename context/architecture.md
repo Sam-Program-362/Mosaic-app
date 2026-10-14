@@ -183,6 +183,32 @@ at `a9703cb` passed 84 tests, lint, schema consistency, packaged privacy and deb
 available; crash resolution is not claimed. Exact logcat, PID/stall discrimination, and
 bugreport steps are in `docs/phase-5-device-check.md`.
 
+## Targeted portrait/landscape fast-scroll handoff follow-up — CI verified, device pending
+The user reports that slow smooth scrolling makes the glitch subtle, while fast swipes expose
+it near a repeatable point relative to video height. The difficult crash has been observed
+around portrait/landscape videos near opposing viewport edges, and a single fast pass can
+sometimes suffice. These remain user observations; no crash logs or cause are available.
+
+The Home feed height formula is shared with a pure helper. Debug `preview geometry` records
+capture source (thumbnail/player size), old/new aspect ratio and resulting height. `feed selection`
+logs include viewport, anchor and selected active item (position/kind/hashed key), visible
+overlap, preview height and relative top. Fractions are sampled in 10% buckets rather than
+per frame. Player allocation/activation/state/first-frame/release records include paired tokens,
+hashed identity, current player state, failure and first-frame status. No private URI/path is
+logged.
+
+A tall animated anchor below 50% visibility no longer masks another eligible visible animation;
+a photo anchor still suppresses playback. The existing preload window and one-second target
+are unchanged. Tests cover 9:16 and 16:9 feed heights, each size near both viewport edges,
+forward/reverse fast-scroll selection, a both-below-threshold gap, and manager-source protection
+through a portrait-to-landscape handoff. CI run
+[38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533) at
+`ce78b37` passed 87 tests, lint, schema consistency, packaged privacy and debug APK build
+(artifact `11905094822`). This is pure geometry/manager verification, not a device fling or
+MP4 decode. No physical-device sequence or crash evidence is available; no crash cause or
+resolution is claimed. Exact targeted sweep and capture instructions are in
+`docs/phase-5-device-check.md`.
+
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy
 metadata; custom-community membership remains for a later slice. Media bytes remain

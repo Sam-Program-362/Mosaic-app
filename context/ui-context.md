@@ -110,6 +110,25 @@ specified on-device sequence has been repeated with full logcat evidence. CI run
 `a9703cb` passed 84 tests, lint, schema/privacy checks, and debug APK build (artifact
 `11903168202`). This verifies source/build only, not device playback or crash behavior.
 
+## Fast-scroll aspect-ratio and player-handoff follow-up — CI verified, device pending
+The user reports the glitch is hard to see with slow smooth scrolling but consistent at a
+particular video-height point under fast swipes. A difficult crash has been seen when portrait
+and landscape videos occupy opposing viewport edges; a single fast swipe may be enough. No
+crash logs were supplied, so these do not identify a cause or establish resource pressure.
+
+The source logs ratio-driven height changes and viewport selection separately. Selection logs
+capture visible fraction/overlap, item height and top edge, plus distinct anchor and active IDs;
+player logs include create/release tokens, playback state and first-frame status. To prevent a
+tall sub-threshold animated edge from masking a fully eligible video, when the all-media anchor
+is animated the feed selects the most-visible animation meeting the 50% threshold. A photo
+anchor continues to suppress playback. Preload bounds and duration are unchanged. Tests cover
+portrait/landscape height, both viewport edges, forward/reverse transitions, the threshold gap
+and managed-source handoff; they are not device flings or MP4 decoding. CI run
+[38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533) at
+`ce78b37` passed 87 tests, lint, schema/privacy checks and debug APK build (artifact
+`11905094822`). Device reproduction and crash evidence remain pending; no crash cause or
+resolution is claimed. See `docs/phase-5-device-check.md` for the targeted sequence.
+
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
 specification: charcoal surfaces, warm orange actions, clear Home/Saved/community
