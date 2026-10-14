@@ -67,8 +67,8 @@ jobs:
           mkdir -p diagnostic-apks
           cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-enabled.apk
           grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = true' app/build/generated/source/buildConfig
-          if ./gradlew assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee video-preload-disabled-build.log; then
-            echo "Video-preloading-disabled debug APK build passed"
+          if ./gradlew testDebugUnitTest assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee video-preload-disabled-build.log; then
+            echo "Video-preloading-disabled unit tests and debug APK build passed"
           else
             python3 - <<'PYERROR'
           from pathlib import Path
@@ -112,7 +112,7 @@ jobs:
           assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0, totals
           print(f"::notice title=Verification summary::{totals['tests']} tests; "
                 f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
-                "Lint and both video-preloading debug APK builds passed.")
+                "Lint and enabled/disabled unit tests and debug APK builds passed.")
           tracked_paths = set(subprocess.check_output(['git', 'ls-files', 'app/schemas'], text=True).splitlines())
           pending_schemas = []
           for path in Path('app/schemas').rglob('*.json'):
