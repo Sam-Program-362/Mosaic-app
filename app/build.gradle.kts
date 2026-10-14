@@ -5,6 +5,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Diagnostic-only A/B switch; normal builds retain video preloading unless explicitly disabled.
+val videoPreloadingEnabled = providers.gradleProperty("mosaicVideoPreloading").orNull?.let { value ->
+    value.toBooleanStrictOrNull()
+        ?: error("-PmosaicVideoPreloading must be either true or false (received '$value').")
+} ?: true
+
 android {
     namespace = "dev.mosaic.app"
     compileSdk = 35
@@ -15,6 +21,7 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "0.2.0"
+        buildConfigField("boolean", "VIDEO_PRELOADING_ENABLED", videoPreloadingEnabled.toString())
     }
 
     buildTypes {
@@ -35,6 +42,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -52,6 +52,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
+import dev.mosaic.app.BuildConfig
 import dev.mosaic.app.core.model.MediaKey
 
 internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
@@ -116,6 +117,15 @@ fun MediaViewer(
 
     HideSystemBars()
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val videoPreloadingEnabled = BuildConfig.VIDEO_PRELOADING_ENABLED
+    val diagnosticContext = LocalContext.current.applicationContext
+    val videoPreloader = if (videoPreloadingEnabled) rememberVideoPreloadSession() else null
+    LaunchedEffect(videoPreloadingEnabled) {
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "video preload configuration enabled=$videoPreloadingEnabled viewer=true visibleVideoPosters=retained",
+        )
+    }
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
     }
@@ -123,7 +133,6 @@ fun MediaViewer(
     val preloadWindow = remember(snapshot.posts, preloadCenterPage) {
         nearbyMediaWindow(snapshot.posts, preloadCenterPage)
     }
-    val videoPreloader = rememberVideoPreloadSession()
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
     val retainedKeys = remember(preloadWindow, pagerState.currentPage, snapshot.posts) {
         (preloadWindow.map { it.post.media.key } + listOfNotNull(snapshot.posts.getOrNull(pagerState.currentPage)?.media?.key)).toSet()
@@ -139,6 +148,7 @@ fun MediaViewer(
         anchorPosition = pagerState.currentPage,
         imageLoader = imageLoader,
         videoSession = videoPreloader,
+        videoPreloadingEnabled = videoPreloadingEnabled,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
     )
     Box(modifier.fillMaxSize().background(Color.Black)) {

@@ -93,6 +93,73 @@ passed 87 tests, lint, Room schema, packaged privacy and debug APK build. These 
 the pure visibility/selection and Media3 manager rules, not a hardware fling or MP4 decode.
 No device timing or playback evidence is available in this workspace.
 
+## Controlled fast-scroll A/B: video preloading on vs off
+
+The current verification workflow builds two debug APKs with the same package, signing key,
+feed code and diagnostics:
+
+- `mosaic-debug-video-preload-enabled.apk` — default behavior.
+- `mosaic-debug-video-preload-disabled.apk` — disables the Media3 nearby-video preloader
+  and nearby Coil video-frame prefetch. The currently displayed inactive-video poster and
+  active-video playback preparation remain enabled; static-photo prefetch is unchanged.
+
+For a local build, `./gradlew assembleDebug` is the enabled default; pass
+`-PmosaicVideoPreloading=false` to create the disabled variant. The Gradle property rejects
+values other than `true` or `false`.
+
+Install them sequentially with an in-place update (do not clear app data or uninstall), and
+run the **same device, source folders, feed order, start position and gesture sequence** in
+each. For repeatable ordering choose **Sort: Newest** in both builds, note the starting feed
+positions, and keep the device/network-independent conditions alike. Compare these two feeds
+separately:
+
+1. **2D Images** (photo-only): perform the same slow baseline and fast swipe sequence with
+   preloading on and off. Since there are no videos, any mode difference is not evidence of
+   Media3 video preloading unless the logs show a video candidate was present.
+2. **Anime Vid** (mixed feed): use the same start item and repeat the same forward and reverse
+   fast swipes in each mode. Test portrait/landscape cards near the top and bottom of the
+   viewport, but do not change the preload window or player buffer between runs.
+
+Capture a separate log for each pass, retaining the `video preload configuration` line:
+
+```sh
+adb logcat -c
+# Perform one pass, then save its events before switching APK/feed:
+adb logcat -d -v threadtime -s MosaicMedia:D > photo-enabled.txt
+```
+
+Repeat with unique filenames for photo-disabled, mixed-enabled, and mixed-disabled. If using a
+live terminal instead, start `adb logcat -v threadtime -s MosaicMedia:D` before the swipe and
+stop it immediately after each pass. Record device model, Android version, display refresh rate,
+feed order, first visible position, and whether the gesture was finger-driven or a fling.
+
+The debug diagnostics are scoped and emit no per-frame log lines:
+
+- `feed layout event=scroll-start/scroll-settled` records the first visible row key/index,
+  `scrollOffset`, all currently visible row positions/sizes and visible-media positions.
+- `feed item-size-change` and `feed measured-media-size-change` record old/new measured pixel
+  dimensions and whether a scroll/fling was in progress. `preview geometry` identifies the
+  ratio callback source (`image`, `video-thumbnail`, `player-video-size`) and the resulting dp
+  height. An `idle-position-change` is logged only when the list is not scrolling before or
+  after the change; ordinary finger/fling movement is summarized as start/settle instead.
+- One `feed scroll timing` summary per scroll burst reports frame count, average/maximum frame
+  interval, intervals over the measured refresh budget, and approximate UI-thread CPU average/
+  maximum (`Debug.threadCpuTimeNanos` between Compose frame callbacks). Both APKs include the
+  same sampler; it has a small diagnostic cost, so compare relative values and do not treat the
+  result as a production benchmark.
+- `player state`, `first-frame`, `failed`, and `overlayLoading` remain separate evidence for
+  “Loading video...” behavior. A long buffering interval or delayed first frame is a player
+  readiness issue, not by itself proof of a feed layout jump.
+
+For each feed, report whether photos feel smoother with video preloading off, whether a shift
+remains in each mode, and the matching layout/size/timing records. Do not infer a preload cause
+from feel alone. If the photo-only results are essentially unchanged while the mixed feed
+improves, that points toward video-preload work as a contributor only to the mixed case. If the
+photo-only feed remains uneven in both modes, compare its `feed measured-media-size-change`,
+`feed item-size-change`, and idle-position records separately from video readiness. Because
+static-photo prefetch is intentionally identical in both APKs, this A/B alone cannot decide
+whether image prefetch contributes; do not change it in this pass.
+
 ## Repeated-scroll crash capture — required before assigning a cause
 
 The source currently has debug-only resource events for unreleased player instances,

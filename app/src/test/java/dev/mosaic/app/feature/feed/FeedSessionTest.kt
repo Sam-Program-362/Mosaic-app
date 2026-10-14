@@ -240,6 +240,27 @@ class FeedSessionTest {
         assertTrue(nearbyMediaWindow(emptyList(), 0).isEmpty())
         assertTrue(nearbyMediaWindow(posts, posts.lastIndex).size <= 5)
     }
+
+    @Test fun disabledVideoPreloadingLeavesStaticImagePrefetchUntouched() {
+        val candidates = listOf(
+            NearbyMediaCandidate(post("anchor-photo", MediaKind.Image), 0, 0),
+            NearbyMediaCandidate(post("near-video", MediaKind.Video), 1, 1),
+            NearbyMediaCandidate(post("near-photo", MediaKind.Image), 2, 1),
+            NearbyMediaCandidate(post("far-video", MediaKind.Video), 3, 1),
+        )
+
+        assertTrue(videoPreloadRequests(candidates, videoPreloadingEnabled = false).isEmpty())
+        assertEquals(listOf(1, 3),
+            videoPreloadRequests(candidates, videoPreloadingEnabled = true).map { it.feedPosition })
+
+        assertEquals(listOf("near-photo"), imagePrefetchCandidates(
+            candidates, anchorPosition = 0, videoPreloadingEnabled = false,
+        ).map { it.post.media.document.documentId })
+        assertEquals(listOf("near-video", "near-photo", "far-video"), imagePrefetchCandidates(
+            candidates, anchorPosition = 0, videoPreloadingEnabled = true,
+        ).map { it.post.media.document.documentId })
+    }
+
     @Test fun videoTimeAndRelativeSeekAreFormattedAndClamped() {
         assertEquals("0:00", formatVideoTime(-1))
         assertEquals("0:13", formatVideoTime(13_000))

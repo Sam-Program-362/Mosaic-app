@@ -15,11 +15,13 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.geometry.Rect
 import kotlin.math.roundToInt
@@ -27,6 +29,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -35,6 +38,7 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.decode.BitmapFactoryDecoder
 import coil3.request.ImageRequest
+import dev.mosaic.app.BuildConfig
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaKey
@@ -70,6 +74,8 @@ fun FeedScreen(
         visibleState.toSnapshot()
     }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val videoPreloadingEnabled = BuildConfig.VIDEO_PRELOADING_ENABLED
+    val videoPreloader = if (videoPreloadingEnabled) rememberVideoPreloadSession() else null
     val animatedKeys = remember(visiblePosts) {
         visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
     }
@@ -77,6 +83,7 @@ fun FeedScreen(
         visiblePosts.mapIndexed { index, post -> post.media.key.stableKey to index }.toMap()
     }
     val previewBounds = remember { mutableStateMapOf<String, Rect>() }
+    val previousCardSizes = remember { mutableMapOf<String, IntSize>() }
     var viewport by remember { mutableStateOf(Rect.Zero) }
     val visibleMedia by remember(feedIndexByKey, previewBounds) {
         derivedStateOf {
@@ -106,9 +113,24 @@ fun FeedScreen(
     val anchorVisibleFraction = viewportAnchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
     val activeVisibleMedia = activeKey?.let { key -> visibleMedia.firstOrNull { it.key == key } }
     val activeVisibleFraction = activeVisibleMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
+    FeedScrollDiagnostics(
+        listState = listState,
+        visibleMedia = visibleMedia,
+        viewportStart = viewportStart,
+        viewportEnd = viewportEnd,
+        videoPreloadingEnabled = videoPreloadingEnabled,
+        context = diagnosticContext,
+        refreshRateHz = LocalView.current.display?.refreshRate ?: 60f,
+    )
     val anchorFractionBucket = (anchorVisibleFraction * 10f).roundToInt()
     val activeFractionBucket = (activeVisibleFraction * 10f).roundToInt()
     val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
+    LaunchedEffect(videoPreloadingEnabled) {
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "video preload configuration enabled=$videoPreloadingEnabled visibleVideoPosters=retained",
+        )
+    }
     LaunchedEffect(
         viewportAnchor?.key,
         centerIndex,
@@ -137,7 +159,7 @@ fun FeedScreen(
         }.ifBlank { "none" }
         MediaDiagnostics.log(
             diagnosticContext,
-            "feed selection viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
+            "feed selection videoPreloading=$videoPreloadingEnabled viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
                 "anchorPos=$centerIndex anchorKind=${anchorKind ?: "none"} " +
                 "anchorId=${viewportAnchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "anchorVisible=${(anchorVisibleFraction * 100f).roundToInt()}% " +
@@ -148,7 +170,6 @@ fun FeedScreen(
         )
     }
     var sorting by remember { mutableStateOf(false) }
-    val videoPreloader = rememberVideoPreloadSession()
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
     LaunchedEffect(preloadWindow) {
         retainedCallback(preloadWindow.map { it.post.media.key }.toSet())
@@ -161,6 +182,7 @@ fun FeedScreen(
         anchorPosition = centerIndex.takeIf { it >= 0 },
         imageLoader = imageLoader,
         videoSession = videoPreloader,
+        videoPreloadingEnabled = videoPreloadingEnabled,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
     )
     // Intentional session changes scroll to the start; theme/menu changes do not.
@@ -225,10 +247,57 @@ fun FeedScreen(
         }
         itemsIndexed(visiblePosts, key = { _, post -> post.media.key.stableKey }) { index, post ->
             val key = post.media.key.stableKey
-            DisposableEffect(key) { onDispose { previewBounds.remove(key) } }
+            DisposableEffect(key) {
+                onDispose {
+                    previewBounds.remove(key)
+                    previousCardSizes.remove(key)
+                }
+            }
             MediaPostCard(post, imageLoader,
                 feedPosition = index,
-                onPreviewBounds = { bounds -> if (previewBounds[key] != bounds) previewBounds[key] = bounds },
+                onCardSizeChanged = { size ->
+                    val before = previousCardSizes.put(key, size)
+                    if (before != null && before != size) {
+                        logFeedItemSizeChange(
+                            context = diagnosticContext,
+                            listState = listState,
+                            feedPosition = index,
+                            mediaKey = key,
+                            mediaKind = post.media.document.kind.name.lowercase(),
+                            beforeWidth = before.width,
+                            beforeHeight = before.height,
+                            afterWidth = size.width,
+                            afterHeight = size.height,
+                            visibleMedia = visibleMedia,
+                            viewportStart = viewportStart,
+                            viewportEnd = viewportEnd,
+                            videoPreloadingEnabled = videoPreloadingEnabled,
+                        )
+                    }
+                },
+                onPreviewBounds = { bounds ->
+                    val before = previewBounds[key]
+                    val beforeWidth = before?.width?.roundToInt()
+                    val beforeHeight = before?.height?.roundToInt()
+                    val afterWidth = bounds.width.roundToInt()
+                    val afterHeight = bounds.height.roundToInt()
+                    if (before != null && (beforeWidth != afterWidth || beforeHeight != afterHeight)) {
+                        val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                        val card = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
+                        MediaDiagnostics.log(
+                            diagnosticContext,
+                            "feed measured-media-size-change pos=$index kind=${post.media.document.kind.name.lowercase()} " +
+                                "id=${MediaDiagnostics.shortId(key)} scrolling=${listState.isScrollInProgress} " +
+                                "before=${beforeWidth}x${beforeHeight}px@${before.top.roundToInt()} " +
+                                "after=${afterWidth}x${afterHeight}px@${bounds.top.roundToInt()} " +
+                                "firstVisible=${listState.firstVisibleItemIndex}:" +
+                                "${firstVisible?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                                "scrollOffset=${listState.firstVisibleItemScrollOffset}px " +
+                                "card=${card?.offset ?: -1}px/${card?.size ?: -1}px",
+                        )
+                    }
+                    if (before != bounds) previewBounds[key] = bounds
+                },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
@@ -245,6 +314,7 @@ internal fun MediaPostCard(
     post: FeedPost,
     imageLoader: ImageLoader,
     active: Boolean,
+    onCardSizeChanged: (IntSize) -> Unit = {},
     onPreviewBounds: (Rect) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
@@ -260,7 +330,7 @@ internal fun MediaPostCard(
         MediaKind.Video -> "MP4 video"
     }
     val modifiedLabel = relativeMediaTime(post.media.document.modifiedAtMillis)
-    Column(Modifier.fillMaxWidth().background(colors.surface)) {
+    Column(Modifier.fillMaxWidth().background(colors.surface).onSizeChanged(onCardSizeChanged)) {
         Row(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,

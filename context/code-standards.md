@@ -94,4 +94,7 @@ coarse visibility-transition logs with hashed IDs and paired player lifecycle/st
 records, never per-frame output or local paths/URIs. The focused follow-up passed CI run
 [38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533): 87 tests,
 lint, schema/privacy checks and debug APK build. Physical fling/codec/crash verification remains
-separate.
+separate. For the new scroll-regression report, compare otherwise-identical debug APKs with
+video preloading enabled/disabled; leave photo prefetch and visible-player behavior constant.
+Log only coarse geometry transitions and per-scroll timing summaries (not per-frame lines or
+local paths), and do not assign a device cause before the same-sequence phone comparison.

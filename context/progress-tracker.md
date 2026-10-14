@@ -1,34 +1,45 @@
 # Progress tracker
 
 ## Current phase
-Phase 5 follow-up — bounded video/image preloading, player controls and warm-resume
-retention in progress. Date: 2026-10-14. A new video-transition correctness/performance
-pass now edits viewport anchoring, true-position ranking/reconciliation, active-source
-lifecycle safety, first-frame poster/error UI and debug diagnostics; focused tests have
-been added. The final source/test state passed GitHub CI run 38575809505 at `50132da`
-(83 tests, lint, schema/privacy checks and debug APK); physical-device behavior remains
-unverified. Local Gradle and physical-device tooling are unavailable. The first CI attempt
-failed compile and was corrected before the final green run. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
-APK privacy and debug build at commit 02085fb. Phase 5 CI iterations 38466413293 and
-38467526012 exposed an unattached Robolectric provider NPE; run 38467045590 caught a
-provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 tests,
-lint, schema consistency, APK privacy and debug build. Follow-up run 38469093930 also
-passed those checks; its exact generated Room v2 schema was decoded from four CI
-annotation chunks (6,024 bytes, identity hash `9c5465636830273745be40f054484124`).
-Schema and viewer expand/fade work were committed and pushed. Two early CI runs
-(38509513570, 38510281049) exposed an unreliable entrance assertion in the new UI test;
-the final test isolates reverse-close retention. Green CI run 38511038772 at 1c4cd8d
-passed 60 tests (0 failures/errors/skips), lint, schema consistency, packaged APK
-privacy checks and debug build. The viewer motion is CI-verified, but phone acceptance
-remains pending. The Drive-reference UI follow-up passed CI run 38543107645 at `b667dcc`:
-67 tests, lint, schema consistency, packaged privacy and debug APK all passed. Phone
-acceptance for the new theme/feed/navigation UI remains pending. User-reported Phase 3 evidence confirms Home photos, folder isolation
-and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
-removal are not yet confirmed on-device. The user now reports smooth photos but sticky video
-loading/advance and a paused placeholder for inactive videos. This is user-reported device
-evidence, not an agent-run test. This is not a complete first release. The subsequent focused portrait/landscape fast-scroll
-follow-up passed CI run 38586848533 at `ce78b37` (87 tests, lint, schema/privacy checks and
-debug APK); hardware-fling and crash evidence remain unavailable.
+Phase 5 follow-up — investigate a newly reported feed-scroll regression with a controlled
+video-preloading A/B, feed geometry instrumentation and debug scroll timing. Diagnostic source
+and workflow changes are in progress; CI and physical-device comparison are pending. The
+current checkout has no attached 75-second recording, no `adb`/device, and no Java runtime for
+local Gradle builds. Do not claim on/off results or a cause until matching phone logs exist.
+
+The prior video-transition correctness/performance pass passed GitHub CI run 38575809505 at
+`50132da` (83 tests, lint, schema/privacy checks and debug APK); physical-device behavior
+remained unverified. The latest portrait/landscape fast-scroll follow-up passed CI run
+38586848533 at `ce78b37` (87 tests, lint, schema/privacy checks and debug APK); hardware-fling
+and crash evidence remain unavailable. Earlier phase/test/build history is retained below.
+
+## New fast-scroll regression report — A/B instrumentation in progress
+- User reports reduced smoothness and unexpected shifts in the photo-only “2D Images” feed,
+  plus multiple “Loading video...” overlays while scrolling “Anime Vid.” No exact offset or
+  device logs were supplied; the mentioned 75-second recording is absent from the workspace.
+- Source-history comparison: `7a51b28` is the nearest pre-neighbor-preloading feed checkpoint,
+  but no source revision is independently confirmed as “last known smooth.” In that checkpoint
+  `FeedScreen` only stored preview bounds for animated media. `3c6e694` began storing bounds
+  for all media and introduced nearby Coil image/video-frame prefetch; later `3769266` uses
+  all-media viewport geometry for anchor/preload selection. This is a concrete source change and a
+  plausible photo-feed invalidation cost, not proof of device jank. `3769266` also changed the
+  preloader's foreground gate from `playbackEnabled && !sorting && RESUMED` to lifecycle-only;
+  the hidden feed can therefore keep preloading beneath the viewer or sorting UI, a separate
+  resource path from a normal foreground feed scroll. Ratio-driven sizing from async media
+  dimensions already existed at `7a51b28`; stable media keys and the session-reset scroll effect
+  also predate the preload changes.
+- Build property `-PmosaicVideoPreloading=false` now disables the Media3 neighboring-video
+  preloader and Coil prefetch of nearby video frames while leaving active-video playback,
+  currently displayed inactive-video posters, photo prefetch, feed layout/selection and other
+  behavior intact. The normal build defaults to enabled. Unit coverage checks the selection
+  policy in both modes; both debug APKs will be built/retained in CI.
+- Debug-only feed instrumentation records scroll start/settle and idle position transitions,
+  visible row keys/offsets/sizes, preview/card dimension changes, ratio-callback sources, and
+  one frame-interval/UI-thread-CPU summary per scroll burst. No per-frame logging is added.
+  Player readiness/first-frame events remain separate from layout records.
+- `docs/phase-5-device-check.md` contains a repeatable same-order A/B protocol for the
+  photo-only and mixed feeds. No test/build/device result exists yet for this report. Do not
+  implement a layout/preloader fix before comparing enabled and disabled device traces.
 
 ## Video transition correctness/performance correction — CI verified, device pending
 - Home viewport anchoring uses the largest overlap across all media. Playback requires an

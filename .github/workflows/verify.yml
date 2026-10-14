@@ -46,7 +46,7 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: mosaic-debug-signing-${{ github.ref_name }}-v1
-      - name: Unit tests, lint, and debug APK
+      - name: Unit tests, lint, and preload-enabled debug APK
         shell: bash
         run: |
           if ./gradlew testDebugUnitTest lint assembleDebug --stacktrace 2>&1 | tee verification.log; then
@@ -60,19 +60,42 @@ jobs:
           PYERROR
             exit 1
           fi
+      - name: Build paired video-preloading diagnostic APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p diagnostic-apks
+          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-enabled.apk
+          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = true' app/build/generated/source/buildConfig
+          if ./gradlew assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee video-preload-disabled-build.log; then
+            echo "Video-preloading-disabled debug APK build passed"
+          else
+            python3 - <<'PYERROR'
+          from pathlib import Path
+          message = Path('video-preload-disabled-build.log').read_text()[-50000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Video-preloading-disabled APK::{message}')
+          PYERROR
+            exit 1
+          fi
+          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = false' app/build/generated/source/buildConfig
+          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-disabled.apk
+          sha256sum diagnostic-apks/*.apk > diagnostic-apks/SHA256SUMS.txt
       - name: Check packaged privacy permissions
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > apk-permissions.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions diagnostic-apks/mosaic-debug-video-preload-enabled.apk > apk-permissions-enabled.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions diagnostic-apks/mosaic-debug-video-preload-disabled.apk > apk-permissions-disabled.txt
           python3 - <<'PYPERMISSIONS'
           from pathlib import Path
           import re
-          text = Path('apk-permissions.txt').read_text()
-          permissions = re.findall(r"uses-permission: name='([^']+)'", text)
           forbidden = {'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
                        'android.permission.MANAGE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE',
                        'android.permission.WRITE_EXTERNAL_STORAGE'}
-          assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
-          print('::notice title=APK privacy::Packaged APK has no network or broad storage/media permissions.')
+          for path in (Path('apk-permissions-enabled.txt'), Path('apk-permissions-disabled.txt')):
+              text = path.read_text()
+              permissions = re.findall(r"uses-permission: name='([^']+)'", text)
+              assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
+          print('::notice title=APK privacy::Both diagnostic APKs have no network or broad storage/media permissions.')
           PYPERMISSIONS
       - name: Report tests and check generated schema
         run: |
@@ -89,7 +112,7 @@ jobs:
           assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0, totals
           print(f"::notice title=Verification summary::{totals['tests']} tests; "
                 f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
-                "Lint and debug APK build passed.")
+                "Lint and both video-preloading debug APK builds passed.")
           tracked_paths = set(subprocess.check_output(['git', 'ls-files', 'app/schemas'], text=True).splitlines())
           pending_schemas = []
           for path in Path('app/schemas').rglob('*.json'):
@@ -113,9 +136,13 @@ jobs:
           name: mosaic-debug-and-reports
           path: |
             app/build/outputs/apk/debug/*.apk
+            diagnostic-apks/*.apk
+            diagnostic-apks/SHA256SUMS.txt
             app/build/reports/
             app/schemas/
             verification.log
+            video-preload-disabled-build.log
             sdk-setup.log
-            apk-permissions.txt
+            apk-permissions-enabled.txt
+            apk-permissions-disabled.txt
           if-no-files-found: warn

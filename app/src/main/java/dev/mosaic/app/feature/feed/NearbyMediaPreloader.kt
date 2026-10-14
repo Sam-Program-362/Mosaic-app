@@ -27,36 +27,53 @@ internal fun rememberVideoPreloadSession(): VideoPreloadSession {
     return session
 }
 
-/** Prefetches only the bounded feed window: Coil images/frames and Media3 video samples. */
+internal fun videoPreloadRequests(
+    candidates: List<NearbyMediaCandidate>,
+    videoPreloadingEnabled: Boolean,
+): List<VideoPreloadRequest> = if (!videoPreloadingEnabled) {
+    emptyList()
+} else {
+    candidates.asSequence()
+        .filter { it.post.media.document.kind == MediaKind.Video }
+        .map { candidate ->
+            VideoPreloadRequest(
+                key = candidate.post.media.key.stableKey,
+                uri = candidate.post.media.document.contentUri,
+                feedPosition = candidate.feedIndex,
+            )
+        }
+        .toList()
+}
+
+internal fun imagePrefetchCandidates(
+    candidates: List<NearbyMediaCandidate>,
+    anchorPosition: Int?,
+    videoPreloadingEnabled: Boolean,
+): List<NearbyMediaCandidate> = candidates.filter { candidate ->
+    candidate.feedIndex != anchorPosition && when (candidate.post.media.document.kind) {
+        MediaKind.Image -> true
+        MediaKind.Video -> videoPreloadingEnabled
+        MediaKind.Gif -> false
+    }
+}
+
+/** Prefetches the bounded image window and, when selected at build time, nearby video media. */
 @Composable
 internal fun NearbyMediaPreloader(
     candidates: List<NearbyMediaCandidate>,
     anchorPosition: Int?,
     imageLoader: ImageLoader,
-    videoSession: VideoPreloadSession,
+    videoSession: VideoPreloadSession?,
+    videoPreloadingEnabled: Boolean,
     enabled: Boolean,
 ) {
     val context = LocalContext.current.applicationContext
-    val videoRequests = remember(candidates) {
-        candidates.asSequence()
-            .filter { it.post.media.document.kind == MediaKind.Video }
-            .map { candidate ->
-                VideoPreloadRequest(
-                    key = candidate.post.media.key.stableKey,
-                    uri = candidate.post.media.document.contentUri,
-                    feedPosition = candidate.feedIndex,
-                )
-            }
-            .toList()
+    val videoRequests = remember(candidates, videoPreloadingEnabled) {
+        videoPreloadRequests(candidates, videoPreloadingEnabled)
     }
-    val imageRequests = remember(candidates, anchorPosition, context) {
-        candidates.asSequence()
-            // Do not decode the currently active video's poster concurrently with its player.
-            // A viewer target page is different from the currently visible page, so it remains eligible.
-            .filter { it.feedIndex != anchorPosition }
-            .filter { it.post.media.document.kind == MediaKind.Image || it.post.media.document.kind == MediaKind.Video }
+    val imageRequests = remember(candidates, anchorPosition, context, videoPreloadingEnabled) {
+        imagePrefetchCandidates(candidates, anchorPosition, videoPreloadingEnabled)
             .map { candidate -> createPrefetchRequest(context, candidate.post) }
-            .toList()
     }
 
     LaunchedEffect(candidates, anchorPosition) {
@@ -66,10 +83,14 @@ internal fun NearbyMediaPreloader(
         MediaDiagnostics.log(context, "preload window anchor=${anchorPosition ?: -1} candidates=$positions")
     }
 
-    LaunchedEffect(videoSession, videoRequests, anchorPosition, enabled) {
-        // Always reconcile removals/rank changes. When backgrounded, keep existing loads but do not
-        // invalidate the manager to start a new batch until the feed is foregrounded again.
-        videoSession.update(videoRequests, anchorPosition, startPreloading = enabled)
+    LaunchedEffect(videoSession, videoRequests, anchorPosition, enabled, videoPreloadingEnabled) {
+        // Reconcile removals/rank changes even when work is paused. The diagnostic-off build passes
+        // no session and no video requests; if a session is supplied, its desired set is still cleared.
+        videoSession?.update(
+            videoRequests,
+            anchorPosition,
+            startPreloading = enabled && videoPreloadingEnabled,
+        )
     }
     LaunchedEffect(imageLoader, imageRequests, enabled) {
         if (enabled) {

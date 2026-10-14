@@ -152,9 +152,14 @@ a `TextureView` surface keeps that Compose fallback composited over the player. 
 errors end the spinner and show an actionable local-file/format message.
 Debug-only `MosaicMedia` diagnostics log anchor/candidate positions, submission, observable
 I/O start, preload completion/error, playback handoff, buffering/ready, activation-to-frame
-latency and player errors without local paths or per-frame output. Tests cover viewport and
-mixed-window cases, position/rank updates, protected active entries, thumbnail/error state,
-manager source handoff and cache keys. The manager test uses a local-style content URI but
+latency and player errors without local paths or per-frame output. A build-time diagnostic
+property, `-PmosaicVideoPreloading=false`, bypasses the Media3 nearby-video preloader and
+nearby Coil video-frame prefetch; active playback, displayed inactive-video posters and
+static-photo prefetch are retained. The default remains enabled, and there is no runtime
+setting. Feed-only debug probes summarize visible row/media geometry and aggregate frame
+interval/UI-thread CPU values once per scroll burst. Tests cover viewport and mixed-window
+cases, position/rank updates, protected active entries, thumbnail/error state, manager source
+handoff and cache keys. The manager test uses a local-style content URI but
 does not decode/play a representative MP4. No schema, permission, network, source-media,
 copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed 83 tests,
 lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).

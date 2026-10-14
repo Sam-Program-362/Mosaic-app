@@ -129,6 +129,17 @@ and managed-source handoff; they are not device flings or MP4 decoding. CI run
 `11905094822`). Device reproduction and crash evidence remain pending; no crash cause or
 resolution is claimed. See `docs/phase-5-device-check.md` for the targeted sequence.
 
+## New reported photo-feed smoothness and video-loading concern — not yet device-measured
+The user now reports that photo-only “2D Images” scrolling feels less smooth and shifts
+unexpectedly, while “Anime Vid” can show multiple “Loading video...” overlays during a fast
+scroll. No exact offsets or recording are present in the workspace. A build-time A/B disables
+nearby video preloading while retaining static-photo prefetch and the currently displayed video
+poster/active player. Debug records capture list anchor/offset, visible row/media dimensions,
+layout-size transitions, scroll frame intervals and approximate main-thread CPU. Run the same
+photo-only and mixed-feed swipe sequence in both APKs; photo improvement, shift persistence and
+player-overlay timing remain unknown until on-device logs are reviewed. Keep layout/photo
+regression separate from player readiness and do not implement a speculative fix beforehand.
+
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
 specification: charcoal surfaces, warm orange actions, clear Home/Saved/community
