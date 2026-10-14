@@ -80,6 +80,7 @@ internal fun LocalMediaPreview(
                 document.kind == MediaKind.Video && active -> VideoPreview(
                     post = post,
                     viewer = viewer,
+                    aspectRatio = ratio,
                     imageLoader = imageLoader,
                     videoPreloader = videoPreloader,
                     feedPosition = feedPosition,
@@ -189,6 +190,7 @@ internal fun videoFrameFallback(hasRenderedFirstFrame: Boolean, failed: Boolean,
 private fun VideoPreview(
     post: FeedPost,
     viewer: Boolean,
+    aspectRatio: Float,
     imageLoader: ImageLoader,
     videoPreloader: VideoPreloadSession?,
     feedPosition: Int,
@@ -356,7 +358,7 @@ private fun VideoPreview(
                 val texture = TextureView(viewContext)
                 AspectRatioFrameLayout(viewContext).apply {
                     setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT)
-                    setAspectRatio(ratio)
+                    setAspectRatio(aspectRatio)
                     addView(
                         texture,
                         ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
@@ -367,7 +369,7 @@ private fun VideoPreview(
                 }
             },
             modifier = Modifier.fillMaxSize(),
-            update = { it.setAspectRatio(ratio) },
+            update = { it.setAspectRatio(aspectRatio) },
             onRelease = { frame ->
                 viewHolder.texture?.let(player::clearVideoTextureView)
                 if (viewHolder.frame === frame) {

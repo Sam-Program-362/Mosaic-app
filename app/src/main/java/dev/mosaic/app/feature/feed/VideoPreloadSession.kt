@@ -144,7 +144,7 @@ internal class VideoPreloadSession(context: Context) {
         val video = managed[key] ?: return null
         val preloadState = when {
             key in completedKeys -> "complete"
-            key in submittedAtMillis -> "submitted"
+            submittedAtMillis.containsKey(key) -> "submitted"
             else -> "not-submitted"
         }
         MediaDiagnostics.log(

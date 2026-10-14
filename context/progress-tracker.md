@@ -48,9 +48,12 @@ evidence, not an agent-run test. This is not a complete first release.
 - `git diff --check` passed before documentation synchronization. Local
   `./gradlew testDebugUnitTest`, `./gradlew lint` and `./gradlew assembleDebug` each
   exited before Gradle startup: `JAVA_HOME` is unset and no `java` executable exists.
-  No CI result yet. No before/after device startup measurement or playback/scroll evidence
-  is available. The next steps are source/API validation, authorized branch push/CI, then
-  device test if hardware becomes available. Do not claim the sticky transition fixed.
+  GitHub run `38574064275` on `3769266` failed Kotlin compilation: the TextureView adapter
+  needed its aspect ratio passed in, and a `ConcurrentHashMap` membership check needed an
+  explicit `containsKey`. Both source errors were corrected locally; the fix is not yet
+  pushed/reverified. No before/after device startup measurement or playback/scroll evidence
+  is available. Next steps are rerun CI, then device test if hardware becomes available.
+  Do not claim the sticky transition fixed.
 
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
