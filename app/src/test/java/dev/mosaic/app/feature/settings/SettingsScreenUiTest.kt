@@ -42,7 +42,7 @@ class SettingsScreenUiTest {
         compose.onNodeWithText("No accounts, servers, uploads, or network requests for browsing, saving, or viewing. Only the folders you select are indexed.")
             .assertExists()
         compose.onNodeWithText("Dark").assertIsSelected()
-        compose.onNodeWithText("Light").performClick().assertIsSelected()
+        compose.onNodeWithText("Light").performClick()
         compose.runOnIdle { assertEquals(ThemeMode.Light, selectedTheme) }
     }
 }

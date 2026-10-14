@@ -34,8 +34,11 @@ the Unix epoch, correctly taking the helper's invalid-date path. The test's fixe
 was moved forward. Run 38524387833 compiled main/tests and ran 67 tests, but the new
 Settings UI test still failed at its first library-stat assertion. The stat component now
 exposes an accessible `Label: count` description, and the test targets that description
-instead of visible label text. Another CI run is pending. No passing full test/lint/APK/
-privacy check or phone result exists for this slice yet. `git diff --check`
+instead of visible label text. Run 38542503093 passed those stat assertions but failed
+at the post-click selection assertion: the test records the selection callback without
+updating the screen's immutable `theme` input, so the Light row correctly remains
+unselected in that test setup. The test now checks the callback only; a fresh CI run is
+pending. No passing full test/lint/APK/privacy check or phone result exists for this slice yet. `git diff --check`
 passes. Local Gradle is blocked because this sandbox has no Java. Continue using the
 authorized GitHub workflow only on `arena/b0f3e3cf-mosaic-app`; this remains unverified
 source, not a passing release.

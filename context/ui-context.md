@@ -51,9 +51,12 @@ one relative-time test used a past timestamp before the Unix epoch; the fixed te
 was moved forward. Run 38524387833 ran 67 tests but the Settings test's first library-
 stat matcher expected a standalone exact label. Library-stat surfaces now expose an
 accessible `Label: count` description, and the test asserts that description. A clean
-rerun is pending. No passing full tests/lint/APK or physical-device result exists for this
-follow-up; do not treat it as verified until CI succeeds. Physical-device behavior is separate
-acceptance.
+rerun exposed a second Settings assertion issue: after clicking Light, the test expected
+selection to update even though its callback does not update the immutable theme input.
+Run 38542503093 passed the library-stat assertions and failed at that post-click check;
+the test now checks the callback only. Another CI run is pending. No passing full tests/
+lint/APK or physical-device result exists for this follow-up; do not treat it as verified
+until CI succeeds. Physical-device behavior is separate acceptance.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
