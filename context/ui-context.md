@@ -20,8 +20,9 @@ GIF/video while RESUMED; Android Back and accessible toolbar Back close the view
 feed stays composed beneath it with playback and accessibility semantics disabled,
 preserving the original scroll position. Viewer hides system bars and restores their
 prior visibility on exit. Phase 5 Save-copy source passed CI run 38469093930 before
-these new viewer-motion edits; the current animation changes still need CI and device
-verification.
+these new viewer-motion edits. CI run 38509513570 compiled the animation code but the
+new UI test failed its early content assertion; a timing adjustment is pending rerun,
+and phone verification remains open.
 Drawer/container roles use semantic neutral colors (fixing purple defaults in the
 user's initial screenshot). Settings persists Light/Dark. Folder management retains
 picker/retry/reselection and now has a confirmed **Remove from Mosaic** action. This
@@ -46,8 +47,9 @@ viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests
 lint, schema and APK privacy checks. Phase 5 CI run 38469093930 passed 59 tests, lint,
 tracked-schema consistency, packaged privacy and debug APK build. The exact generated
 Room v2 schema was recovered from four CI annotation chunks (6,024 bytes; hash
-`9c5465636830273745be40f054484124`) and is being added to source. The current viewer
-motion edit is unverified. No pixel-match, physical paging, provider permission-release,
+`9c5465636830273745be40f054484124`) and committed to source. CI run 38509513570 compiled
+the viewer motion but failed its new UI test's early content assertion; the timing
+adjustment awaits rerun. No pixel-match, physical paging, provider permission-release,
 hardware-codec or Phase 5 device-acceptance claim.
 
 ## Remaining UI scope and Phase 5 verification

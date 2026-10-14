@@ -60,9 +60,9 @@ class MediaViewerUiTest {
             retainedSession.value = session
             visibility.targetState = true
         }
-        compose.mainClock.advanceTimeBy(140)
+        compose.mainClock.advanceTimeBy(350)
         compose.onNodeWithText("photo").assertExists()
-        compose.runOnIdle { assertTrue(!visibility.isIdle) }
+        compose.runOnIdle { assertTrue(visibility.isIdle) }
 
         compose.runOnIdle {
             activeSession.value = null

@@ -9,9 +9,11 @@ provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 te
 lint, schema consistency, APK privacy and debug build. Follow-up run 38469093930 also
 passed those checks; its exact generated Room v2 schema was decoded from four CI
 annotation chunks (6,024 bytes, identity hash `9c5465636830273745be40f054484124`).
-Schema is now in the working tree for commit. Latest changes add a Phase 4 viewer
-expand/fade and reverse transition, with a UI test; those edits are uncommitted and
-unverified. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
+Schema and viewer expand/fade work were committed as d267f16 and pushed to the
+session branch. CI run 38509513570 compiled main/test Kotlin, then failed the new
+animation UI test's early media-content assertion; later privacy/schema checks did not
+run. The test now waits for the open transition to settle before checking close
+retention and needs a rerun. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
 confirms Home photos, folder isolation and video playback; GIF, mute, offscreen/background
 playback, viewer motion/paging and removal are not yet confirmed on-device. This is not
 a complete first release.
@@ -121,14 +123,15 @@ Phase 4 CI iterations:
   folder/media tables. Earlier CI found provider setup/import issues; they were fixed.
 - CI run 38469093930 at commit 53314ef passed 59 tests, lint, tracked-schema
   consistency, packaged APK privacy and debug APK build. KSP's exact generated v2 schema
-  was recovered from 4 chunked workflow annotations and saved at
+  was recovered from 4 chunked workflow annotations and committed at
   `app/schemas/dev.mosaic.app.data.local.LibraryDatabase/2.json` (6,024 bytes,
-  identity hash `9c5465636830273745be40f054484124`). Schema and current viewer motion work
-  are uncommitted pending one final verification run.
+  identity hash `9c5465636830273745be40f054484124`).
 - New Phase 4 visual follow-up adds reversible grow/fade motion for opening/closing the
-  full-screen viewer and a UI transition test. It follows the user-supplied dark/orange
-  frontend reference without copying web-only functions. These latest edits have not
-  been tested. Phase 4/5 device acceptance remains pending.
+  full-screen viewer and a UI transition test, following the user-supplied dark/orange
+  reference without copying web-only functions. Commit d267f16's CI run 38509513570
+  compiled sources but failed the new UI test's early content assertion. Its latest test
+  adjustment waits for the open transition to complete before checking exit retention;
+  it is not yet rerun. Phase 4/5 device acceptance remains pending.
 
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/

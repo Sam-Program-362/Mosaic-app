@@ -35,7 +35,8 @@ media, and videos play. This does not verify GIFs, mute/audio focus, offscreen o
 background stop behavior, or every storage edge case. Phase 4 CI is not phone
 acceptance: actual vertical swiping/back/scroll restoration and confirmed removal
 still need device feedback. Phase 5 CI run 38469093930 passed migration/copy/UI tests,
-lint, packaged privacy and debug APK build; the exact generated v2 schema has been
-captured and is awaiting commit with the current work. New viewer-motion changes still
-need CI. Keep custom communities and other future features explicit; a visible label
-alone is not proof of implementation.
+lint, packaged privacy and debug APK build; the exact generated v2 schema is committed
+with d267f16. That commit's CI run 38509513570 compiled the viewer-motion changes but
+failed the new animation test's early content assertion. A timing adjustment is pending
+rerun; do not claim motion verified yet. Keep custom communities and other future features
+explicit; a visible label alone is not proof of implementation.
