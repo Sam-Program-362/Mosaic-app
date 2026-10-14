@@ -64,7 +64,7 @@ class FeedSessionTest {
     }
 
     @Test fun relativeMediaTimeUsesCompactBucketsAndTreatsMissingOrFutureDatesSafely() {
-        val now = 10_000_000L
+        val now = 1_000_000_000L
         assertNull(relativeMediaTime(null, now))
         assertEquals("just now", relativeMediaTime(now + 5_000L, now))
         assertEquals("1m ago", relativeMediaTime(now - 90_000L, now))

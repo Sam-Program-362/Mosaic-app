@@ -26,13 +26,15 @@ folder-management redesign, and top-header/drawer routing only. The explicit use
 constraint is honored in source: no bottom navigation and no navigation rail. Added
 Compose tests for Settings/directory/feed search and unit tests for search/time buckets.
 The Drive ZIP was inspected; it remains untracked and must not be committed. GitHub run
-38523338581 compiled main Android Kotlin source but failed while compiling test sources:
+38523338581 compiled main Android Kotlin source but failed compiling test sources because
 the new tests explicitly imported `assertExists`/`assertDoesNotExist`, which are member
-methods in this Compose test API. Those imports have been removed; the rerun is still
-needed. Tests, lint, APK/privacy checks and phone behavior are not yet passing/verified
-for this slice. `git diff --check` passes. Local Gradle is blocked because this sandbox
-has no Java. Continue using the authorized GitHub workflow only on
-`arena/b0f3e3cf-mosaic-app`; this remains unverified source, not a passing release.
+methods in this Compose API. Those imports were removed. Run 38523840274 compiled main
+and test Kotlin but one relative-time test failed: its 36-hour-old timestamp was before
+the Unix epoch, correctly taking the helper's invalid-date path. The test's fixed `now`
+was moved forward; another CI run is needed. No passing full test/lint/APK/privacy check
+or phone result exists for this slice yet. `git diff --check` passes. Local Gradle is
+blocked because this sandbox has no Java. Continue using the authorized GitHub workflow
+only on `arena/b0f3e3cf-mosaic-app`; this remains unverified source, not a passing release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
