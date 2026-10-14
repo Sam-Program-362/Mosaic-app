@@ -259,6 +259,9 @@ class FeedSessionTest {
         assertEquals(listOf("near-video", "near-photo", "far-video"), imagePrefetchCandidates(
             candidates, anchorPosition = 0, videoPreloadingEnabled = true,
         ).map { it.post.media.document.documentId })
+        assertTrue(shouldLoadVideoPoster(videoPreloadingEnabled = false, previewVisible = true))
+        assertFalse(shouldLoadVideoPoster(videoPreloadingEnabled = false, previewVisible = false))
+        assertTrue(shouldLoadVideoPoster(videoPreloadingEnabled = true, previewVisible = false))
     }
 
     @Test fun videoTimeAndRelativeSeekAreFormattedAndClamped() {

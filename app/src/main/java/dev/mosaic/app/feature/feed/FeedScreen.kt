@@ -113,6 +113,12 @@ fun FeedScreen(
     val anchorVisibleFraction = viewportAnchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
     val activeVisibleMedia = activeKey?.let { key -> visibleMedia.firstOrNull { it.key == key } }
     val activeVisibleFraction = activeVisibleMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
+    val visiblePreviewKeys = remember(visibleMedia, viewportStart, viewportEnd) {
+        visibleMedia.asSequence()
+            .filter { visibleOverlapPixels(it, viewportStart, viewportEnd) > 0 }
+            .map { it.key }
+            .toSet()
+    }
     FeedScrollDiagnostics(
         listState = listState,
         visibleMedia = visibleMedia,
@@ -128,7 +134,8 @@ fun FeedScreen(
     LaunchedEffect(videoPreloadingEnabled) {
         MediaDiagnostics.log(
             diagnosticContext,
-            "video preload configuration enabled=$videoPreloadingEnabled visibleVideoPosters=retained",
+            "video preload configuration enabled=$videoPreloadingEnabled " +
+                "visibleVideoPosters=retained offscreenVideoPosterPrefetch=$videoPreloadingEnabled",
         )
     }
     LaunchedEffect(
@@ -303,6 +310,8 @@ fun FeedScreen(
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
                 videoPreloader = videoPreloader,
+                videoPreloadingEnabled = videoPreloadingEnabled,
+                videoPreviewVisible = key in visiblePreviewKeys,
                 preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
             )
         }
@@ -320,6 +329,8 @@ internal fun MediaPostCard(
     onSaveCopy: (() -> Unit)? = null,
     hideCommunity: Boolean = false,
     videoPreloader: VideoPreloadSession? = null,
+    videoPreloadingEnabled: Boolean = true,
+    videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
     preloadingEnabled: Boolean = true,
 ) {
@@ -365,6 +376,8 @@ internal fun MediaPostCard(
             viewer = false,
             onOpenViewer = onOpenViewer,
             videoPreloader = videoPreloader,
+            videoPreloadingEnabled = videoPreloadingEnabled,
+            videoPreviewVisible = videoPreviewVisible,
             feedPosition = feedPosition,
             preloadingEnabled = preloadingEnabled,
         )

@@ -32,9 +32,9 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   dimensions already existed at `7a51b28`; stable media keys and the session-reset scroll effect
   also predate the preload changes.
 - Build property `-PmosaicVideoPreloading=false` now disables the Media3 neighboring-video
-  preloader and Coil prefetch of nearby video frames while leaving active-video playback,
-  currently displayed inactive-video posters, photo prefetch, feed layout/selection and other
-  behavior intact. The normal build defaults to enabled. Unit coverage checks the selection
+  preloader, Coil prefetch of nearby video frames and poster decoding for composed video cards
+  outside the viewport, while leaving active-video playback, currently displayed inactive-video
+  posters, photo prefetch and feed layout/selection intact. The normal build defaults to enabled. Unit coverage checks the selection
   policy in both modes; CI run `38593502388` built/retained both debug APKs and passed the
   preload property assertions.
 - Debug-only feed instrumentation records scroll start/settle and idle position transitions,

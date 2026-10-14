@@ -58,6 +58,8 @@ internal fun LocalMediaPreview(
     viewer: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
     videoPreloader: VideoPreloadSession? = null,
+    videoPreloadingEnabled: Boolean = true,
+    videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
     preloadingEnabled: Boolean = true,
 ) {
@@ -110,11 +112,13 @@ internal fun LocalMediaPreview(
                     },
                     onRatio = { updateRatio(it, "player-video-size") },
                 )
-                document.kind == MediaKind.Video -> VideoThumbnail(
-                    post = post,
-                    imageLoader = imageLoader,
-                    onRatio = { updateRatio(it, "video-thumbnail") },
-                )
+                document.kind == MediaKind.Video && shouldLoadVideoPoster(videoPreloadingEnabled, videoPreviewVisible) ->
+                    VideoThumbnail(
+                        post = post,
+                        imageLoader = imageLoader,
+                        onRatio = { updateRatio(it, "video-thumbnail") },
+                    )
+                document.kind == MediaKind.Video -> Text("MP4 · playback paused", color = colors.textSecondary)
                 document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = colors.textSecondary)
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,

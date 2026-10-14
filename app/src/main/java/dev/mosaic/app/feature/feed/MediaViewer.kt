@@ -123,7 +123,8 @@ fun MediaViewer(
     LaunchedEffect(videoPreloadingEnabled) {
         MediaDiagnostics.log(
             diagnosticContext,
-            "video preload configuration enabled=$videoPreloadingEnabled viewer=true visibleVideoPosters=retained",
+            "video preload configuration enabled=$videoPreloadingEnabled viewer=true " +
+                "visibleVideoPosters=retained offscreenVideoPosterPrefetch=$videoPreloadingEnabled",
         )
     }
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
@@ -165,6 +166,8 @@ fun MediaViewer(
                 imageLoader = imageLoader,
                 viewer = true,
                 videoPreloader = videoPreloader,
+                videoPreloadingEnabled = videoPreloadingEnabled,
+                videoPreviewVisible = true,
                 feedPosition = page,
                 preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
             )

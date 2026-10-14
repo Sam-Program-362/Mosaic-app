@@ -57,6 +57,9 @@ internal fun imagePrefetchCandidates(
     }
 }
 
+internal fun shouldLoadVideoPoster(videoPreloadingEnabled: Boolean, previewVisible: Boolean): Boolean =
+    videoPreloadingEnabled || previewVisible
+
 /** Prefetches the bounded image window and, when selected at build time, nearby video media. */
 @Composable
 internal fun NearbyMediaPreloader(

@@ -101,9 +101,10 @@ The current verification workflow builds two debug APKs with the same package, s
 feed code and diagnostics:
 
 - `mosaic-debug-video-preload-enabled.apk` — default behavior.
-- `mosaic-debug-video-preload-disabled.apk` — disables the Media3 nearby-video preloader
-  and nearby Coil video-frame prefetch. The currently displayed inactive-video poster and
-  active-video playback preparation remain enabled; static-photo prefetch is unchanged.
+- `mosaic-debug-video-preload-disabled.apk` — disables the Media3 nearby-video preloader,
+  nearby Coil video-frame prefetch, and thumbnail decoding for composed video cards outside
+  the viewport. The currently displayed inactive-video poster and active-video playback
+  preparation remain enabled; static-photo prefetch is unchanged.
 
 For a local build, `./gradlew assembleDebug` is the enabled default; pass
 `-PmosaicVideoPreloading=false` to create the disabled variant. The Gradle property rejects

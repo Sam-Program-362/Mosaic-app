@@ -153,9 +153,9 @@ errors end the spinner and show an actionable local-file/format message.
 Debug-only `MosaicMedia` diagnostics log anchor/candidate positions, submission, observable
 I/O start, preload completion/error, playback handoff, buffering/ready, activation-to-frame
 latency and player errors without local paths or per-frame output. A build-time diagnostic
-property, `-PmosaicVideoPreloading=false`, bypasses the Media3 nearby-video preloader and
-nearby Coil video-frame prefetch; active playback, displayed inactive-video posters and
-static-photo prefetch are retained. The default remains enabled, and there is no runtime
+property, `-PmosaicVideoPreloading=false`, bypasses the Media3 nearby-video preloader, nearby
+Coil video-frame prefetch and video-card poster decodes outside the viewport; active playback,
+displayed inactive-video posters and static-photo prefetch are retained. The default remains enabled, and there is no runtime
 setting. Feed-only debug probes summarize visible row/media geometry and aggregate frame
 interval/UI-thread CPU values once per scroll burst. Tests cover viewport and mixed-window
 cases, position/rank updates, protected active entries, thumbnail/error state, manager source
