@@ -62,6 +62,34 @@ class VideoPreloadSessionTest {
         }
     }
 
+    @Test fun activeManagerSourceIsRerankedOnlyAfterThePlayerReleasesIt() {
+        val original = request("active", 4)
+        val session = VideoPreloadSession(RuntimeEnvironment.getApplication())
+        val player = session.createPlayer()
+        var playerReleased = false
+        try {
+            session.update(listOf(original), currentPosition = 4, startPreloading = false)
+            val source = session.sourceForPlayback(original.key, original.uri, original.feedPosition)
+                ?: error("The manager did not return its managed local media source")
+            player.setMediaSource(source)
+
+            session.update(listOf(request("active", 1)), currentPosition = 1, startPreloading = false)
+            assertEquals(1, session.managerSourceCount())
+            assertEquals(4, session.managedRequestSnapshot()["active"]?.feedPosition)
+
+            player.release()
+            playerReleased = true
+            session.releasePlayback("active", startPreloading = false)
+
+            assertEquals(1, session.managerSourceCount())
+            assertEquals(1, session.managedRequestSnapshot()["active"]?.feedPosition)
+        } finally {
+            if (!playerReleased) player.release()
+            session.releasePlayback("active", startPreloading = false)
+            session.release()
+        }
+    }
+
     @Test fun localUriUsesTheManagedMediaSourceAndSingleManagerBuiltPlayer() {
         val uri = "content://local-test/videos/clip.mp4"
         val request = request("clip", 6, uri)

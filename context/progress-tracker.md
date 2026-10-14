@@ -55,9 +55,11 @@ evidence, not an agent-run test. This is not a complete first release.
   [38574662523](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38574662523):
   82 tests (0 failures/errors/skips), `testDebugUnitTest`, `lint`, `assembleDebug`, packaged
   privacy checks and Room schema check all passed. Artifact `mosaic-debug-and-reports` is
-  ID `11898528123`. Local Gradle commands still cannot start without Java. No before/after
-  device startup measurement, MP4 decode run, or real scrolling/playback evidence is
-  available. Device acceptance remains pending; do not claim the sticky transition fixed.
+  ID `11898528123`. A further manager/player release-order regression test was added after
+  that green run; the current branch still needs a rerun for its final 83-test state. Local
+  Gradle commands still cannot start without Java. No before/after device startup measurement,
+  MP4 decode run, or real scrolling/playback evidence is available. Device acceptance remains
+  pending; do not claim the sticky transition fixed.
 
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
