@@ -43,10 +43,13 @@ photo/GIF/video labels, revised post cards, visible play/pause and mute/unmute v
 controls, reference-inspired Settings/library stats, and card-style folder management.
 Missing/unknown theme values now fall back to Dark. All main navigation is through the
 top header and drawer; there is deliberately **no bottom navigation or navigation
-rail**. Added Compose tests cover Settings and community-directory behavior, plus unit
-coverage for search and relative-time buckets. This slice has not yet been compiled or
-tested; do not treat the source draft as verified until CI succeeds. Physical-device
-behavior is still separate acceptance.
+rail**. Added Compose tests cover Settings, community-directory behavior, and feed
+search, plus unit coverage for search and relative-time buckets. First CI run 38523338581
+compiled main Kotlin source but failed compiling the new tests because member assertions
+were incorrectly imported as top-level functions. The imports have been removed, but the
+rerun is not yet complete. No passing tests/lint/APK or physical-device result exists for
+this follow-up; do not treat it as verified until CI succeeds. Physical-device behavior
+is separate acceptance.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

@@ -24,12 +24,15 @@ UI-adaptation slice awaiting CI: Dark fallback, indexed-metadata search and rela
 feed-card/video-control updates, a searchable local community directory, Settings and
 folder-management redesign, and top-header/drawer routing only. The explicit user
 constraint is honored in source: no bottom navigation and no navigation rail. Added
-Compose tests for Settings/directory and unit tests for search/time buckets. The Drive
-ZIP was inspected; it remains untracked and must not be committed. No Android compile,
-unit/UI test, lint, APK, or phone result exists for this follow-up yet. `git diff --check`
-passes. Local Gradle is blocked because this sandbox has no Java; the authorized next
-verification path is the existing GitHub Actions workflow after committing/pushing only
-to `arena/b0f3e3cf-mosaic-app`. This remains unverified source, not a passing release.
+Compose tests for Settings/directory/feed search and unit tests for search/time buckets.
+The Drive ZIP was inspected; it remains untracked and must not be committed. GitHub run
+38523338581 compiled main Android Kotlin source but failed while compiling test sources:
+the new tests explicitly imported `assertExists`/`assertDoesNotExist`, which are member
+methods in this Compose test API. Those imports have been removed; the rerun is still
+needed. Tests, lint, APK/privacy checks and phone behavior are not yet passing/verified
+for this slice. `git diff --check` passes. Local Gradle is blocked because this sandbox
+has no Java. Continue using the authorized GitHub workflow only on
+`arena/b0f3e3cf-mosaic-app`; this remains unverified source, not a passing release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
