@@ -63,7 +63,7 @@ evidence, not an agent-run test. This is not a complete first release.
   device startup measurement, MP4 decode run, or real scrolling/playback evidence is
   available. Device acceptance remains pending; do not claim the sticky transition fixed.
 
-## First-frame loading overlay and repeated-scroll crash investigation — implementation in progress
+## First-frame loading overlay and repeated-scroll crash investigation — CI verified, device pending
 - `showLoading` now requires `!hasRenderedFirstFrame` in addition to `loading && !failed`;
   error still stops loading and remains visible, while pre-first-frame fallback is unchanged.
   Tests enumerate all eight combinations and explicitly cover first-frame=true / failed=false /
@@ -83,8 +83,11 @@ evidence, not an agent-run test. This is not a complete first release.
   PID check, bugreport for native/ANR failures) are in `docs/phase-5-device-check.md`.
 - For this new change, local `./gradlew testDebugUnitTest`, `./gradlew lint` and
   `./gradlew assembleDebug` each stopped before Gradle startup (`JAVA_HOME` unset; no `java`).
-  GitHub CI rerun is pending. The previous green run below validates only its earlier code
-  state. Do not claim the crash is fixed.
+  Pushed commit `a9703cb` to the approved development branch. GitHub run
+  [38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
+  passed 84 tests (0 failures/errors/skips), lint, `assembleDebug`, packaged privacy and
+  Room schema checks; debug artifact `mosaic-debug-and-reports` is ID `11903168202`.
+  This does not verify physical-device playback or resolve the reported crash.
 
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,

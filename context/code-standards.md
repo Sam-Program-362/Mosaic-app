@@ -81,4 +81,7 @@ first-frame/loading/failure combinations, especially buffering after a rendered 
 crash investigation evidence-led: debug-only counters may expose unreleased player instances,
 managed sources, pending preloads, active entries and invalidation calls, but must not log local
 paths/URIs or claim a root cause. Capture full device logcat and PID/ANR evidence before
-attributing repeated-scroll crashes; unit tests, lint, and APK builds do not resolve them.
+attributing repeated-scroll crashes; unit tests, lint, and APK builds do not resolve them. The
+current correction passed CI run [38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
+with 84 tests, lint, packaged privacy/schema checks and debug APK build; device verification
+remains separate.

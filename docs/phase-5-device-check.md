@@ -1,12 +1,12 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the latest corrected debug APK from [CI run 38575809505](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38575809505)
-on `arena/b0f3e3cf-mosaic-app` at `50132da`; it includes Room v2, Saved, viewer motion,
-the reference-inspired UI/search, prior playback controls, and the video-transition
-correctness/performance correction plus active-source release-order regression. The workflow
-passed 83 tests, lint, schema consistency, packaged privacy checks, and the debug APK build.
-Download the `mosaic-debug-and-reports` artifact (ID `11899788396`). The older APK artifacts
-`11898528123` and `11890760322` predate the final regression test.
+Use the latest debug APK from [CI run 38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
+on `arena/b0f3e3cf-mosaic-app` at `a9703cb`; it includes Room v2, Saved, viewer motion,
+the reference-inspired UI/search, playback controls, the video-transition correction,
+the first-frame loading-overlay fix, and debug-only lifecycle counters. The workflow passed
+84 tests, lint, schema consistency, packaged privacy checks, and the debug APK build.
+Download the `mosaic-debug-and-reports` artifact (ID `11903168202`). The older APK artifacts
+`11899788396`, `11898528123` and `11890760322` predate the first-frame fix.
 This is a test build, not a release. No physical-device acceptance has been recorded yet.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing
@@ -46,11 +46,14 @@ Run these checks on the verified debug APK linked above; CI does not replace the
 - Fully close/relaunch Mosaic and confirm a complete refresh is still allowed.
 - Repeat in the full-screen pager if convenient; only its current page should play.
 
-## Transition timing and debug diagnostics — new source correction, pending verification
+## First-frame loading overlay, transition timing and crash diagnostics — CI verified, device pending
 
-The latest source correction is included in the APK linked above; use that artifact for
-this section. CI does not replace device verification. Debug builds emit the `MosaicMedia`
-tag only; identifiers are hashed and local URIs/paths are omitted.
+The APK linked above includes the loading-overlay correction and diagnostics. CI does not
+replace device verification. `videoFrameFallback` shows loading only before the first
+rendered frame, while loading and not failed; after a frame, brief buffering does not cover
+the video. A player error stops loading and shows the error state. Unit tests cover all
+eight first-frame/loading/failure combinations. Debug builds emit the `MosaicMedia` tag only;
+identifiers are hashed and local URIs/paths are omitted.
 With USB debugging on a test phone, capture:
 
 ```sh

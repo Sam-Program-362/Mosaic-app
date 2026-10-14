@@ -158,7 +158,7 @@ copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed
 lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).
 Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
-## First-frame loading correction and crash-investigation instrumentation — in progress
+## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,
 not failed, and has not rendered its first frame. The thumbnail remains until that first
 rendered-frame callback; a failure suppresses loading and surfaces the existing error state.
@@ -175,9 +175,11 @@ bounded by the existing window. `VideoPreview` creates its player in `remember` 
 it from `DisposableEffect`; the new paired tokens can show if an allocation has no release
 (including an abandoned composition), but no such imbalance has been measured. Rapid
 decoder/player churn and repeated invalidations are possible behaviors to measure, not
-established causes. No physical-device reproduction,
-crash log or native tombstone is available; crash resolution is not claimed. Exact logcat,
-PID/stall discrimination, and bugreport steps are in `docs/phase-5-device-check.md`.
+established causes. CI run [38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120)
+at `a9703cb` passed 84 tests, lint, schema consistency, packaged privacy and debug APK build
+(artifact `11903168202`). No physical-device reproduction, crash log or native tombstone is
+available; crash resolution is not claimed. Exact logcat, PID/stall discrimination, and
+bugreport steps are in `docs/phase-5-device-check.md`.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy
