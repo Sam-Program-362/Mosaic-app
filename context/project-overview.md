@@ -24,8 +24,10 @@ or proprietary assets to copy.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
   sound toggle. Stop/release inactive and off-screen media. A bounded current-plus-one-
-  neighbor-per-side window preloads local image/video frames and short video buffers;
-  inactive MP4 cards show a frame thumbnail rather than a paused placeholder.
+  per-side window retains the current item plus the nearest photo and nearest video
+  in up to three feed positions on either side (at most five candidates). Image/video
+  frames preload independently; short video buffers stay bounded. Inactive MP4 cards
+  show a cached frame thumbnail rather than a paused placeholder.
 - Active video offers play/pause, mute/unmute, seek timeline and elapsed/duration,
   double-tap ±10-second seeking, and tap-to-hide/show player controls.
 - Every Save invocation makes another collision-safe app-managed persistent copy.
@@ -72,7 +74,12 @@ Reddit-inspired playback/seek controls and warm-resume media retention. CI run
 checks and debug APK build; artifact `mosaic-debug-and-reports` (ID `11890760322`) is
 available. The initial run's missing decoder import was fixed before this green run.
 Physical-device acceptance for this follow-up and the earlier refreshed UI/search remains
-pending. Custom communities remain planned. This is not first-release completion.
+pending. A 2026-10-14 correctness/performance pass now changes viewport anchoring, actual
+snapshot-position ranking/reconciliation, active-source removal timing, first-frame poster
+fallback, error semantics and debug diagnostics; regression/integration tests are added but
+CI/device verification for this pass is pending. The prior CI run predates these changes and
+does not validate them. No before/after device measurement is available. Custom communities
+remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

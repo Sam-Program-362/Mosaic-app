@@ -2,7 +2,12 @@
 
 ## Current phase
 Phase 5 follow-up — bounded video/image preloading, player controls and warm-resume
-retention in progress. Date: 2026-10-14. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
+retention in progress. Date: 2026-10-14. A new video-transition correctness/performance
+pass now edits viewport anchoring, true-position ranking/reconciliation, active-source
+lifecycle safety, first-frame poster/error UI and debug diagnostics; focused tests have
+been added. This latest pass has not yet been run through CI or on a device. Local Gradle
+and physical-device tooling are unavailable. Prior passing CI is recorded below and does
+not validate the latest code. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
 APK privacy and debug build at commit 02085fb. Phase 5 CI iterations 38466413293 and
 38467526012 exposed an unattached Robolectric provider NPE; run 38467045590 caught a
 provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 tests,
@@ -22,9 +27,33 @@ removal are not yet confirmed on-device. The user now reports smooth photos but 
 loading/advance and a paused placeholder for inactive videos. This is user-reported device
 evidence, not an agent-run test. This is not a complete first release.
 
-## Video preload, controls and warm-resume follow-up — CI verified, phone pending
-Source uses a bounded current/neighbor media window (at most one eligible item on each
-side, scanning no farther than three feed entries), Coil local image/video-frame prefetch,
+## Video transition correctness/performance correction — implemented, verification pending
+- Home viewport anchoring now selects the largest overlap across all media; playback is
+  separately restricted to the dominant animated anchor with a 50% visibility threshold.
+- The mixed window is current plus nearest photo and nearest video on each side within
+  three feed positions (at most five). Feed/viewer requests and Media3 ranking use true
+  positions in the current ordered snapshot; image/frame requests remain independent.
+- Reconciliation removes/re-ranks changed candidates, but protects a player-active source
+  until `player.release()`; its old rank is excluded while selecting other targets.
+- The one-second Media3 loaded-duration target is unchanged pending device measurement.
+  Active video keeps its cached thumbnail until `onRenderedFirstFrame`; inaccessible or
+  unsupported media shows an error without an endless spinner.
+- Debug-only `MosaicMedia` diagnostics cover anchors/candidates, submission, observable
+  I/O start, completion/error, handoff, buffering/ready, activation-to-first-frame and
+  player error, without paths or per-frame output.
+- Regression coverage added for overlap/partial visibility, mixed bounds, rank/order
+  changes, protected active entries, manager source handoff through local-style URIs,
+  poster/error semantics and cache keys. A representative MP4 decode/preload integration
+  test is not available: this checkout has no Java/Android SDK/device or MP4 fixture.
+- `git diff --check` passed before documentation synchronization. Local
+  `./gradlew testDebugUnitTest`, `./gradlew lint` and `./gradlew assembleDebug` each
+  exited before Gradle startup: `JAVA_HOME` is unset and no `java` executable exists.
+  No CI result yet. No before/after device startup measurement or playback/scroll evidence
+  is available. The next steps are source/API validation, authorized branch push/CI, then
+  device test if hardware becomes available. Do not claim the sticky transition fixed.
+
+## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
+Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
 and Media3 one-second neighboring-video buffers. Inactive MP4 cards request a local
 first-frame thumbnail. The player adds play/pause, mute, seek/time/duration, double-tap
 ±10-second seeking, tap-to-hide/show, and position/play-state retention across lifecycle

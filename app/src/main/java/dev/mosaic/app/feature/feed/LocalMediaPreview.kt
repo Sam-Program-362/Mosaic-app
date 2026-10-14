@@ -1,6 +1,9 @@
 package dev.mosaic.app.feature.feed
 
 import android.net.Uri
+import android.os.SystemClock
+import android.view.TextureView
+import android.view.ViewGroup
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,7 +41,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.decode.BitmapFactoryDecoder
@@ -56,6 +58,8 @@ internal fun LocalMediaPreview(
     viewer: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
     videoPreloader: VideoPreloadSession? = null,
+    feedPosition: Int = -1,
+    preloadingEnabled: Boolean = true,
 ) {
     val document = post.media.document
     val colors = LocalMosaicColors.current
@@ -76,7 +80,10 @@ internal fun LocalMediaPreview(
                 document.kind == MediaKind.Video && active -> VideoPreview(
                     post = post,
                     viewer = viewer,
+                    imageLoader = imageLoader,
                     videoPreloader = videoPreloader,
+                    feedPosition = feedPosition,
+                    preloadingEnabled = preloadingEnabled,
                     initialPositionMillis = savedPositionMillis,
                     initiallyPlayWhenReady = savedPlayWhenReady,
                     onPlaybackStateCaptured = { position, playWhenReady ->
@@ -105,7 +112,8 @@ internal fun LocalMediaPreview(
 private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
     val request = remember(uri, modified, animated, context) {
-        ImageRequest.Builder(context).data(Uri.parse(uri)).memoryCacheKey("$uri@$modified:$animated")
+        ImageRequest.Builder(context).data(Uri.parse(uri))
+            .memoryCacheKey(if (animated) "$uri@$modified:true" else staticImageCacheKey(uri, modified))
             .apply {
                 // Static photos (including WebP) must not silently become extra animated formats.
                 if (!animated) decoderFactory(BitmapFactoryDecoder.Factory())
@@ -129,7 +137,12 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
 }
 
 @Composable
-private fun VideoThumbnail(post: FeedPost, imageLoader: ImageLoader, onRatio: (Float) -> Unit) {
+private fun VideoThumbnail(
+    post: FeedPost,
+    imageLoader: ImageLoader,
+    onRatio: (Float) -> Unit,
+    showLoadingIndicator: Boolean = true,
+) {
     val context = LocalContext.current.applicationContext
     val request = remember(post.media.key, post.media.document.contentUri, post.media.document.modifiedAtMillis, context) {
         createPrefetchRequest(context, post)
@@ -149,7 +162,7 @@ private fun VideoThumbnail(post: FeedPost, imageLoader: ImageLoader, onRatio: (F
         },
         onError = { loading = false; failed = true },
     )
-    if (loading) {
+    if (loading && showLoadingIndicator) {
         CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp, color = Color.White)
     }
     if (failed) {
@@ -157,13 +170,29 @@ private fun VideoThumbnail(post: FeedPost, imageLoader: ImageLoader, onRatio: (F
     }
 }
 
+internal data class VideoFrameFallback(
+    val showThumbnail: Boolean,
+    val showLoading: Boolean,
+    val showError: Boolean,
+)
+
+internal fun videoFrameFallback(hasRenderedFirstFrame: Boolean, failed: Boolean, loading: Boolean) =
+    VideoFrameFallback(
+        showThumbnail = !hasRenderedFirstFrame,
+        showLoading = loading && !failed,
+        showError = failed,
+    )
+
 /** Only composed for the one visible video while the app/feed is active. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 private fun VideoPreview(
     post: FeedPost,
     viewer: Boolean,
+    imageLoader: ImageLoader,
     videoPreloader: VideoPreloadSession?,
+    feedPosition: Int,
+    preloadingEnabled: Boolean,
     initialPositionMillis: Long,
     initiallyPlayWhenReady: Boolean,
     onPlaybackStateCaptured: (Long, Boolean) -> Unit,
@@ -174,8 +203,9 @@ private fun VideoPreview(
     val document = post.media.document
     val uri = document.contentUri
     val stableKey = post.media.key.stableKey
-    var failed by remember(stableKey) { mutableStateOf(false) }
-    var loading by remember(stableKey) { mutableStateOf(true) }
+    var failed by remember(stableKey, uri) { mutableStateOf(false) }
+    var loading by remember(stableKey, uri) { mutableStateOf(true) }
+    var hasRenderedFirstFrame by remember(stableKey, uri) { mutableStateOf(false) }
     var muted by remember(stableKey) { mutableStateOf(true) }
     var shouldPlay by remember(stableKey) { mutableStateOf(initiallyPlayWhenReady) }
     var currentPositionMillis by remember(stableKey) { mutableLongStateOf(initialPositionMillis) }
@@ -191,17 +221,63 @@ private fun VideoPreview(
     val audioAttributes = remember {
         AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
     }
-    val viewHolder = remember(player) { object { var view: PlayerView? = null } }
+    val viewHolder = remember(player) {
+        object {
+            var frame: AspectRatioFrameLayout? = null
+            var texture: TextureView? = null
+        }
+    }
 
+    val latestPreloadingEnabled = rememberUpdatedState(preloadingEnabled)
     DisposableEffect(player, stableKey, uri, videoPreloader) {
+        val activationStartedAt = SystemClock.elapsedRealtime()
+        MediaDiagnostics.log(
+            context,
+            "player active pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} viewer=$viewer",
+        )
         val listener = object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) { failed = true; loading = false }
+            override fun onPlayerError(error: PlaybackException) {
+                failed = true
+                loading = false
+                MediaDiagnostics.log(
+                    context,
+                    "player error pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                        "code=${error.errorCodeName} activationToErrorMs=${SystemClock.elapsedRealtime() - activationStartedAt} " +
+                        "cause=${MediaDiagnostics.causeTypes(error.cause)}",
+                )
+            }
+
             override fun onPlaybackStateChanged(playbackState: Int) {
                 loading = playbackState == Player.STATE_IDLE || playbackState == Player.STATE_BUFFERING
+                val stateName = when (playbackState) {
+                    Player.STATE_IDLE -> "IDLE"
+                    Player.STATE_BUFFERING -> "BUFFERING"
+                    Player.STATE_READY -> "READY"
+                    Player.STATE_ENDED -> "ENDED"
+                    else -> "UNKNOWN"
+                }
+                MediaDiagnostics.log(
+                    context,
+                    "player state=$stateName pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                        "activationMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
+                )
             }
+
+            override fun onRenderedFirstFrame() {
+                if (!hasRenderedFirstFrame) {
+                    hasRenderedFirstFrame = true
+                    MediaDiagnostics.log(
+                        context,
+                        "player first-frame pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                            "activationToFirstFrameMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
+                    )
+                }
+            }
+
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 shouldPlay = playWhenReady
             }
+
             override fun onVideoSizeChanged(videoSize: VideoSize) {
                 if (videoSize.width > 0 && videoSize.height > 0) {
                     onRatio(videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio / videoSize.height)
@@ -214,22 +290,30 @@ private fun VideoPreview(
         // Silent previews must not steal audio focus from the user's music.
         player.setAudioAttributes(audioAttributes, false)
         try {
-            val source = videoPreloader?.sourceForPlayback(stableKey, uri)
+            val source = videoPreloader?.sourceForPlayback(stableKey, uri, feedPosition)
             if (source != null) player.setMediaSource(source)
             else player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             if (initialPositionMillis > 0L) player.seekTo(initialPositionMillis)
             player.prepare()
             player.playWhenReady = initiallyPlayWhenReady
-        } catch (_: Exception) {
+        } catch (error: Exception) {
             failed = true
             loading = false
+            MediaDiagnostics.log(
+                context,
+                "player activation error pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                    "cause=${MediaDiagnostics.causeTypes(error)}",
+            )
         }
         onDispose {
             onPlaybackStateCaptured(player.currentPosition.coerceAtLeast(0L), player.playWhenReady)
             player.removeListener(listener)
-            viewHolder.view?.player = null
-            viewHolder.view = null
+            viewHolder.texture?.let(player::clearVideoTextureView)
+            viewHolder.texture = null
+            viewHolder.frame = null
             player.release()
+            videoPreloader?.releasePlayback(stableKey, latestPreloadingEnabled.value)
+            MediaDiagnostics.log(context, "player released pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)}")
         }
     }
 
@@ -254,6 +338,8 @@ private fun VideoPreview(
         }
     }
 
+    val fallback = videoFrameFallback(hasRenderedFirstFrame, failed, loading)
+
     fun seekBy(offsetMillis: Long) {
         val target = seekVideoPosition(player.currentPosition, player.duration, offsetMillis)
         player.seekTo(target)
@@ -266,15 +352,38 @@ private fun VideoPreview(
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(
-            factory = { viewContext -> PlayerView(viewContext).apply {
-                this.player = player
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                viewHolder.view = this
-            } },
+            factory = { viewContext ->
+                val texture = TextureView(viewContext)
+                AspectRatioFrameLayout(viewContext).apply {
+                    setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT)
+                    setAspectRatio(ratio)
+                    addView(
+                        texture,
+                        ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+                    )
+                    player.setVideoTextureView(texture)
+                    viewHolder.frame = this
+                    viewHolder.texture = texture
+                }
+            },
             modifier = Modifier.fillMaxSize(),
-            onRelease = { it.player = null; if (viewHolder.view === it) viewHolder.view = null },
+            update = { it.setAspectRatio(ratio) },
+            onRelease = { frame ->
+                viewHolder.texture?.let(player::clearVideoTextureView)
+                if (viewHolder.frame === frame) {
+                    viewHolder.texture = null
+                    viewHolder.frame = null
+                }
+            },
         )
+        if (fallback.showThumbnail) {
+            VideoThumbnail(
+                post = post,
+                imageLoader = imageLoader,
+                onRatio = onRatio,
+                showLoadingIndicator = false,
+            )
+        }
         if (viewer) {
             Box(
                 Modifier.fillMaxSize().pointerInput(stableKey, viewer) {
@@ -298,10 +407,13 @@ private fun VideoPreview(
                 Text(feedback, color = Color.White, style = MaterialTheme.typography.titleMedium)
             }
         }
-        if (failed || loading) {
-            Text(if (failed) "Video is unavailable or cannot be played." else "Loading video…",
+        if (fallback.showError || fallback.showLoading) {
+            Text(
+                if (fallback.showError) "This video could not be opened. Check file access or format."
+                else "Loading video…",
                 Modifier.align(Alignment.Center).background(colors.surfaceRaised).padding(12.dp),
-                color = colors.textPrimary)
+                color = colors.textPrimary,
+            )
         }
         if (!failed) {
             AnimatedVisibility(

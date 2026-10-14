@@ -53,9 +53,10 @@ post UI, local image/GIF/video-frame previews and composition-scoped MP4 players
 Coil 3.1.0 uses Compose/GIF/video-frame modules without a network fetcher; an
 application-context ImageLoader provides bounded shared caching. Static photo/avatar
 requests explicitly select a static decoder; only GIF previews opt into animation.
-Inactive videos decode a local first-frame thumbnail. The feed/viewer window prefetches
-at most one image/video item on each side (searching no farther than three feed entries);
-Media3 1.6.1 `DefaultPreloadManager` buffers one second for each adjacent video source.
+Inactive videos decode a local first-frame thumbnail. The feed/viewer window keeps the
+current item plus the nearest photo and nearest video within three feed positions on each
+side (at most five candidates); image/frame prefetch is independent from video buffering.
+Media3 1.6.1 `DefaultPreloadManager` buffers one second for eligible adjacent video sources.
 These sources do not create extra playing players. Media3 creates at most one inline
 player for visible foreground media, muted by default and disposed offscreen/inactive.
 The active player exposes play/pause, mute, a seek slider and elapsed/duration; full-screen
@@ -117,25 +118,44 @@ passed run 38543107645 (67 tests, lint, schema, APK privacy and debug build). Ph
 acceptance for viewer, permissions, Saved copies, theme, search and refreshed controls
 remains pending.
 
-## Video and warm-resume follow-up — CI verified, phone acceptance pending
-`nearbyMediaWindow` selects the current item and at most one eligible photo/video on
-both sides, searching no farther than three feed entries. Coil prefetches static images
-and video first frames into its local memory cache. A composition-scoped Media3
-`DefaultPreloadManager` buffers one second for each neighboring video (not an extra
-playing player); the same window is used by the frozen viewer pager. Inactive MP4
-cards render a cached local frame. `VideoPreview` retains its position/play-when-ready
-state across lifecycle deactivation, and provides play/pause, mute, seek/duration,
-full-screen double-tap seeking and tap-to-toggle controls.
+## Earlier video and warm-resume follow-up — CI verified; later correction pending
+The initial `nearbyMediaWindow` selected a bounded neighboring photo/video set; Coil
+prefetched local images/video frames and a composition-scoped Media3 `DefaultPreloadManager`
+buffered one second for neighboring video sources (not extra playing players). Inactive
+MP4 cards requested a local frame thumbnail. `VideoPreview` retained position/play-when-ready
+state across lifecycle deactivation and provided the playback/seek controls described above.
 
 `ResumeRefreshPolicy` treats a new ViewModel/process as cold: full scan and a new feed
 epoch. Later ON_RESUME scans keep the existing feed epoch/order and pass current plus
 preloaded `MediaKey`s to the repository. A successful Room transaction retains those
 existing rows (including their old metadata) while reconciling all other scanned rows;
 failed scans still retain the whole prior index. No schema version change, background
-service, network access or source writes were introduced. CI run 38556928293 at `a11fde2`
-passed 74 tests, lint, schema consistency, packaged privacy checks and debug build; artifact
-`mosaic-debug-and-reports` is ID `11890760322`. Only physical-device acceptance remains
-pending for this follow-up.
+service, network access or source writes were introduced. The prior implementation passed
+CI run 38556928293 at `a11fde2` (74 tests, lint, schema consistency, packaged privacy and
+debug build; artifact `11890760322`). That run predates the correctness/performance pass below.
+
+## Video transition correctness/performance pass — source implemented; verification pending
+The current source chooses the dominant visible media item by viewport overlap across
+photos, GIFs and videos; playback is a separate rule and only activates the dominant
+animated item after a 50% visibility threshold. Candidate ranking/current indices use
+actual positions in the current Home or frozen viewer order. The bounded window considers
+the nearest photo and nearest video independently on each side (max five including the
+center), so a photo/GIF cannot hide a nearby video. Manager entries are removed/re-ranked
+only after their active player releases its source; stale positions are reconciled against
+the latest snapshot. The existing one-second Media3 `LOADED_FOR_DURATION_MS` target remains
+unchanged pending same-device measurements.
+
+A cached video poster overlays player preparation until Media3's rendered-first-frame event;
+a `TextureView` surface keeps that Compose fallback composited over the player. Player/preload
+errors end the spinner and show an actionable local-file/format message.
+Debug-only `MosaicMedia` diagnostics log anchor/candidate positions, submission, observable
+I/O start, preload completion/error, playback handoff, buffering/ready, activation-to-frame
+latency and player errors without local paths or per-frame output. Tests cover viewport and
+mixed-window cases, position/rank updates, protected active entries, thumbnail/error state,
+manager source handoff and cache keys. The new manager test uses a local-style content URI but
+does not decode/play a representative MP4. No schema, permission, network, source-media,
+copy or player-count scope changed. CI, physical-device scrolling/playback and before/after
+startup measurement have not yet been verified for this pass.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy

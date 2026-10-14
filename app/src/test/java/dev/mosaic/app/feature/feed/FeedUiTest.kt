@@ -47,6 +47,22 @@ class FeedUiTest {
         compose.onNodeWithContentDescription("Launch video thumbnail").assertExists()
     }
 
+    @Test fun cachedPosterRemainsTheFallbackUntilFirstRenderedFrameAndErrorsStopTheSpinner() {
+        val readyWithoutFrame = videoFrameFallback(hasRenderedFirstFrame = false, failed = false, loading = false)
+        org.junit.Assert.assertTrue(readyWithoutFrame.showThumbnail)
+        org.junit.Assert.assertFalse(readyWithoutFrame.showLoading)
+        org.junit.Assert.assertFalse(readyWithoutFrame.showError)
+
+        val failedBeforeFrame = videoFrameFallback(hasRenderedFirstFrame = false, failed = true, loading = true)
+        org.junit.Assert.assertTrue(failedBeforeFrame.showThumbnail)
+        org.junit.Assert.assertFalse(failedBeforeFrame.showLoading)
+        org.junit.Assert.assertTrue(failedBeforeFrame.showError)
+
+        org.junit.Assert.assertFalse(videoFrameFallback(
+            hasRenderedFirstFrame = true, failed = false, loading = false,
+        ).showThumbnail)
+    }
+
     @Test fun everySaveTapStartsAnotherIndependentCopyRequest() {
         val media = IndexedMedia("folder", "Travel", MediaDocument("id", "content://missing/id", "summer.jpg",
             "image/jpeg", MediaKind.Image, null, null))

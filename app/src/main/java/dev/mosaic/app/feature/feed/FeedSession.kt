@@ -96,15 +96,68 @@ fun relativeMediaTime(timestampMillis: Long?, nowMillis: Long = System.currentTi
     }
 }
 
-/** Pick at most one visible animation/player; excludes zero-overlap/precomposed items. */
-data class VisibleMedia(val key: String, val offset: Int, val size: Int)
-fun activePreview(visible: List<VisibleMedia>, start: Int, end: Int, animatedKeys: Set<String>): String? =
-    visible.filter { it.key in animatedKeys }
-        .map { it.key to (minOf(it.offset + it.size, end) - maxOf(it.offset, start)).coerceAtLeast(0) }
-        .filter { it.second > 0 }
-        .maxByOrNull { it.second }?.first
+/** A laid-out media preview and its position in the currently displayed feed order. */
+data class VisibleMedia(
+    val key: String,
+    val offset: Int,
+    val size: Int,
+    val feedIndex: Int = -1,
+)
 
-/** At most the current post plus one nearby photo/video on either side are retained/preloaded. */
+private fun visiblePixels(item: VisibleMedia, start: Int, end: Int): Int {
+    if (item.size <= 0 || end <= start) return 0
+    return (minOf(item.offset + item.size, end) - maxOf(item.offset, start)).coerceAtLeast(0)
+}
+
+/** The viewport anchor uses the same visible-area rule for photos, GIFs, and videos. */
+fun dominantVisibleMedia(visible: List<VisibleMedia>, start: Int, end: Int): VisibleMedia? =
+    visible.asSequence()
+        .map { item -> item to visiblePixels(item, start, end) }
+        .filter { (_, pixels) -> pixels > 0 }
+        // On an exact half-way tie, prefer the later feed item so forward scrolls can warm it early.
+        .maxWithOrNull(compareBy<Pair<VisibleMedia, Int>> { it.second }.thenBy { it.first.feedIndex })
+        ?.first
+
+/** Pick at most one visible animation/player; require meaningful overlap, not a one-pixel edge. */
+fun activePreview(
+    visible: List<VisibleMedia>,
+    start: Int,
+    end: Int,
+    animatedKeys: Set<String>,
+    minimumVisibleFraction: Float = MIN_ACTIVE_PREVIEW_VISIBLE_FRACTION,
+): String? {
+    val viewportHeight = (end - start).coerceAtLeast(0)
+    if (viewportHeight == 0) return null
+    return visible.asSequence()
+        .filter { it.key in animatedKeys && it.size > 0 }
+        .map { item -> item to visiblePixels(item, start, end) }
+        .filter { (_, pixels) -> pixels > 0 }
+        .filter { (item, pixels) ->
+            val relevantHeight = minOf(item.size, viewportHeight)
+            pixels.toFloat() / relevantHeight >= minimumVisibleFraction
+        }
+        .maxWithOrNull(compareBy<Pair<VisibleMedia, Int>> { it.second }.thenBy { it.first.feedIndex })
+        ?.first?.key
+}
+
+/** Playback is restricted to the all-media viewport anchor; preload anchoring stays independent. */
+fun playbackPreviewForAnchor(
+    anchorKey: String?,
+    visible: List<VisibleMedia>,
+    start: Int,
+    end: Int,
+    animatedKeys: Set<String>,
+): String? {
+    if (anchorKey == null || anchorKey !in animatedKeys) return null
+    return activePreview(visible, start, end, animatedKeys)?.takeIf { it == anchorKey }
+}
+
+private const val MIN_ACTIVE_PREVIEW_VISIBLE_FRACTION = 0.5f
+
+/**
+ * A bounded mixed-media window: current item plus the nearest photo and nearest video
+ * within three feed positions in each direction. GIFs are traversed but not prefetched.
+ */
 data class NearbyMediaCandidate(val post: FeedPost, val feedIndex: Int, val direction: Int)
 
 private const val NEARBY_MEDIA_SEARCH_DISTANCE = 3
@@ -112,19 +165,21 @@ private const val NEARBY_MEDIA_SEARCH_DISTANCE = 3
 fun nearbyMediaWindow(posts: List<FeedPost>, centerIndex: Int): List<NearbyMediaCandidate> {
     if (centerIndex !in posts.indices) return emptyList()
     val result = mutableListOf(NearbyMediaCandidate(posts[centerIndex], centerIndex, direction = 0))
-    fun isPreloadable(post: FeedPost) = post.media.document.kind == MediaKind.Image ||
-        post.media.document.kind == MediaKind.Video
 
-    val firstPreviousIndex = (centerIndex - NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtLeast(0)
-    val previousIndex = (centerIndex - 1 downTo firstPreviousIndex).firstOrNull { isPreloadable(posts[it]) }
-    if (previousIndex != null) result += NearbyMediaCandidate(posts[previousIndex], previousIndex, direction = -1)
+    for (direction in listOf(-1, 1)) {
+        val firstIndex = if (direction < 0) (centerIndex - NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtLeast(0)
+            else centerIndex + 1
+        val lastIndex = if (direction < 0) centerIndex - 1
+            else (centerIndex + NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtMost(posts.lastIndex)
+        if (firstIndex > lastIndex) continue
+        val indices = if (direction < 0) lastIndex downTo firstIndex else firstIndex..lastIndex
+        val imageIndex = indices.firstOrNull { posts[it].media.document.kind == MediaKind.Image }
+        val videoIndex = indices.firstOrNull { posts[it].media.document.kind == MediaKind.Video }
+        imageIndex?.let { result += NearbyMediaCandidate(posts[it], it, direction) }
+        videoIndex?.let { result += NearbyMediaCandidate(posts[it], it, direction) }
+    }
 
-    val lastNextIndex = (centerIndex + NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtMost(posts.lastIndex)
-    val nextIndex = if (centerIndex < lastNextIndex) {
-        (centerIndex + 1..lastNextIndex).firstOrNull { isPreloadable(posts[it]) }
-    } else null
-    if (nextIndex != null) result += NearbyMediaCandidate(posts[nextIndex], nextIndex, direction = 1)
-    return result
+    return result.sortedBy { it.feedIndex }
 }
 
 fun formatVideoTime(positionMillis: Long): String {

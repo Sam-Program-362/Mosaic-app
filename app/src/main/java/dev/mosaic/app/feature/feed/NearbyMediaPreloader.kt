@@ -31,57 +31,80 @@ internal fun rememberVideoPreloadSession(): VideoPreloadSession {
 @Composable
 internal fun NearbyMediaPreloader(
     candidates: List<NearbyMediaCandidate>,
+    anchorPosition: Int?,
     imageLoader: ImageLoader,
     videoSession: VideoPreloadSession,
     enabled: Boolean,
 ) {
     val context = LocalContext.current.applicationContext
-    val currentVideoKey = candidates.firstOrNull {
-        it.direction == 0 && it.post.media.document.kind == MediaKind.Video
-    }?.post?.media?.key?.stableKey
     val videoRequests = remember(candidates) {
-        candidates.filter { it.post.media.document.kind == MediaKind.Video }
-            .map { candidate ->
-                VideoPreloadRequest(candidate.post.media.key.stableKey, candidate.post.media.document.contentUri)
-            }
-    }
-    val imageRequests = remember(candidates, context) {
         candidates.asSequence()
-            .filter { it.direction != 0 && it.post.media.document.kind in setOf(MediaKind.Image, MediaKind.Video) }
+            .filter { it.post.media.document.kind == MediaKind.Video }
+            .map { candidate ->
+                VideoPreloadRequest(
+                    key = candidate.post.media.key.stableKey,
+                    uri = candidate.post.media.document.contentUri,
+                    feedPosition = candidate.feedIndex,
+                )
+            }
+            .toList()
+    }
+    val imageRequests = remember(candidates, anchorPosition, context) {
+        candidates.asSequence()
+            // Do not decode the currently active video's poster concurrently with its player.
+            // A viewer target page is different from the currently visible page, so it remains eligible.
+            .filter { it.feedIndex != anchorPosition }
+            .filter { it.post.media.document.kind == MediaKind.Image || it.post.media.document.kind == MediaKind.Video }
             .map { candidate -> createPrefetchRequest(context, candidate.post) }
             .toList()
     }
 
-    LaunchedEffect(videoSession, videoRequests, currentVideoKey, enabled) {
-        if (enabled) videoSession.update(videoRequests, currentVideoKey)
+    LaunchedEffect(candidates, anchorPosition) {
+        val positions = candidates.joinToString(",") {
+            "${it.feedIndex}:${it.post.media.document.kind.name.lowercase()}:${it.direction}"
+        }.ifBlank { "none" }
+        MediaDiagnostics.log(context, "preload window anchor=${anchorPosition ?: -1} candidates=$positions")
     }
-    LaunchedEffect(imageLoader, imageRequests) {
-        coroutineScope {
-            imageRequests.map { request ->
-                async {
-                    try {
-                        imageLoader.execute(request)
-                    } catch (error: CancellationException) {
-                        throw error
-                    } catch (_: Exception) {
-                        // Missing grants/unsupported frames stay local to that item; keep browsing.
+
+    LaunchedEffect(videoSession, videoRequests, anchorPosition, enabled) {
+        // Always reconcile removals/rank changes. When backgrounded, keep existing loads but do not
+        // invalidate the manager to start a new batch until the feed is foregrounded again.
+        videoSession.update(videoRequests, anchorPosition, startPreloading = enabled)
+    }
+    LaunchedEffect(imageLoader, imageRequests, enabled) {
+        if (enabled) {
+            coroutineScope {
+                imageRequests.map { request ->
+                    async {
+                        try {
+                            imageLoader.execute(request)
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Exception) {
+                            // Missing grants/unsupported frames stay local to that item; keep browsing.
+                        }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
         }
     }
 }
 
+internal fun videoFrameCacheKey(uri: String, modifiedAtMillis: Long?): String =
+    "$uri@$modifiedAtMillis:video-frame"
+
+internal fun staticImageCacheKey(uri: String, modifiedAtMillis: Long?): String =
+    "$uri@$modifiedAtMillis:false"
+
 internal fun createPrefetchRequest(context: android.content.Context, post: FeedPost): ImageRequest {
     val document = post.media.document
     val uri = Uri.parse(document.contentUri)
-    val modifiedAt = document.modifiedAtMillis
     val builder = ImageRequest.Builder(context)
         .data(uri)
-        .size(PREFETCH_WIDTH_PX, PREFETCH_HEIGHT_PX)
+        .size(LOCAL_PREVIEW_DECODE_SIZE_PX, LOCAL_PREVIEW_DECODE_SIZE_PX)
         .memoryCacheKey(
-            if (document.kind == MediaKind.Video) "$uri@$modifiedAt:video-frame"
-            else "$uri@$modifiedAt:false",
+            if (document.kind == MediaKind.Video) videoFrameCacheKey(document.contentUri, document.modifiedAtMillis)
+            else staticImageCacheKey(document.contentUri, document.modifiedAtMillis),
         )
     if (document.kind == MediaKind.Video) {
         builder.decoderFactory { result, options, _ -> VideoFrameDecoder(result.source, options) }
@@ -92,5 +115,4 @@ internal fun createPrefetchRequest(context: android.content.Context, post: FeedP
     return builder.build()
 }
 
-private const val PREFETCH_WIDTH_PX = 1_280
-private const val PREFETCH_HEIGHT_PX = 1_280
+internal const val LOCAL_PREVIEW_DECODE_SIZE_PX = 1_280

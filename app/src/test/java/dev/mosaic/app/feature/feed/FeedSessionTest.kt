@@ -100,40 +100,82 @@ class FeedSessionTest {
         assertNotEquals(mutablePosts.map { it.media.key.stableKey }, snapshotKeys)
         assertEquals(42L, snapshot.epoch)
     }
-    @Test fun onlyMostVisibleAnimatedPreviewPlays() {
-        val visible = listOf(VisibleMedia("photo", 0, 500), VisibleMedia("gif", 450, 400), VisibleMedia("video", 750, 400))
+    @Test fun activePreviewRequiresMeaningfulOverlapAndReturnsOnlyOneAnimatedItem() {
+        val visible = listOf(
+            VisibleMedia("gif", 0, 500, feedIndex = 2),
+            VisibleMedia("video", 450, 400, feedIndex = 3),
+        )
         assertEquals("gif", activePreview(visible, 0, 1000, setOf("gif", "video")))
+        assertNull(activePreview(listOf(VisibleMedia("edge-video", -395, 400, feedIndex = 1)),
+            0, 1000, setOf("edge-video")))
     }
-    @Test fun invisibleOrPrecomposedPreviewDoesNotPlay() {
-        assertNull(activePreview(listOf(VisibleMedia("video", 1000, 400)), 0, 1000, setOf("video")))
-        assertNull(activePreview(listOf(VisibleMedia("gif", -400, 400)), 0, 1000, setOf("gif")))
-        assertNull(activePreview(emptyList(), 0, 1000, setOf("video")))
+
+    @Test fun zeroOverlapAndPrecomposedMediaCannotAnchorOrPlay() {
+        val visible = listOf(VisibleMedia("offscreen-video", 1_000, 400, feedIndex = 4))
+        assertNull(dominantVisibleMedia(visible, 0, 1_000))
+        assertNull(activePreview(visible, 0, 1_000, setOf("offscreen-video")))
+        assertNull(playbackPreviewForAnchor(null, visible, 0, 1_000, setOf("offscreen-video")))
     }
-    @Test fun nearbyMediaWindowIsBoundedToCurrentAndNearestPhotoOrVideoOnEachSide() {
+
+    @Test fun dominantAnchorUsesAllMediaKindsAndDoesNotStickToAnOldVideoEdge() {
+        val visible = listOf(
+            VisibleMedia("old-video", -399, 400, feedIndex = 2),
+            VisibleMedia("current-photo", 40, 500, feedIndex = 3),
+        )
+
+        assertEquals("current-photo", dominantVisibleMedia(visible, 0, 600)?.key)
+        assertNull(activePreview(visible, 0, 600, setOf("old-video")))
+    }
+
+    @Test fun dominantAnchorAndPlaybackSelectionCanDifferWithoutPlayingAPartialEdge() {
+        val visible = listOf(
+            VisibleMedia("old-video", -180, 400, feedIndex = 5),
+            VisibleMedia("photo", 0, 500, feedIndex = 6),
+            VisibleMedia("next-gif", 340, 400, feedIndex = 7),
+        )
+
+        val anchor = dominantVisibleMedia(visible, 0, 600)?.key
+        assertEquals("photo", anchor)
+        assertEquals("next-gif", activePreview(visible, 0, 600, setOf("old-video", "next-gif")))
+        assertNull(playbackPreviewForAnchor(anchor, visible, 0, 600, setOf("old-video", "next-gif")))
+    }
+
+    @Test fun nearbyMediaWindowPreloadsImagesAndVideosIndependentlyAcrossMixedItems() {
         val posts = listOf(
+            post("previous-video", MediaKind.Video),
+            post("previous-gif", MediaKind.Gif),
+            post("previous-photo", MediaKind.Image),
+            post("current-photo", MediaKind.Image),
+            post("next-gif", MediaKind.Gif),
+            post("next-photo", MediaKind.Image),
+            post("next-video", MediaKind.Video),
             post("far-photo", MediaKind.Image),
-            post("before-gif", MediaKind.Gif),
-            post("before-video", MediaKind.Video),
-            post("current-gif", MediaKind.Gif),
-            post("after-gif", MediaKind.Gif),
-            post("after-photo", MediaKind.Image),
-            post("far-video", MediaKind.Video),
         )
 
         val window = nearbyMediaWindow(posts, centerIndex = 3)
 
-        assertEquals(listOf("current-gif", "before-video", "after-photo"),
+        assertEquals(listOf("previous-video", "previous-photo", "current-photo", "next-photo", "next-video"),
             window.map { it.post.media.document.documentId })
-        assertEquals(listOf(0, -1, 1), window.map { it.direction })
+        assertEquals(listOf(-1, -1, 0, 1, 1), window.map { it.direction })
+        assertEquals(listOf(0, 2, 3, 5, 6), window.map { it.feedIndex })
+        assertTrue(window.size <= 5)
         assertTrue(window.all { kotlin.math.abs(it.feedIndex - 3) <= 3 })
     }
-    @Test fun nearbyMediaWindowHandlesEdgesAndInvalidIndices() {
-        val posts = listOf(post("current", MediaKind.Image), post("next-gif", MediaKind.Gif),
-            post("next-video", MediaKind.Video))
+
+    @Test fun nearbyMediaWindowSearchesThroughGifsAndHandlesBothEdges() {
+        val posts = listOf(
+            post("current", MediaKind.Image),
+            post("next-gif-one", MediaKind.Gif),
+            post("next-gif-two", MediaKind.Gif),
+            post("next-video", MediaKind.Video),
+        )
         assertEquals(listOf("current", "next-video"), nearbyMediaWindow(posts, 0)
+            .map { it.post.media.document.documentId })
+        assertEquals(listOf("current", "next-gif-one", "next-video"), nearbyMediaWindow(posts, 1)
             .map { it.post.media.document.documentId })
         assertTrue(nearbyMediaWindow(posts, -1).isEmpty())
         assertTrue(nearbyMediaWindow(emptyList(), 0).isEmpty())
+        assertTrue(nearbyMediaWindow(posts, posts.lastIndex).size <= 5)
     }
     @Test fun videoTimeAndRelativeSeekAreFormattedAndClamped() {
         assertEquals("0:00", formatVideoTime(-1))

@@ -44,6 +44,33 @@ Run these checks on the verified debug APK linked above; CI does not replace the
 - Fully close/relaunch Mosaic and confirm a complete refresh is still allowed.
 - Repeat in the full-screen pager if convenient; only its current page should play.
 
+## Transition timing and debug diagnostics — new source correction, pending verification
+
+The latest source correction is not covered by the older APK linked at the top. Once its
+branch CI run produces a new debug APK, use that artifact for this section. Debug builds
+emit the `MosaicMedia` tag only; identifiers are hashed and local URIs/paths are omitted.
+With USB debugging on a test phone, capture:
+
+```sh
+adb logcat -c
+adb logcat -s MosaicMedia:D
+```
+
+Repeat a fixed sequence from the same Home feed snapshot: open a known MP4, wait for its
+neighbor-preload completion, scroll one item at a time through a photo and the next MP4,
+then repeat from the same starting position. Relate `feed anchor` / `preload window`
+positions to `preload submitted`, `preload io-start`, `preload complete`, `playback handoff`,
+`player state=BUFFERING/READY`, and `player first-frame`. `STATE_READY` is not first-frame;
+use the `activationToFirstFrameMs` record for the latter. Check that a photo anchor does
+not activate a partially visible neighboring animation, an intervening photo does not
+exclude a nearby video candidate, and no more than one player is active.
+
+For before/after comparison, use the same device, Android version, selected local files,
+feed order, scroll cadence, orientation and cache condition on the prior and corrected
+builds. Record app/device details and time from each video becoming dominant to its first
+visible frame; do not increase the buffer target based only on a unit test or APK build.
+No device timing or actual scrolling/playback evidence is available in this workspace.
+
 ## Save from the feed and viewer
 
 1. Open Home, tap **Save copy** on a photo, and confirm the success message.

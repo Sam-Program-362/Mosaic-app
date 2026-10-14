@@ -35,9 +35,13 @@ repeated independent saves, source deletion, playback lifecycle, themes and acce
 Phase 3 tests additionally cover feed membership, stable random sessions, timestamp
 fallback/ties, display counts, artwork, titles, viewport animation ownership and
 Compose decorative-action semantics. Media players must remain composition-scoped;
-image loading must stay local-only. Bound adjacent preloads (one item each side) and
-never create extra playing players for them. Do not equate CI with real hardware decoder
-or foreground/offscreen playback acceptance.
+image loading must stay local-only. Bound the mixed-media window to the current item plus
+the nearest image and nearest video on each side (at most five), reconcile real snapshot
+positions, and defer removal/re-ranking of an active source until its player releases it.
+Never create extra playing players for preload candidates. Add regression coverage for
+photo-dominant anchors/partial visibility, order/rank changes, poster-through-first-frame
+and nonspinning failure states. Do not equate CI with real hardware decoder or
+foreground/offscreen playback acceptance.
 
 Inspect merged APK permissions after adding media libraries; transitive manifests
 must not silently add network or broad storage/media access. Keep static artwork

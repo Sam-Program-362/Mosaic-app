@@ -63,6 +63,7 @@ fun FeedScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
+    val diagnosticContext = LocalContext.current.applicationContext
     val visiblePosts = remember(state.posts, searchQuery) { filterFeedPosts(state.posts, searchQuery) }
     val visibleState = remember(state, visiblePosts) { state.copy(posts = visiblePosts) }
     val snapshot = remember(visibleState.posts, visibleState.sort, visibleState.folderId, visibleState.epoch) {
@@ -72,31 +73,49 @@ fun FeedScreen(
     val animatedKeys = remember(visiblePosts) {
         visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
     }
-    val allMediaKeys = remember(visiblePosts) { visiblePosts.map { it.media.key.stableKey }.toSet() }
+    val feedIndexByKey = remember(visiblePosts) {
+        visiblePosts.mapIndexed { index, post -> post.media.key.stableKey to index }.toMap()
+    }
     val previewBounds = remember { mutableStateMapOf<String, Rect>() }
     var viewport by remember { mutableStateOf(Rect.Zero) }
-    val visibleMedia by remember(animatedKeys, allMediaKeys) {
+    val visibleMedia by remember(feedIndexByKey, previewBounds) {
         derivedStateOf {
-            previewBounds.map { (key, bounds) ->
-                VisibleMedia(key, bounds.top.roundToInt(), bounds.height.roundToInt())
+            previewBounds.mapNotNull { (key, bounds) ->
+                val feedIndex = feedIndexByKey[key] ?: return@mapNotNull null
+                VisibleMedia(key, bounds.top.roundToInt(), bounds.height.roundToInt(), feedIndex)
             }
         }
     }
-    val activeKey by remember(animatedKeys, visibleMedia, viewport) {
+    val viewportStart = viewport.top.roundToInt()
+    val viewportEnd = viewport.bottom.roundToInt()
+    val viewportAnchor by remember(visibleMedia, viewportStart, viewportEnd) {
+        derivedStateOf { dominantVisibleMedia(visibleMedia, viewportStart, viewportEnd) }
+    }
+    val activeKey by remember(animatedKeys, visibleMedia, viewportStart, viewportEnd, viewportAnchor) {
         derivedStateOf {
-            activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), animatedKeys)
+            playbackPreviewForAnchor(
+                viewportAnchor?.key,
+                visibleMedia,
+                viewportStart,
+                viewportEnd,
+                animatedKeys,
+            )
         }
     }
-    val centerKey by remember(animatedKeys, allMediaKeys, visibleMedia, viewport) {
-        derivedStateOf {
-            activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), animatedKeys)
-                ?: activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), allMediaKeys)
-        }
-    }
-    val centerIndex = remember(visiblePosts, centerKey) {
-        centerKey?.let { key -> visiblePosts.indexOfFirst { it.media.key.stableKey == key } } ?: -1
-    }
+    val centerIndex = viewportAnchor?.feedIndex ?: -1
     val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
+    LaunchedEffect(viewportAnchor?.key, centerIndex, activeKey, preloadWindow, visibleState.sort, visibleState.epoch, searchQuery) {
+        val candidateSummary = preloadWindow.joinToString(",") { candidate ->
+            "${candidate.feedIndex}:${candidate.post.media.document.kind.name.lowercase()}:${candidate.direction}"
+        }.ifBlank { "none" }
+        val anchorKind = viewportAnchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "feed anchor pos=$centerIndex kind=${anchorKind ?: "none"} " +
+                "id=${viewportAnchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "playback=${activeKey?.let(MediaDiagnostics::shortId) ?: "none"} candidates=$candidateSummary",
+        )
+    }
     var sorting by remember { mutableStateOf(false) }
     val videoPreloader = rememberVideoPreloadSession()
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
@@ -108,9 +127,10 @@ fun FeedScreen(
     }
     NearbyMediaPreloader(
         candidates = preloadWindow,
+        anchorPosition = centerIndex.takeIf { it >= 0 },
         imageLoader = imageLoader,
         videoSession = videoPreloader,
-        enabled = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+        enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
     )
     // Intentional session changes scroll to the start; theme/menu changes do not.
     LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) { listState.scrollToItem(0) }
@@ -176,12 +196,14 @@ fun FeedScreen(
             val key = post.media.key.stableKey
             DisposableEffect(key) { onDispose { previewBounds.remove(key) } }
             MediaPostCard(post, imageLoader,
+                feedPosition = index,
                 onPreviewBounds = { bounds -> if (previewBounds[key] != bounds) previewBounds[key] = bounds },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
                 videoPreloader = videoPreloader,
+                preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
             )
         }
     }
@@ -197,6 +219,8 @@ internal fun MediaPostCard(
     onSaveCopy: (() -> Unit)? = null,
     hideCommunity: Boolean = false,
     videoPreloader: VideoPreloadSession? = null,
+    feedPosition: Int = -1,
+    preloadingEnabled: Boolean = true,
 ) {
     val colors = LocalMosaicColors.current
     val mediaLabel = when (post.media.document.kind) {
@@ -232,8 +256,17 @@ internal fun MediaPostCard(
             style = MaterialTheme.typography.titleMedium,
             maxLines = 2,
         )
-        LocalMediaPreview(post, active, imageLoader, onPreviewBounds,
-            viewer = false, onOpenViewer = onOpenViewer, videoPreloader = videoPreloader)
+        LocalMediaPreview(
+            post = post,
+            active = active,
+            imageLoader = imageLoader,
+            onBounds = onPreviewBounds,
+            viewer = false,
+            onOpenViewer = onOpenViewer,
+            videoPreloader = videoPreloader,
+            feedPosition = feedPosition,
+            preloadingEnabled = preloadingEnabled,
+        )
         Row(
             Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

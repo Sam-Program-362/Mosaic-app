@@ -54,21 +54,39 @@ artifact (ID `11883232388`) contains the test APK and reports. The Drive ZIP rem
 untracked. No physical-device acceptance has been performed for this adaptation; the
 new theme, feed, search and video controls still need phone feedback.
 
-## User-reported video feedback follow-up — source implemented, verification pending
+## User-reported video feedback follow-up — initial implementation CI-verified, phone pending
 The user reports that photos are smooth but video load/advance feels sticky, and that
-inactive MP4 cards show a paused placeholder instead of a thumbnail. The new source
-selects at most one nearby image/video on each side for local Coil frame/image prefetch
-and short Media3 buffering; inactive videos request a first-frame thumbnail. Exactly
-one visible video still plays. Active video now has play/pause, mute, timeline, elapsed /
-duration, left/right double-tap ±10-second seek, and tap-to-hide/show player controls.
-On warm resume the app preserves current/preloaded media IDs and feed order while
-reconciling other entries; a cold process start and explicit refresh still do a full
-refresh. Tests for bounded selection, time/seek helpers, thumbnail semantics, resume
-policy and Room/repository preservation have been added. The source follow-up passed
-GitHub CI run [38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
+inactive MP4 cards show a paused placeholder instead of a thumbnail. The prior source
+selected bounded neighboring media for local Coil frame/image prefetch and short Media3
+buffering; inactive videos requested a first-frame thumbnail. Exactly one visible video
+plays. Active video has play/pause, mute, timeline, elapsed/duration, left/right
+double-tap ±10-second seek, and tap-to-hide/show controls. On warm resume the app
+preserves current/preloaded media IDs and feed order while reconciling other entries; a
+cold process start and explicit refresh still do a full refresh. The prior implementation
+passed GitHub CI run [38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
 at `a11fde2`: 74 tests, lint, schema consistency, packaged privacy and debug build; artifact
-`mosaic-debug-and-reports` is ID `11890760322`. It has not yet been checked on the user's
-phone; the initial observation remains user-reported feedback, not an agent-run test.
+`mosaic-debug-and-reports` is ID `11890760322`. That run predates the correction below.
+The source has not yet been checked on the user's phone; the original observation remains
+user-reported, not an agent-run test.
+
+## Video transition correctness/performance correction — source implemented, verification pending
+The current Home anchor is the greatest viewport overlap across photos/GIFs/videos;
+playback eligibility is separate, requires the anchor itself to be animated, and uses a
+50% visibility threshold. Feed and frozen-viewer candidates now carry true ordered-snapshot
+positions. The bounded window independently includes the nearest photo and nearest video
+within three positions on each side (max five including center). Active preload sources
+are protected from rank changes/removal until the player releases them; afterward the
+manager reconciles to the latest order. The one-second Media3 preload target is unchanged
+until a same-device measurement is available.
+
+The active video's cached poster remains composited over its `TextureView` surface until
+Media3 reports its first rendered frame; asynchronous access/decode/player errors end the
+spinner and show a local file/format error. Debug-only `MosaicMedia` logs record anchor/candidate positions, preload
+submission/I/O start/completion/error, activation, buffering/ready, first-frame latency and
+player errors (no URI/path or per-frame output). New tests cover dominant-photo/partial
+visibility selection, mixed windows, rank/order reconciliation, active-source protection,
+poster/error semantics, manager source handoff and cache keys. GitHub CI/device behavior
+and before/after timing for this latest correction remain unverified.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

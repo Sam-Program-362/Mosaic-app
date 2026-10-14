@@ -119,19 +119,24 @@ fun MediaViewer(
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
     }
-    val preloadWindow = remember(snapshot.posts, pagerState.currentPage) {
-        nearbyMediaWindow(snapshot.posts, pagerState.currentPage)
+    val preloadCenterPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
+    val preloadWindow = remember(snapshot.posts, preloadCenterPage) {
+        nearbyMediaWindow(snapshot.posts, preloadCenterPage)
     }
     val videoPreloader = rememberVideoPreloadSession()
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
-    LaunchedEffect(preloadWindow) {
-        retainedCallback(preloadWindow.map { it.post.media.key }.toSet())
+    val retainedKeys = remember(preloadWindow, pagerState.currentPage, snapshot.posts) {
+        (preloadWindow.map { it.post.media.key } + listOfNotNull(snapshot.posts.getOrNull(pagerState.currentPage)?.media?.key)).toSet()
+    }
+    LaunchedEffect(retainedKeys) {
+        retainedCallback(retainedKeys)
     }
     DisposableEffect(Unit) {
         onDispose { retainedCallback(emptySet()) }
     }
     NearbyMediaPreloader(
         candidates = preloadWindow,
+        anchorPosition = pagerState.currentPage,
         imageLoader = imageLoader,
         videoSession = videoPreloader,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
@@ -150,6 +155,8 @@ fun MediaViewer(
                 imageLoader = imageLoader,
                 viewer = true,
                 videoPreloader = videoPreloader,
+                feedPosition = page,
+                preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
             )
         }
         val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]
