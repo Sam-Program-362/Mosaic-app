@@ -1,11 +1,12 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the latest corrected debug APK from [CI run 38574662523](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38574662523)
-on `arena/b0f3e3cf-mosaic-app` at `c8dbd55`; it includes Room v2, Saved, viewer motion,
+Use the latest corrected debug APK from [CI run 38575809505](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38575809505)
+on `arena/b0f3e3cf-mosaic-app` at `50132da`; it includes Room v2, Saved, viewer motion,
 the reference-inspired UI/search, prior playback controls, and the video-transition
-correctness/performance correction. The workflow passed 82 tests, lint, schema consistency,
-packaged privacy checks, and the debug APK build. Download the `mosaic-debug-and-reports`
-artifact (ID `11898528123`). The older APK artifact `11890760322` predates this correction.
+correctness/performance correction plus active-source release-order regression. The workflow
+passed 83 tests, lint, schema consistency, packaged privacy checks, and the debug APK build.
+Download the `mosaic-debug-and-reports` artifact (ID `11899788396`). The older APK artifacts
+`11898528123` and `11890760322` predate the final regression test.
 This is a test build, not a release. No physical-device acceptance has been recorded yet.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing

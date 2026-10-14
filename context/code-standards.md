@@ -71,6 +71,6 @@ bounded media window, playback-time formatting/seeking, resume policy, protected
 reconciliation and inactive-video thumbnail semantics. CI run 38556928293 passed 74 tests,
 lint, schema consistency, packaged APK privacy checks and debug build (artifact
 `11890760322`). The 2026-10-14 true-position/anchor/poster correction passed CI run
-38574662523 at `c8dbd55`: 82 tests, lint, schema consistency, packaged privacy and debug
-APK build (artifact `11898528123`). Do not equate CI with device acceptance or claim phone
+38575809505 at `50132da`: 83 tests, lint, schema consistency, packaged privacy and debug
+APK build (artifact `11899788396`). Do not equate CI with device acceptance or claim phone
 results before on-device checks.

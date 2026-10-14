@@ -154,8 +154,8 @@ latency and player errors without local paths or per-frame output. Tests cover v
 mixed-window cases, position/rank updates, protected active entries, thumbnail/error state,
 manager source handoff and cache keys. The manager test uses a local-style content URI but
 does not decode/play a representative MP4. No schema, permission, network, source-media,
-copy or player-count scope changed. CI run 38574662523 at `c8dbd55` passed 82 tests, lint,
-schema consistency, packaged privacy checks and debug APK build (artifact `11898528123`).
+copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed 83 tests,
+lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).
 Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
 ## Remaining planned architecture

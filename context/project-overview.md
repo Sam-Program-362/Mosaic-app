@@ -76,9 +76,9 @@ available. The initial run's missing decoder import was fixed before this green 
 Physical-device acceptance for this follow-up and the earlier refreshed UI/search remains
 pending. The 2026-10-14 correctness/performance pass changes viewport anchoring, actual
 snapshot-position ranking/reconciliation, active-source removal timing, first-frame poster
-fallback, error semantics and debug diagnostics. CI run 38574662523 at `c8dbd55` passed
-82 tests, lint, schema consistency, packaged privacy checks and debug APK build (artifact
-`11898528123`). No before/after device measurement, actual MP4 decode, or real scrolling /
+fallback, error semantics and debug diagnostics. Final CI run 38575809505 at `50132da` passed
+83 tests, lint, schema consistency, packaged privacy checks and debug APK build (artifact
+`11899788396`). No before/after device measurement, actual MP4 decode, or real scrolling /
 playback evidence is available; CI does not establish that transitions are smoother. Custom
 communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
