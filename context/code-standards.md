@@ -55,7 +55,8 @@ completed copy. On ordinary failures, remove temp/final files without touching s
 every UI invocation remains a new copy. Saved views must use destination URIs, not
 source URIs. Keep the explicit Room v1→v2 migration and exact CI-generated schema.
 Run 38469093930 passed 59 tests, lint, tracked-schema consistency, APK privacy and debug
-build; its v2 schema was recovered from four chunked annotations. CI run 38509513570
-compiled the viewer transition code but failed its new UI test's early content assertion;
-a timing adjustment is pending rerun. Claim motion verification only after green CI and
-phone acceptance.
+build; its v2 schema was recovered from four chunked annotations. CI runs 38509513570
+and 38510281049 compiled the viewer transition code but failed the new UI test's initial
+content assertion. The first timing adjustment was insufficient; the current test isolates
+reverse-close retention from the entrance clock. Claim motion verification only after green
+CI and phone acceptance.

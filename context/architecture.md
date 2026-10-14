@@ -66,9 +66,10 @@ Viewer-only system-bar hiding records/restores previous visibility. The viewer s
 is transient UI state, not persistent media/library state. The current Phase 4 follow-up
 uses `AnimatedVisibility` with a restrained scale/fade enter and reverse exit. A retained
 snapshot keeps the outgoing viewer composed through close; during both transitions the
-feed stays hidden from semantics, muted from playback, and scroll-stable. CI run
-38509513570 compiled this work but the animation UI test failed its early content
-assertion; a test timing adjustment is pending rerun. Phone verification remains open.
+feed stays hidden from semantics, muted from playback, and scroll-stable. CI runs
+38509513570 and 38510281049 compiled this work but failed the animation UI test's initial
+media-content assertion. The revised test now starts with visible content and manually
+checks reverse-close retention; it is pending CI. Phone verification remains open.
 
 Manage folders now offers an explicit confirmation before removing a selection.
 Repository operations serialize removal with refresh/add. `SafFolderSource` attempts

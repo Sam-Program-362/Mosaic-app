@@ -10,10 +10,11 @@ lint, schema consistency, APK privacy and debug build. Follow-up run 38469093930
 passed those checks; its exact generated Room v2 schema was decoded from four CI
 annotation chunks (6,024 bytes, identity hash `9c5465636830273745be40f054484124`).
 Schema and viewer expand/fade work were committed as d267f16 and pushed to the
-session branch. CI run 38509513570 compiled main/test Kotlin, then failed the new
-animation UI test's early media-content assertion; later privacy/schema checks did not
-run. The test now waits for the open transition to settle before checking close
-retention and needs a rerun. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
+session branch. CI runs 38509513570 (d267f16) and 38510281049 (073461e) compiled main/test Kotlin,
+then failed the new animation UI test at the same initial media-content assertion; later
+privacy/schema checks did not run. Waiting 350 ms did not fix it. The current worktree
+isolates the reverse-close case by starting from a visible viewer, then manually clocks
+exit retention/removal; this revised test still needs a rerun. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
 confirms Home photos, folder isolation and video playback; GIF, mute, offscreen/background
 playback, viewer motion/paging and removal are not yet confirmed on-device. This is not
 a complete first release.
@@ -128,10 +129,11 @@ Phase 4 CI iterations:
   identity hash `9c5465636830273745be40f054484124`).
 - New Phase 4 visual follow-up adds reversible grow/fade motion for opening/closing the
   full-screen viewer and a UI transition test, following the user-supplied dark/orange
-  reference without copying web-only functions. Commit d267f16's CI run 38509513570
-  compiled sources but failed the new UI test's early content assertion. Its latest test
-  adjustment waits for the open transition to complete before checking exit retention;
-  it is not yet rerun. Phase 4/5 device acceptance remains pending.
+  reference without copying web-only functions. Runs 38509513570 and 38510281049 compiled
+  sources but failed the new UI test's initial media-content assertion. The first timing
+  adjustment did not resolve it; the current worktree starts from a visible viewer and
+  manually clocks reverse-close retention/removal. It needs another CI run. Phase 4/5
+  device acceptance remains pending.
 
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/

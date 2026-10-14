@@ -50,9 +50,10 @@ phone acceptance remains pending, and the user has now asked for a smoother grow
 viewer transition based on supplied screenshots. Phase 5 Save copy/Saved-feed, Room v2
 migration and feed/viewer actions passed CI run 38469093930 (59 tests, lint, tracked
 schema consistency, packaged privacy and debug APK build). The exact KSP-generated v2
-schema is committed. CI run 38509513570 compiled the viewer-motion change but failed its
-new UI test's early content assertion; a timing adjustment is awaiting rerun. Custom
-communities remain planned. This is not first-release completion.
+schema is committed. CI runs 38509513570 and 38510281049 compiled the viewer-motion
+change but failed its new UI test's initial content assertion; the first timing adjustment
+was insufficient. The current test now isolates reverse-close retention. It awaits CI.
+Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

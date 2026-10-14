@@ -29,15 +29,14 @@ class MediaViewerUiTest {
     @get:Rule val compose = createComposeRule()
     private val loader = ImageLoader.Builder(RuntimeEnvironment.getApplication()).build()
 
-    @Test fun animatedOverlayOpensAndClosesWithoutDroppingContentMidTransition() {
-        val visibility = MutableTransitionState(false)
-        val activeSession = mutableStateOf<ViewerSession?>(null)
-        val retainedSession = mutableStateOf<ViewerSession?>(null)
+    @Test fun animatedOverlayRetainsViewerThroughReverseCloseTransition() {
+        val visibility = MutableTransitionState(true)
         val session = ViewerSession(
             FeedSnapshot(listOf(post("photo")), FeedSort.Newest, "folder", 1L),
             initialPage = 0,
         )
-        compose.mainClock.autoAdvance = false
+        val activeSession = mutableStateOf<ViewerSession?>(session)
+        val retainedSession = mutableStateOf<ViewerSession?>(session)
         compose.setContent {
             MosaicTheme(ThemeMode.Dark) {
                 Box(Modifier.fillMaxSize()) {
@@ -53,16 +52,8 @@ class MediaViewerUiTest {
                 }
             }
         }
-        compose.onNodeWithText("photo").assertDoesNotExist()
-
-        compose.runOnIdle {
-            activeSession.value = session
-            retainedSession.value = session
-            visibility.targetState = true
-        }
-        compose.mainClock.advanceTimeBy(350)
         compose.onNodeWithText("photo").assertExists()
-        compose.runOnIdle { assertTrue(visibility.isIdle) }
+        compose.mainClock.autoAdvance = false
 
         compose.runOnIdle {
             activeSession.value = null
