@@ -85,13 +85,12 @@ leak or crash exists. Capture the failure before changing buffer sizes or preloa
 
 1. Install the latest debug APK from the artifact above with an in-place update. Record
    device model, Android version/build, app build/commit and whether the same files work
-   when opened once. These commands capture device details and the pre-run app PID:
+   when opened once. Capture device details with:
 
    ```sh
    adb shell getprop ro.product.model
    adb shell getprop ro.build.version.release
    adb shell getprop ro.build.fingerprint
-   adb shell pidof dev.mosaic.app
    ```
 2. Before launching Mosaic, start a full log capture in a terminal and leave it running:
 
@@ -100,13 +99,15 @@ leak or crash exists. Capture the failure before changing buffer sizes or preloa
    adb logcat -b all -v threadtime > mosaic-video-logcat.txt
    ```
 
-3. Reproduce the user's sequence: enter a video before its first frame is visible; scroll
-   across at least 10 mixed photo/video posts; rapidly reverse across several videos; repeat
-   until the original symptom would normally occur; then return to a previously viewed
-   video. Do not clear the log until the sequence finishes or the app stops responding.
-4. Stop logcat capture with Ctrl+C. Check the `MosaicMedia` resource snapshots and
-   `AndroidRuntime`, `libc`, `DEBUG`, `ExoPlayer`, `MediaCodec` and `Media3` records. Record
-   `adb shell pidof dev.mosaic.app` before and immediately after the symptom. A process
+3. Launch Mosaic. Before reproducing, record the baseline PID with
+   `adb shell pidof dev.mosaic.app`, then run the user's sequence: enter a video before its
+   first frame is visible; scroll across at least 10 mixed photo/video posts; rapidly reverse
+   across several videos; repeat until the original symptom would normally occur; then return
+   to a previously viewed video. Do not clear the log until the sequence finishes or the app
+   stops responding.
+4. Immediately after the symptom, record `adb shell pidof dev.mosaic.app` again, then stop
+   logcat capture with Ctrl+C. Check the `MosaicMedia` resource snapshots and `AndroidRuntime`,
+   `libc`, `DEBUG`, `ExoPlayer`, `MediaCodec` and `Media3` records. A process
    death with a `FATAL EXCEPTION` / fatal-signal record is a crash; a still-running PID
    with an unresponsive surface is a stall (also check the ANR report). A changing PID
    can indicate a restart; include the timestamps.
