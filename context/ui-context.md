@@ -137,8 +137,8 @@ nearby video preloading and offscreen composed-card poster decoding while retain
 prefetch and the currently displayed video poster/active player. Debug records capture list
 anchor/offset, visible row/media dimensions,
 layout-size transitions, scroll frame intervals and approximate main-thread CPU. The paired
-APK workflow passed CI run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
-(88 tests, lint, two APK builds, schema and privacy checks; artifact `11908916275`). Run the same
+APK workflow passed CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
+(88 tests in both modes, lint, two APK builds, schema and privacy checks; artifact `11909443268`). Run the same
 photo-only and mixed-feed swipe sequence in both APKs; photo improvement, shift persistence and
 player-overlay timing remain unknown until on-device logs are reviewed. Keep layout/photo
 regression separate from player readiness and do not implement a speculative fix beforehand.

@@ -170,10 +170,10 @@ removes neighboring Media3 video loads and adjacent video-frame image prefetch w
 photo prefetch, feed geometry/selection, visible posters or active-player preparation. Debug feed
 instrumentation logs measured media/card size changes, first-visible key/offset, visible row
 geometry, and aggregate frame/UI-thread CPU per scroll. CI run
-[38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388) at `f005b18`
-passed 88 tests, lint, paired enabled/disabled debug APK builds, schema and both APK privacy
-checks (artifact `11908916275`). This is build/test evidence only; no on-device comparison or
-cause is established.
+[38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869) at `742caf3`
+passed 88 tests in both preload modes, lint, paired enabled/disabled debug APK builds, schema
+and both APK privacy checks (artifact `11909443268`). This is build/test evidence only; no
+on-device comparison or cause is established.
 
 ## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,

@@ -98,6 +98,6 @@ separate. For the new scroll-regression report, compare otherwise-identical debu
 video preloading enabled/disabled; leave photo prefetch and visible-player behavior constant.
 Log only coarse geometry transitions and per-scroll timing summaries (not per-frame lines or
 local paths), and do not assign a device cause before the same-sequence phone comparison. The
-paired diagnostic workflow passed run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
-with 88 tests, lint, both debug APK builds, schema and privacy checks for both variants; artifact
-`11908916275`. Hardware comparison remains a separate requirement.
+paired diagnostic workflow passed run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
+with 88 tests in both modes, lint, both debug APK builds, schema and privacy checks for both
+variants; artifact `11909443268`. Hardware comparison remains a separate requirement.

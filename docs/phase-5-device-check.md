@@ -1,14 +1,15 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the paired diagnostic APKs from [CI run 38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
-on `arena/b0f3e3cf-mosaic-app` at `f005b18`. Download the `mosaic-debug-and-reports` artifact
-(ID `11908916275`); it contains `mosaic-debug-video-preload-enabled.apk` and
-`mosaic-debug-video-preload-disabled.apk` plus checksums/reports. The workflow passed 88 tests,
-lint, both APK builds, Room schema consistency, and packaged privacy checks for both APKs.
-The paired builds include Room v2, Saved, viewer motion, the reference-inspired UI/search,
-playback controls, first-frame loading correction, portrait/landscape handoff diagnostics and
-new feed-layout/frame samplers. Earlier APK artifacts `11905094822`, `11903168202`,
-`11899788396`, `11898528123` and `11890760322` predate this controlled video-preload A/B.
+Use the paired diagnostic APKs from [CI run 38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
+on `arena/b0f3e3cf-mosaic-app` at `742caf3`. Download the `mosaic-debug-and-reports` artifact
+(ID `11909443268`); it contains `mosaic-debug-video-preload-enabled.apk` and
+`mosaic-debug-video-preload-disabled.apk` plus checksums/reports. The workflow passed 88 tests
+in both preload modes, lint, both APK builds, Room schema consistency, and packaged privacy
+checks for both APKs. The paired builds include Room v2, Saved, viewer motion, the
+reference-inspired UI/search, playback controls, first-frame loading correction,
+portrait/landscape handoff diagnostics and new feed-layout/frame samplers. Earlier APK
+artifacts `11908916275`, `11905094822`, `11903168202`, `11899788396`, `11898528123` and
+`11890760322` predate this final preload-off poster behavior.
 This is a test build, not a release. No physical-device comparison or acceptance has been
 recorded yet.
 Do not uninstall the older build just to install this one; the cached development

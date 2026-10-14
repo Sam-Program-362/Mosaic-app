@@ -3,12 +3,13 @@
 ## Current phase
 Phase 5 follow-up — investigate a newly reported feed-scroll regression with a controlled
 video-preloading A/B, feed geometry instrumentation and debug scroll timing. Diagnostic source
-and workflow changes passed GitHub CI run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
-at `f005b18`: 88 tests, lint, default-enabled and preloading-disabled debug APKs, Room schema
-and both APK privacy checks. Artifact `mosaic-debug-and-reports` is ID `11908916275`. Physical-
-device comparison is still pending; the current checkout has no attached 75-second recording,
-no `adb`/device, and no Java runtime for local Gradle builds. Do not claim on/off results or a
-cause until matching phone logs exist.
+and workflow changes passed GitHub CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
+at `742caf3`: 88 tests in both preload modes, lint, paired debug APKs, Room schema and privacy
+checks for both APKs. Artifact `mosaic-debug-and-reports` is ID `11909443268`. The first attempt
+(38594927101) stopped before project compilation because GitHub could not resolve the KSP plugin;
+the following push-triggered run passed. Physical-device comparison is still pending; the current
+checkout has no attached 75-second recording, no `adb`/device, and no Java runtime for local
+Gradle builds. Do not claim on/off results or a cause until matching phone logs exist.
 
 The prior video-transition correctness/performance pass passed GitHub CI run 38575809505 at
 `50132da` (83 tests, lint, schema/privacy checks and debug APK); physical-device behavior
@@ -35,16 +36,16 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   preloader, Coil prefetch of nearby video frames and poster decoding for composed video cards
   outside the viewport, while leaving active-video playback, currently displayed inactive-video
   posters, photo prefetch and feed layout/selection intact. The normal build defaults to enabled. Unit coverage checks the selection
-  policy in both modes; CI run `38593502388` built/retained both debug APKs and passed the
-  preload property assertions.
+  policy in both modes; CI run `38595248869` built/retained both debug APKs, asserted the
+  enabled/disabled BuildConfig values, and ran unit tests in both modes.
 - Debug-only feed instrumentation records scroll start/settle and idle position transitions,
   visible row keys/offsets/sizes, preview/card dimension changes, ratio-callback sources, and
   one frame-interval/UI-thread-CPU summary per scroll burst. No per-frame logging is added.
   Player readiness/first-frame events remain separate from layout records.
 - `docs/phase-5-device-check.md` contains a repeatable same-order A/B protocol for the
-  photo-only and mixed feeds. CI run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
-  at `f005b18` passed 88 tests, lint, both enabled/disabled APK builds, generated schema and
-  privacy checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11908916275`.
+  photo-only and mixed feeds. Final CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
+  at `742caf3` passed 88 tests in both preload modes, lint, both APK builds, generated schema,
+  and privacy checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11909443268`.
   No physical-device comparison or cause is established yet. Do not implement a
   layout/preloader fix before comparing enabled and disabled device traces.
 
