@@ -1,14 +1,13 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the verified debug APK from [CI run 38543107645](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
-on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, viewer motion, and the
-reference-inspired UI/search updates. The workflow passed 67 tests, lint, schema
-consistency, packaged privacy checks, and the debug APK build.
-This is a test build, not a release. The linked artifact predates the 2026-10-14
-video/preload/warm-resume source follow-up; wait for the newer CI artifact before using
-this guide to accept those changes. Do not uninstall the older build just to install
-this one; the cached development signing key should allow an in-place update and
-preserve folder selections. If Android reports a signing
+Use the verified debug APK from [CI run 38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
+on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, viewer motion, the
+reference-inspired UI/search, and the video/preload/warm-resume follow-up. The workflow
+passed 74 tests, lint, schema consistency, packaged privacy checks, and the debug APK
+build. Download the `mosaic-debug-and-reports` artifact (ID `11890760322`).
+This is a test build, not a release. No physical-device acceptance has been recorded yet.
+Do not uninstall the older build just to install this one; the cached development
+signing key should allow an in-place update and preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
 private Saved copies and selected-folder grants; it never changes source media.
 
@@ -30,7 +29,7 @@ private Saved copies and selected-folder grants; it never changes source media.
 
 ## Video thumbnails, controls and warm resume — new source follow-up
 
-Run these checks on the newer debug APK once its CI run passes:
+Run these checks on the verified debug APK linked above; CI does not replace these phone checks:
 
 - Inactive MP4 cards should show a recognizable local first-frame thumbnail, not the
   old “MP4 · playback paused” label. Compare scrolling through nearby photos/videos;

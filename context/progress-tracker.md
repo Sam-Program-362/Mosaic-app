@@ -22,21 +22,24 @@ removal are not yet confirmed on-device. The user now reports smooth photos but 
 loading/advance and a paused placeholder for inactive videos. This is user-reported device
 evidence, not an agent-run test. This is not a complete first release.
 
-## Video preload, controls and warm-resume follow-up — implementation in progress
-Source now uses a bounded current/neighbor media window (at most one eligible item on
-each side, scanning no farther than three feed entries), Coil local image/video-frame
-prefetch, and Media3 1-second neighboring-video buffers. Inactive MP4 cards request a
-local first-frame thumbnail. The player adds play/pause, mute, seek/time/duration,
-double-tap ±10-second seeking, tap-to-hide/show, and position/play state retention across
-lifecycle deactivation. Warm ON_RESUME keeps the feed epoch and Room rows for current /
-preloaded IDs while refreshing other entries; a new process and explicit refresh remain
-full refreshes. Unit/repository/Room/UI tests were added. No database schema or runtime
-network permission changed. `./gradlew testDebugUnitTest` is blocked locally because
-Java is absent; physical-device acceptance is still pending. Initial GitHub run
-38556461411 failed during Kotlin compilation because `MosaicApplication.kt` lacked the
-`VideoFrameDecoder` import. The import and an explicit preload-session iteration lambda
-are now fixed locally; a CI rerun is pending. The user explicitly authorized the
-session-branch push for CI/debug-APK verification; no merge or release is in scope.
+## Video preload, controls and warm-resume follow-up — CI verified, phone pending
+Source uses a bounded current/neighbor media window (at most one eligible item on each
+side, scanning no farther than three feed entries), Coil local image/video-frame prefetch,
+and Media3 one-second neighboring-video buffers. Inactive MP4 cards request a local
+first-frame thumbnail. The player adds play/pause, mute, seek/time/duration, double-tap
+±10-second seeking, tap-to-hide/show, and position/play-state retention across lifecycle
+deactivation. Warm ON_RESUME keeps the feed epoch and Room rows for current/preloaded IDs
+while refreshing other entries; a new process and explicit refresh remain full refreshes.
+Unit/repository/Room/UI tests were added. No database schema or runtime network permission
+changed. Initial GitHub run 38556461411 failed compilation because `MosaicApplication.kt`
+lacked the `VideoFrameDecoder` import; this was fixed in `a11fde2`. Green CI run
+[38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293) at
+`a11fde2` passed 74 tests (0 failures/errors/skips), lint, schema consistency, packaged
+APK privacy checks and debug APK build. Artifact `mosaic-debug-and-reports` is ID
+`11890760322`. Commits `3c6e694` and `a11fde2` are pushed to the session branch. Local
+Gradle remains blocked because Java is absent; physical-device acceptance is still
+pending. The user authorized development-branch CI/debug-APK verification; no merge or
+release is in scope.
 
 ## Drive-reference UI adaptation follow-up — CI verified, phone check pending
 The current session branch adapts the inspected Drive reference without copying the

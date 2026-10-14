@@ -48,5 +48,7 @@ and other future features explicit; a visible label alone is not proof.
 The user's 2026-10-14 phone report says photos are smooth, video loading/advance feels
 sticky, and inactive video currently shows a paused placeholder. Source now has bounded
 neighbor preloading, local video-frame thumbnails, playback/seek controls and warm-resume
-media retention. These changes are not CI-verified or phone-verified yet; treat the
-original observations as user-reported evidence and the new behavior as pending.
+media retention. CI run 38556928293 at `a11fde2` passed 74 tests, lint, schema consistency,
+packaged privacy checks and debug APK build; artifact 11890760322 is available. Treat the
+original observations as user-reported evidence, and leave the new behavior pending until
+physical-device verification.

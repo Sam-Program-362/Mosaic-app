@@ -64,9 +64,11 @@ duration, left/right double-tap ±10-second seek, and tap-to-hide/show player co
 On warm resume the app preserves current/preloaded media IDs and feed order while
 reconciling other entries; a cold process start and explicit refresh still do a full
 refresh. Tests for bounded selection, time/seek helpers, thumbnail semantics, resume
-policy and Room/repository preservation have been added. This follow-up has not yet
-passed GitHub CI or been checked on the user's phone; the initial observation is user
-feedback, not an agent-run device test.
+policy and Room/repository preservation have been added. The source follow-up passed
+GitHub CI run [38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
+at `a11fde2`: 74 tests, lint, schema consistency, packaged privacy and debug build; artifact
+`mosaic-debug-and-reports` is ID `11890760322`. It has not yet been checked on the user's
+phone; the initial observation remains user-reported feedback, not an agent-run test.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

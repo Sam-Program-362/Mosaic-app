@@ -117,7 +117,7 @@ passed run 38543107645 (67 tests, lint, schema, APK privacy and debug build). Ph
 acceptance for viewer, permissions, Saved copies, theme, search and refreshed controls
 remains pending.
 
-## Video and warm-resume follow-up — source implemented, verification pending
+## Video and warm-resume follow-up — CI verified, phone acceptance pending
 `nearbyMediaWindow` selects the current item and at most one eligible photo/video on
 both sides, searching no farther than three feed entries. Coil prefetches static images
 and video first frames into its local memory cache. A composition-scoped Media3
@@ -132,8 +132,10 @@ epoch. Later ON_RESUME scans keep the existing feed epoch/order and pass current
 preloaded `MediaKey`s to the repository. A successful Room transaction retains those
 existing rows (including their old metadata) while reconciling all other scanned rows;
 failed scans still retain the whole prior index. No schema version change, background
-service, network access or source writes were introduced. GitHub CI and phone acceptance
-for this follow-up remain pending.
+service, network access or source writes were introduced. CI run 38556928293 at `a11fde2`
+passed 74 tests, lint, schema consistency, packaged privacy checks and debug build; artifact
+`mosaic-debug-and-reports` is ID `11890760322`. Only physical-device acceptance remains
+pending for this follow-up.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy

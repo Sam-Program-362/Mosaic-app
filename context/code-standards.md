@@ -64,5 +64,7 @@ library stats/theme callback, and community directory loading/filtering/unavaila
 CI run 38543107645 at `b667dcc` passed 67 tests, lint, schema consistency, packaged APK
 privacy and debug build. A 2026-10-14 video/lifecycle follow-up now adds tests for the
 bounded media window, playback-time formatting/seeking, resume policy, protected Room
-reconciliation and inactive-video thumbnail semantics. Its CI run is pending; do not
-equate CI with device acceptance or claim phone results before on-device checks.
+reconciliation and inactive-video thumbnail semantics. CI run 38556928293 passed 74 tests,
+lint, schema consistency, packaged APK privacy checks and debug build (artifact
+`11890760322`). Do not equate CI with device acceptance or claim phone results before
+on-device checks.

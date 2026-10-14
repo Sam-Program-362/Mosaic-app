@@ -37,14 +37,13 @@ and production release/signing.
 
 ## Verification and phone evidence
 
-The video/preload/warm-resume follow-up is implemented in source but has not yet run
-through GitHub CI or physical-device acceptance. The latest green Android build below
-covers the preceding UI revision, not this follow-up.
+The video/preload/warm-resume follow-up passed GitHub CI, but still needs physical-device
+acceptance.
 
-[Latest Android CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
-passed **67 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
+[Latest Android CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
+passed **74 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
 and packaged APK privacy checks**. The APK has no network or broad storage/media
-permissions. Artifact **mosaic-debug-and-reports** (ID `11883232388`) contains the debug
+permissions. Artifact **mosaic-debug-and-reports** (ID `11890760322`) contains the debug
 APK and verification reports. CI does not substitute for physical-device checks.
 
 The user reports from the Phase 3 phone check that photos appear in Home, selecting

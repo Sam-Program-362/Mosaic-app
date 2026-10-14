@@ -66,11 +66,13 @@ and resolved an entrance-test timing issue. The Drive-reference UI adaptation pa
 run 38543107645 at `b667dcc` (67 tests, lint, schema consistency, packaged APK privacy
 and debug build); the debug APK and reports are available as CI artifact 11883232388.
 The reference-inspired Dark fallback is a provisional default. A 2026-10-14 follow-up
-now implements bounded nearby image/video preloading, inactive-video frame thumbnails,
-Reddit-inspired playback/seek controls and warm-resume media retention; GitHub CI and
-physical-device acceptance for that follow-up are pending. The earlier refreshed UI,
-search and controls also still need physical acceptance. Custom communities remain
-planned. This is not first-release completion.
+implements bounded nearby image/video preloading, inactive-video frame thumbnails,
+Reddit-inspired playback/seek controls and warm-resume media retention. CI run
+38556928293 at `a11fde2` passed 74 tests, lint, schema consistency, packaged privacy
+checks and debug APK build; artifact `mosaic-debug-and-reports` (ID `11890760322`) is
+available. The initial run's missing decoder import was fixed before this green run.
+Physical-device acceptance for this follow-up and the earlier refreshed UI/search remains
+pending. Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
