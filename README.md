@@ -50,9 +50,7 @@ privacy checks, Room schema consistency, and the source guard against video-prel
 `mosaic-debug-and-reports` artifact (ID `11923577241`) includes `app-debug.apk` and
 `app-debug.sha256`; download it from the [workflow artifact page](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
 Older paired preload-mode APKs are not valid acceptance builds; the current build has no preload
-toggle. The sandbox cannot fetch GitHub's artifact-storage host to copy the APK into this workspace,
-so use the GitHub Actions artifact link. Physical-device verification remains pending; local Gradle
-is blocked because Java is not installed and `JAVA_HOME` is unset. See the [Phase 5 device check](docs/phase-5-device-check.md) for the single-APK phone sequence and exact acceptance criteria.
+toggle. Physical-device verification remains pending. See the [Phase 5 device check](docs/phase-5-device-check.md) for the single-APK phone sequence and exact acceptance criteria.
 
 The user's earlier same-device comparison reported sticky photo scrolling and a crash with video
 preloading enabled; with it disabled, photos felt smooth and video loading was fast enough. A
