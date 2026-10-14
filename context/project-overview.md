@@ -90,8 +90,16 @@ verified. A newer user report notes reduced smoothness/shifts in the photo-only 
 video-loading overlays in a mixed feed. A controlled build-time video-preloading A/B plus feed
 geometry/frame diagnostics passed CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
 at `742caf3`: 88 tests in both preload modes, lint, paired debug APKs, Room schema and privacy
-checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11909443268`. Phone comparison
-and root-cause evidence remain pending. Custom communities remain planned. This is not first-release completion.
+checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11909443268`. The user now
+reports on-device that enabled preloading made photo scrolling sticky, disabled preloading made
+photos smoother, and a separate shift remains as a video begins loading; the disabled build has not
+crashed during their test. This establishes an aggregate user-observed preload cost, not which
+prefetch operation causes it or why the shift occurs. The current source keeps video preloading
+off by default, reserves per-row geometry against asynchronous ratio updates, derives viewport
+positions from LazyList offsets plus row-relative media bounds, and adds event-level before/after
+and player-transition logs. These changes still require CI and physical-device verification; no
+fix, exact shift cause, or crash resolution is claimed. Custom communities remain planned. This
+is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

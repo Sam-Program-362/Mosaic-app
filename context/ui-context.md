@@ -129,21 +129,34 @@ and managed-source handoff; they are not device flings or MP4 decoding. CI run
 `11905094822`). Device reproduction and crash evidence remain pending; no crash cause or
 resolution is claimed. See `docs/phase-5-device-check.md` for the targeted sequence.
 
-## New reported photo-feed smoothness and video-loading concern — user retest unresolved
-In a new retest of the latest implementation, the user reports that photo-only “2D Images”
-scrolling still feels less smooth and shifts unexpectedly, while “Anime Vid” still shows multiple
-“Loading video...” overlays during fast scrolling. The user reviewed a 75-second recording,
-but the file, exact offsets and device logs were not supplied to the workspace. This is user
-report, not an agent-reviewed recording or a measured preload A/B result. A build-time A/B disables
-nearby video preloading and offscreen composed-card poster decoding while retaining static-photo
-prefetch and the currently displayed video poster/active player. Debug records capture list
-anchor/offset, visible row/media dimensions,
-layout-size transitions, scroll frame intervals and approximate main-thread CPU. The paired
-APK workflow passed CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
-(88 tests in both modes, lint, two APK builds, schema and privacy checks; artifact `11909443268`). Run the same
-photo-only and mixed-feed swipe sequence in both APKs; photo improvement, shift persistence and
-player-overlay timing remain unknown until on-device logs are reviewed. Keep layout/photo
-regression separate from player readiness and do not implement a speculative fix beforehand.
+## Feed shifts after controlled video-preload comparison — source fix in progress
+The user reports a same-device comparison: video-preloading enabled made photo scrolling feel
+sticky; with video preloading disabled, photos felt smooth. A separate feed shift still occurs
+when the next video enters view and starts loading; the disabled build has not crashed during
+the user's tests. This is user-reported device evidence that the aggregate video-preload work
+contributes to photo jank; it does not isolate the Media3 manager vs. Coil video-frame/presentation
+work, establish why the video-triggered shift occurs, or prove crash safety. Raw logcat/offsets and
+the 75-second recording are not available in the workspace.
+
+Source review confirms the previous implementation initialized every preview at 4:3 and then
+changed its measured feed height when image/video-thumbnail/player-size callbacks delivered an
+aspect ratio. Loading/first-frame controls were already drawn inside a Box, so they should not
+intrinsically resize the outer card. `FeedScreen` also wrote a root-space `Rect` into snapshot state
+on every preview placement change, causing repeated viewport/selection derivation during scroll.
+The feed only calls `scrollToItem(0)` for an intentional folder/sort/epoch/search key change;
+player activation itself has no scroll call, and list item keys are stable media identities.
+These are confirmed code paths, but device logs have not yet tied a particular recorded jump to
+one of them.
+
+The current source keeps video preloading disabled by default, resolves visible-media positions
+from LazyList offsets plus row-relative preview geometry, and avoids snapshot writes when scroll
+changes only root position. It caches valid per-media ratios for later compositions and reserves
+the current row height before image/video callbacks; decoded media content still fits to its own
+aspect ratio inside that container. New logs include row-size before/after snapshots, active
+selection and explicit scroll events, aspect-ratio source/cache, player prepare/overlay/first frame,
+and one coarse UI-frame/CPU summary per scroll burst. CI run 38595248869 verifies the earlier
+A/B build only; the current source changes are still pending CI and device verification. No fix
+or causal attribution is claimed yet.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

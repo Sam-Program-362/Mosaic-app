@@ -16,8 +16,10 @@ safe folder removal; this is still a development app, not a complete first relea
 - Only the current foreground video plays. MP4 starts muted and exposes play/pause,
   mute, seek/time/duration, double-tap ±10-second seeking and tap-to-hide/show controls
   in the viewer. Inactive videos show a local first-frame thumbnail.
-- The current feed position and at most one nearby image/video on either side are kept
-  warm with local Coil frame/image prefetch and a short Media3 video buffer.
+- Static-photo prefetch remains local and bounded. Neighboring video buffering, nearby
+  video-frame prefetch, and offscreen video-poster decoding are disabled by default after
+  the user-reported photo-jank A/B; use `-PmosaicVideoPreloading=true` only for controlled
+  diagnostics, not as an assumed performance improvement.
 - Manage folders supports add, refresh, access recovery, and confirmed **Remove
   from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
   saved read grant; it never alters or deletes original media.
@@ -37,22 +39,24 @@ and production release/signing.
 
 ## Verification and phone evidence
 
-The video/preload/warm-resume follow-up passed GitHub CI, but still needs physical-device
-acceptance.
+The previous paired preloading diagnostic passed CI, but the current geometry-stability changes
+are pending hosted verification and physical-device acceptance. The prior artifact was
+`mosaic-debug-and-reports` ID `11909443268` from run `38595248869`; it predates the current
+geometry fix and should not be used to accept it.
 
-[Latest Android CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
-passed **74 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
-and packaged APK privacy checks**. The APK has no network or broad storage/media
-permissions. Artifact **mosaic-debug-and-reports** (ID `11890760322`) contains the debug
-APK and verification reports. CI does not substitute for physical-device checks.
+The user now reports a same-device comparison: preloading enabled made photo scrolling sticky;
+with preloading disabled, photos felt smooth, but a separate shift remains when the next video
+starts loading. The disabled build has not crashed during the user's tests. This is user-reported
+evidence, not log-correlated attribution or crash-resolution proof. Current source keeps video
+preloading disabled by default, stabilizes each composed row's reserved media height against
+asynchronous ratio callbacks, derives viewport positions from LazyColumn item offsets and
+row-relative preview geometry, and records event-level scroll/layout/player transitions. The
+new changes need CI and a repeated mixed portrait/landscape phone test before calling the issue
+fixed. See the [Phase 5 device check](docs/phase-5-device-check.md).
 
-The user reports from the Phase 3 phone check that photos appear in Home, selecting
-a folder shows only its media, and videos play. GIF animation, sound/mute behavior,
-background/offscreen stopping, Phase 4 paging/removal, and the latest theme/search/
-Settings/navigation UI have not yet been confirmed on-device. In a newer user report,
-photos remain smooth but video loading/advance is sticky and inactive video cards show a
-paused placeholder; the current preloading/thumbnail/control/resume changes still need
-phone verification. See the [Phase 4 phone check](docs/phase-4-device-check.md) and [Phase 5 copy check](docs/phase-5-device-check.md).
+Other physical-device checks remain open: GIF animation, sound/mute behavior, background/offscreen
+stopping, Phase 4 paging/removal, and the latest theme/search/Settings/navigation UI. See the
+[Phase 4 phone check](docs/phase-4-device-check.md) and [Phase 5 copy check](docs/phase-5-device-check.md).
 
 ## Build
 

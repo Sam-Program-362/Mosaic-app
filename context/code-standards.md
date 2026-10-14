@@ -94,10 +94,18 @@ coarse visibility-transition logs with hashed IDs and paired player lifecycle/st
 records, never per-frame output or local paths/URIs. The focused follow-up passed CI run
 [38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533): 87 tests,
 lint, schema/privacy checks and debug APK build. Physical fling/codec/crash verification remains
-separate. For the new scroll-regression report, compare otherwise-identical debug APKs with
-video preloading enabled/disabled; leave photo prefetch and visible-player behavior constant.
-Log only coarse geometry transitions and per-scroll timing summaries (not per-frame lines or
-local paths), and do not assign a device cause before the same-sequence phone comparison. The
-paired diagnostic workflow passed run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
-with 88 tests in both modes, lint, both debug APK builds, schema and privacy checks for both
-variants; artifact `11909443268`. Hardware comparison remains a separate requirement.
+separate.
+
+The user's new on-device A/B reports sticky photo scrolling with video preloading enabled,
+smoother photos with it disabled, and a remaining visible shift as the next video loads in the
+disabled build; no crash occurred in the user's disabled-build test. Treat these as user evidence,
+not per-operation attribution or proof that crashes are resolved. Keep the disabled mode as the
+build default until later conservative experiments justify opt-in video work. Feed geometry must
+use LazyList row offsets plus preview bounds relative to each row; do not write root-position state
+to Compose on every scroll tick. Reserve each composed media row's height from its known/cached
+ratio or a bounded fallback; thumbnail, player-size, loading, and first-frame callbacks may update
+content fit/cache only, never that row's reserved height. Keep the poster/loading overlay inside
+that same container and preserve source aspect with fit rather than stretching. Log explicit
+feed `scrollToItem` triggers, selection changes, before/after visible row geometry, ratio source,
+player preparation/overlay/first-frame, and coarse frame/UI-thread CPU summaries. Tests, lint,
+and APK builds still do not establish on-device acceptance.

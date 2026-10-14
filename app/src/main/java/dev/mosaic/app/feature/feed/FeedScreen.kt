@@ -20,10 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.geometry.Rect
 import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -82,54 +79,78 @@ fun FeedScreen(
     val feedIndexByKey = remember(visiblePosts) {
         visiblePosts.mapIndexed { index, post -> post.media.key.stableKey to index }.toMap()
     }
-    val previewBounds = remember { mutableStateMapOf<String, Rect>() }
+    val previewGeometryByKey = remember { mutableMapOf<String, PreviewItemGeometry>() }
+    var previewGeometryRevision by remember { mutableIntStateOf(0) }
     val previousCardSizes = remember { mutableMapOf<String, IntSize>() }
-    var viewport by remember { mutableStateOf(Rect.Zero) }
-    val visibleMedia by remember(feedIndexByKey, previewBounds) {
+    val aspectRatioCache = remember { MediaAspectRatioCache() }
+    val viewportRange = remember(listState) {
         derivedStateOf {
-            previewBounds.mapNotNull { (key, bounds) ->
-                val feedIndex = feedIndexByKey[key] ?: return@mapNotNull null
-                VisibleMedia(key, bounds.top.roundToInt(), bounds.height.roundToInt(), feedIndex)
-            }
+            val layout = listState.layoutInfo
+            layout.viewportStartOffset to layout.viewportEndOffset
         }
     }
-    val viewportStart = viewport.top.roundToInt()
-    val viewportEnd = viewport.bottom.roundToInt()
-    val viewportAnchor by remember(visibleMedia, viewportStart, viewportEnd) {
-        derivedStateOf { dominantVisibleMedia(visibleMedia, viewportStart, viewportEnd) }
+    val visibleMediaState = remember(feedIndexByKey, listState, previewGeometryRevision) {
+        derivedStateOf {
+            val rows = listState.layoutInfo.visibleItemsInfo.map { item ->
+                FeedRowPlacement(
+                    key = item.key.toString(),
+                    index = item.index,
+                    offsetPx = item.offset,
+                    heightPx = item.size,
+                )
+            }
+            visibleMediaFromRows(rows, previewGeometryByKey, feedIndexByKey)
+        }
     }
-    val activeKey by remember(animatedKeys, visibleMedia, viewportStart, viewportEnd, viewportAnchor) {
+    val viewportStart = viewportRange.value.first
+    val viewportEnd = viewportRange.value.second
+    val viewportAnchorKey by remember(visibleMediaState, viewportStart, viewportEnd) {
+        derivedStateOf {
+            dominantVisibleMedia(visibleMediaState.value, viewportStart, viewportEnd)?.key
+        }
+    }
+    val activeKey by remember(animatedKeys, visibleMediaState, viewportStart, viewportEnd, viewportAnchorKey) {
         derivedStateOf {
             playbackPreviewForAnchor(
-                viewportAnchor?.key,
-                visibleMedia,
+                viewportAnchorKey,
+                visibleMediaState.value,
                 viewportStart,
                 viewportEnd,
                 animatedKeys,
             )
         }
     }
-    val centerIndex = viewportAnchor?.feedIndex ?: -1
-    val anchorVisibleFraction = viewportAnchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
-    val activeVisibleMedia = activeKey?.let { key -> visibleMedia.firstOrNull { it.key == key } }
-    val activeVisibleFraction = activeVisibleMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
-    val visiblePreviewKeys = remember(visibleMedia, viewportStart, viewportEnd) {
-        visibleMedia.asSequence()
-            .filter { visibleOverlapPixels(it, viewportStart, viewportEnd) > 0 }
-            .map { it.key }
-            .toSet()
+    val centerIndex = viewportAnchorKey?.let { feedIndexByKey[it] } ?: -1
+    val anchorFractionBucket by remember(visibleMediaState, viewportStart, viewportEnd, viewportAnchorKey) {
+        derivedStateOf {
+            visibleMediaState.value.firstOrNull { it.key == viewportAnchorKey }?.let {
+                (visibleFraction(it, viewportStart, viewportEnd) * 10f).roundToInt()
+            } ?: 0
+        }
+    }
+    val activeFractionBucket by remember(visibleMediaState, viewportStart, viewportEnd, activeKey) {
+        derivedStateOf {
+            visibleMediaState.value.firstOrNull { it.key == activeKey }?.let {
+                (visibleFraction(it, viewportStart, viewportEnd) * 10f).roundToInt()
+            } ?: 0
+        }
+    }
+    val visiblePreviewKeys by remember(visibleMediaState, viewportStart, viewportEnd) {
+        derivedStateOf {
+            visibleMediaState.value.asSequence()
+                .filter { visibleOverlapPixels(it, viewportStart, viewportEnd) > 0 }
+                .map { it.key }
+                .toSet()
+        }
     }
     FeedScrollDiagnostics(
         listState = listState,
-        visibleMedia = visibleMedia,
-        viewportStart = viewportStart,
-        viewportEnd = viewportEnd,
+        visibleMedia = visibleMediaState,
+        viewportRange = viewportRange,
         videoPreloadingEnabled = videoPreloadingEnabled,
         context = diagnosticContext,
         refreshRateHz = LocalView.current.display?.refreshRate ?: 60f,
     )
-    val anchorFractionBucket = (anchorVisibleFraction * 10f).roundToInt()
-    val activeFractionBucket = (activeVisibleFraction * 10f).roundToInt()
     val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
     LaunchedEffect(videoPreloadingEnabled) {
         MediaDiagnostics.log(
@@ -139,7 +160,7 @@ fun FeedScreen(
         )
     }
     LaunchedEffect(
-        viewportAnchor?.key,
+        viewportAnchorKey,
         centerIndex,
         activeKey,
         anchorFractionBucket,
@@ -149,15 +170,20 @@ fun FeedScreen(
         visibleState.epoch,
         searchQuery,
     ) {
+        val currentVisibleMedia = visibleMediaState.value
+        val anchor = dominantVisibleMedia(currentVisibleMedia, viewportStart, viewportEnd)
+        val anchorVisibleFraction = anchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
+        val activeMedia = activeKey?.let { key -> currentVisibleMedia.firstOrNull { it.key == key } }
+        val activeVisibleFraction = activeMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
         val candidateSummary = preloadWindow.joinToString(",") { candidate ->
             "${candidate.feedIndex}:${candidate.post.media.document.kind.name.lowercase()}:${candidate.direction}"
         }.ifBlank { "none" }
-        val anchorKind = viewportAnchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
+        val anchorKind = anchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
         val activeIndex = activeKey?.let { feedIndexByKey[it] } ?: -1
         val activeKind = activeKey?.let { key ->
             visiblePosts.getOrNull(feedIndexByKey[key] ?: -1)?.media?.document?.kind?.name?.lowercase()
         }
-        val visibleSummary = visibleMedia.sortedBy { it.feedIndex }.joinToString(";") { item ->
+        val visibleSummary = currentVisibleMedia.sortedBy { it.feedIndex }.joinToString(";") { item ->
             val kind = visiblePosts.getOrNull(item.feedIndex)?.media?.document?.kind?.name?.lowercase() ?: "unknown"
             val overlap = visibleOverlapPixels(item, viewportStart, viewportEnd)
             val fraction = (visibleFraction(item, viewportStart, viewportEnd) * 100f).roundToInt()
@@ -168,13 +194,32 @@ fun FeedScreen(
             diagnosticContext,
             "feed selection videoPreloading=$videoPreloadingEnabled viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
                 "anchorPos=$centerIndex anchorKind=${anchorKind ?: "none"} " +
-                "anchorId=${viewportAnchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "anchorId=${anchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "anchorVisible=${(anchorVisibleFraction * 100f).roundToInt()}% " +
                 "activePos=$activeIndex activeKind=${activeKind ?: "none"} " +
                 "activeId=${activeKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "activeVisible=${(activeVisibleFraction * 100f).roundToInt()}% " +
                 "candidates=$candidateSummary visible=$visibleSummary",
         )
+    }
+    var previousSelection by remember { mutableStateOf<FeedSelectionIdentity?>(null) }
+    LaunchedEffect(viewportAnchorKey, activeKey) {
+        val current = FeedSelectionIdentity(viewportAnchorKey, activeKey)
+        val before = previousSelection
+        val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "feed active-selection transition trigger=viewport-geometry " +
+                "beforeAnchor=${before?.anchorKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "afterAnchor=${current.anchorKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "beforeActive=${before?.activeKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "afterActive=${current.activeKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "firstVisible=${listState.firstVisibleItemIndex}:" +
+                "${firstVisible?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "scrollOffset=${listState.firstVisibleItemScrollOffset}px " +
+                "scrolling=${listState.isScrollInProgress} geometryRevision=$previewGeometryRevision",
+        )
+        previousSelection = current
     }
     var sorting by remember { mutableStateOf(false) }
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
@@ -192,12 +237,31 @@ fun FeedScreen(
         videoPreloadingEnabled = videoPreloadingEnabled,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
     )
-    // Intentional session changes scroll to the start; theme/menu changes do not.
-    LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) { listState.scrollToItem(0) }
+    // The only feed programmatic scroll is an intentional new-session/sort/search reset.
+    LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) {
+        val before = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+        val trigger = "feed-session-key-change folder=${MediaDiagnostics.shortId(state.folderId ?: "home")} " +
+            "sort=${state.sort.name} epoch=${state.epoch} searchActive=${searchQuery.isNotBlank()}"
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "feed programmatic-scroll event=begin command=scrollToItem target=0 trigger=$trigger " +
+                "firstVisible=${listState.firstVisibleItemIndex}:" +
+                "${before?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "scrollOffset=${listState.firstVisibleItemScrollOffset}px",
+        )
+        listState.scrollToItem(0)
+        val after = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "feed programmatic-scroll event=complete command=scrollToItem target=0 trigger=$trigger " +
+                "firstVisible=${listState.firstVisibleItemIndex}:" +
+                "${after?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "scrollOffset=${listState.firstVisibleItemScrollOffset}px",
+        )
+    }
     LazyColumn(
         state = listState,
-        modifier = modifier.fillMaxSize().background(colors.background)
-            .onGloballyPositioned { viewport = it.boundsInRoot() },
+        modifier = modifier.fillMaxSize().background(colors.background),
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         if (showFeedControls) item(key = "feed-controls") {
@@ -254,9 +318,12 @@ fun FeedScreen(
         }
         itemsIndexed(visiblePosts, key = { _, post -> post.media.key.stableKey }) { index, post ->
             val key = post.media.key.stableKey
+            val document = post.media.document
+            val geometryKey = mediaGeometryCacheKey(key, document.modifiedAtMillis, document.sizeBytes)
+            val initialAspectRatio = aspectRatioCache.get(geometryKey)?.ratio
             DisposableEffect(key) {
                 onDispose {
-                    previewBounds.remove(key)
+                    if (previewGeometryByKey.remove(key) != null) previewGeometryRevision++
                     previousCardSizes.remove(key)
                 }
             }
@@ -270,42 +337,58 @@ fun FeedScreen(
                             listState = listState,
                             feedPosition = index,
                             mediaKey = key,
-                            mediaKind = post.media.document.kind.name.lowercase(),
+                            mediaKind = document.kind.name.lowercase(),
                             beforeWidth = before.width,
                             beforeHeight = before.height,
                             afterWidth = size.width,
                             afterHeight = size.height,
-                            visibleMedia = visibleMedia,
+                            visibleMedia = visibleMediaState.value,
                             viewportStart = viewportStart,
                             viewportEnd = viewportEnd,
                             videoPreloadingEnabled = videoPreloadingEnabled,
                         )
                     }
                 },
-                onPreviewBounds = { bounds ->
-                    val before = previewBounds[key]
-                    val beforeWidth = before?.width?.roundToInt()
-                    val beforeHeight = before?.height?.roundToInt()
-                    val afterWidth = bounds.width.roundToInt()
-                    val afterHeight = bounds.height.roundToInt()
-                    if (before != null && (beforeWidth != afterWidth || beforeHeight != afterHeight)) {
-                        val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-                        val card = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }
-                        MediaDiagnostics.log(
-                            diagnosticContext,
-                            "feed measured-media-size-change pos=$index kind=${post.media.document.kind.name.lowercase()} " +
-                                "id=${MediaDiagnostics.shortId(key)} scrolling=${listState.isScrollInProgress} " +
-                                "before=${beforeWidth}x${beforeHeight}px@${before.top.roundToInt()} " +
-                                "after=${afterWidth}x${afterHeight}px@${bounds.top.roundToInt()} " +
-                                "firstVisible=${listState.firstVisibleItemIndex}:" +
-                                "${firstVisible?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
-                                "scrollOffset=${listState.firstVisibleItemScrollOffset}px " +
-                                "card=${card?.offset ?: -1}px/${card?.size ?: -1}px",
-                        )
+                onPreviewBounds = { geometry ->
+                    val before = previewGeometryByKey.put(key, geometry)
+                    if (before != geometry) {
+                        previewGeometryRevision++
+                        if (before != null) {
+                            val layout = listState.layoutInfo
+                            val firstVisible = layout.visibleItemsInfo.firstOrNull()
+                            val rowOffset = layout.visibleItemsInfo.firstOrNull { it.key == key }?.offset
+                            val rowsSummary = layout.visibleItemsInfo.joinToString(";") { item ->
+                                "index=${item.index}:id=${MediaDiagnostics.shortId(item.key.toString())}:" +
+                                    "top=${item.offset}px:size=${item.size}px"
+                            }.ifBlank { "none" }
+                            val beforeMedia = visibleMediaState.value.sortedBy { it.feedIndex }.joinToString(";") { item ->
+                                "pos=${item.feedIndex}:id=${MediaDiagnostics.shortId(item.key)}:" +
+                                    "top=${item.offset}px:height=${item.size}px"
+                            }.ifBlank { "none" }
+                            val afterMedia = buildList {
+                                addAll(visibleMediaState.value.filterNot { it.key == key })
+                                if (rowOffset != null && geometry.heightPx > 0) {
+                                    add(VisibleMedia(key, rowOffset + geometry.topInItemPx, geometry.heightPx, index))
+                                }
+                            }.sortedBy { it.feedIndex }.joinToString(";") { item ->
+                                "pos=${item.feedIndex}:id=${MediaDiagnostics.shortId(item.key)}:" +
+                                    "top=${item.offset}px:height=${item.size}px"
+                            }.ifBlank { "none" }
+                            MediaDiagnostics.log(
+                                diagnosticContext,
+                                "feed preview placement-change pos=$index kind=${document.kind.name.lowercase()} " +
+                                    "id=${MediaDiagnostics.shortId(key)} scrolling=${listState.isScrollInProgress} " +
+                                    "before=${before.widthPx}x${before.heightPx}px@${before.topInItemPx}px-in-row " +
+                                    "after=${geometry.widthPx}x${geometry.heightPx}px@${geometry.topInItemPx}px-in-row " +
+                                    "firstVisible=${listState.firstVisibleItemIndex}:" +
+                                    "${firstVisible?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                                    "scrollOffset=${listState.firstVisibleItemScrollOffset}px " +
+                                    "visibleRows=[$rowsSummary] beforeMedia=[$beforeMedia] afterMedia=[$afterMedia]",
+                            )
+                        }
                     }
-                    if (before != bounds) previewBounds[key] = bounds
                 },
-                active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
+                active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == key,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
@@ -313,10 +396,25 @@ fun FeedScreen(
                 videoPreloadingEnabled = videoPreloadingEnabled,
                 videoPreviewVisible = key in visiblePreviewKeys,
                 preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+                initialAspectRatio = initialAspectRatio,
+                onAspectRatioObserved = { ratio, source ->
+                    val update = aspectRatioCache.record(geometryKey, ratio, source)
+                    if (update.changed) {
+                        MediaDiagnostics.log(
+                            diagnosticContext,
+                            "media aspect-ratio-cache event=${if (update.previous == null) "seed" else "refine"} " +
+                                "pos=$index kind=${document.kind.name.lowercase()} id=${MediaDiagnostics.shortId(key)} " +
+                                "source=$source ratio=${update.previous?.ratio ?: "none"}->${update.current?.ratio ?: "none"} " +
+                                "reservedRatioForCurrent=${reservedMediaAspectRatio(initialAspectRatio)} layoutUpdate=deferred-until-recomposition",
+                        )
+                    }
+                },
             )
         }
     }
 }
+
+private data class FeedSelectionIdentity(val anchorKey: String?, val activeKey: String?)
 
 @Composable
 internal fun MediaPostCard(
@@ -324,7 +422,7 @@ internal fun MediaPostCard(
     imageLoader: ImageLoader,
     active: Boolean,
     onCardSizeChanged: (IntSize) -> Unit = {},
-    onPreviewBounds: (Rect) -> Unit = {},
+    onPreviewBounds: (PreviewItemGeometry) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
     hideCommunity: Boolean = false,
@@ -333,6 +431,8 @@ internal fun MediaPostCard(
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
     preloadingEnabled: Boolean = true,
+    initialAspectRatio: Float? = null,
+    onAspectRatioObserved: (Float, String) -> Unit = { _, _ -> },
 ) {
     val colors = LocalMosaicColors.current
     val mediaLabel = when (post.media.document.kind) {
@@ -380,6 +480,8 @@ internal fun MediaPostCard(
             videoPreviewVisible = videoPreviewVisible,
             feedPosition = feedPosition,
             preloadingEnabled = preloadingEnabled,
+            initialAspectRatio = initialAspectRatio,
+            onAspectRatioObserved = onAspectRatioObserved,
         )
         Row(
             Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),

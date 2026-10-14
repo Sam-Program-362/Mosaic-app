@@ -5,11 +5,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// Diagnostic-only A/B switch; normal builds retain video preloading unless explicitly disabled.
+// Keep the user-confirmed smoother, no-video-preload mode as the conservative default.
+// Opt in explicitly to nearby video preloading for controlled A/B measurements.
 val videoPreloadingEnabled = providers.gradleProperty("mosaicVideoPreloading").orNull?.let { value ->
     value.toBooleanStrictOrNull()
         ?: error("-PmosaicVideoPreloading must be either true or false (received '$value').")
-} ?: true
+} ?: false
 
 android {
     namespace = "dev.mosaic.app"

@@ -155,8 +155,9 @@ I/O start, preload completion/error, playback handoff, buffering/ready, activati
 latency and player errors without local paths or per-frame output. A build-time diagnostic
 property, `-PmosaicVideoPreloading=false`, bypasses the Media3 nearby-video preloader, nearby
 Coil video-frame prefetch and video-card poster decodes outside the viewport; active playback,
-displayed inactive-video posters and static-photo prefetch are retained. The default remains enabled, and there is no runtime
-setting. Feed-only debug probes summarize visible row/media geometry and aggregate frame
+displayed inactive-video posters and static-photo prefetch are retained. At this prior baseline
+build the default was enabled; the latest source uses disabled-by-default pending device evidence.
+There is no runtime setting. Feed-only debug probes summarize visible row/media geometry and aggregate frame
 interval/UI-thread CPU values once per scroll burst. Tests cover viewport and mixed-window
 cases, position/rank updates, protected active entries, thumbnail/error state, manager source
 handoff and cache keys. The manager test uses a local-style content URI but
@@ -165,15 +166,36 @@ copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed
 lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).
 Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
-A new feed-smoothness report now has a build-time A/B switch: `-PmosaicVideoPreloading=false`
-removes neighboring Media3 video loads and adjacent video-frame image prefetch without changing
-photo prefetch, feed geometry/selection, visible posters or active-player preparation. Debug feed
-instrumentation logs measured media/card size changes, first-visible key/offset, visible row
-geometry, and aggregate frame/UI-thread CPU per scroll. CI run
+The user now reports an on-device A/B: video preloading enabled made photo scrolling feel
+sticky; with it disabled, photos felt smoother, but the feed still shifted when a visible video
+began loading. The disabled build has not crashed during the user's test. This is user evidence
+that video-preload work contributes to photo-feed jank at aggregate level, but it does not isolate
+Media3 buffering, nearby Coil video-frame prefetch, or offscreen poster decoding; it does not
+explain the separate video-triggered shift or establish crash safety.
+
+The current source keeps preloading disabled by default and requires explicit
+`-PmosaicVideoPreloading=true` to opt in. Static-photo prefetch, visible inactive-video posters,
+and active playback remain unchanged. `FeedScreen` now derives visible media positions from
+`LazyListState.layoutInfo` plus preview geometry relative to each keyed row. It avoids storing
+root coordinates in Compose state during scroll, and selection outputs remain stable item keys.
+A per-feed bounded aspect-ratio cache seeds later compositions; asynchronous image/thumbnail/video
+size callbacks can refine that cache and the video surface's content ratio, but cannot resize the
+already-composed row. Unknown first-visit dimensions use a reserved 4:3 container; decoded content
+continues to fit without stretching. The loading overlay and poster remain over the same reserved
+container. This deliberately prioritizes stable measured geometry; user/device acceptance of the
+fallback is still pending.
+
+Debug events now include row-local preview geometry, full visible-row before/after snapshots on
+remeasurement, first-visible key/index/offset, active-selection transitions, the explicit feed
+`scrollToItem` trigger/result, aspect-ratio source/cache changes, player preparation, overlay
+transitions and first-frame events, plus coarse frame/UI-thread CPU summaries. Only the explicit
+scope/sort/session/search reset calls `scrollToItem`; no media activation/ratio/first-frame path
+requests feed re-anchoring. The previous diagnostic build passed CI run
 [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869) at `742caf3`
-passed 88 tests in both preload modes, lint, paired enabled/disabled debug APK builds, schema
-and both APK privacy checks (artifact `11909443268`). This is build/test evidence only; no
-on-device comparison or cause is established.
+(88 tests in both preload modes, lint, paired APK builds, schema and APK privacy checks; artifact
+`11909443268`). That run predates these geometry changes. Current changes still require hosted
+CI and a physical-device mixed portrait/landscape fast-scroll test; no fix or crash resolution is
+claimed until those checks pass.
 
 ## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,

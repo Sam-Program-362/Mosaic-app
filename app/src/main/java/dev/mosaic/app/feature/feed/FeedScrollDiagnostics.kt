@@ -2,9 +2,11 @@ package dev.mosaic.app.feature.feed
 
 import android.content.Context
 import android.os.Debug
+import android.os.SystemClock
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -17,9 +19,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 @Composable
 internal fun FeedScrollDiagnostics(
     listState: LazyListState,
-    visibleMedia: List<VisibleMedia>,
-    viewportStart: Int,
-    viewportEnd: Int,
+    visibleMedia: State<List<VisibleMedia>>,
+    viewportRange: State<Pair<Int, Int>>,
     videoPreloadingEnabled: Boolean,
     context: Context,
     refreshRateHz: Float,
@@ -27,39 +28,53 @@ internal fun FeedScrollDiagnostics(
     if (!BuildConfig.DEBUG) return
 
     val latestVisibleMedia = rememberUpdatedState(visibleMedia)
-    val latestViewportStart = rememberUpdatedState(viewportStart)
-    val latestViewportEnd = rememberUpdatedState(viewportEnd)
+    val latestViewportRange = rememberUpdatedState(viewportRange)
     val frameBudgetHz = refreshRateHz.takeIf { it.isFinite() && it > 0f } ?: 60f
 
     LaunchedEffect(listState, context, videoPreloadingEnabled) {
-        var previous: FeedScrollPosition? = null
+        var previous: FeedLayoutSnapshot? = null
         snapshotFlow {
             val layout = listState.layoutInfo
-            FeedScrollPosition(
+            val firstVisible = layout.visibleItemsInfo.firstOrNull()
+            val viewport = latestViewportRange.value.value
+            FeedLayoutSnapshot(
                 scrolling = listState.isScrollInProgress,
                 firstVisibleIndex = listState.firstVisibleItemIndex,
-                firstVisibleKey = layout.visibleItemsInfo.firstOrNull()?.key?.toString(),
+                firstVisibleKey = firstVisible?.key?.toString(),
                 firstVisibleOffset = listState.firstVisibleItemScrollOffset,
+                viewportStart = viewport.first,
+                viewportEnd = viewport.second,
+                visibleRows = layout.visibleItemsInfo.map { item ->
+                    FeedRowPlacement(
+                        key = item.key.toString(),
+                        index = item.index,
+                        offsetPx = item.offset,
+                        heightPx = item.size,
+                    )
+                },
+                visibleMedia = latestVisibleMedia.value.value,
             )
-        }.distinctUntilChanged().collect { current ->
+        }.collect { current ->
             val before = previous
+            val resizedRows = before?.let { changedRowSizes(it.visibleRows, current.visibleRows) }.orEmpty()
             val event = when {
-                before == null -> null
+                before == null -> "initial"
+                resizedRows.isNotEmpty() -> "item-size-change"
                 !before.scrolling && current.scrolling -> "scroll-start"
                 before.scrolling && !current.scrolling -> "scroll-settled"
-                !before.scrolling && !current.scrolling && before != current -> "idle-position-change"
+                !before.scrolling && !current.scrolling &&
+                    (before.firstVisibleIndex != current.firstVisibleIndex ||
+                        before.firstVisibleOffset != current.firstVisibleOffset ||
+                        before.firstVisibleKey != current.firstVisibleKey) -> "idle-position-change"
                 else -> null
             }
             if (event != null) {
-                logFeedLayoutEvent(
+                logFeedLayoutTransition(
                     context = context,
                     event = event,
                     before = before,
                     current = current,
-                    listState = listState,
-                    visibleMedia = latestVisibleMedia.value,
-                    viewportStart = latestViewportStart.value,
-                    viewportEnd = latestViewportEnd.value,
+                    resizedRows = resizedRows,
                     videoPreloadingEnabled = videoPreloadingEnabled,
                 )
             }
@@ -106,11 +121,15 @@ internal fun FeedScrollDiagnostics(
     }
 }
 
-private data class FeedScrollPosition(
+private data class FeedLayoutSnapshot(
     val scrolling: Boolean,
     val firstVisibleIndex: Int,
     val firstVisibleKey: String?,
     val firstVisibleOffset: Int,
+    val viewportStart: Int,
+    val viewportEnd: Int,
+    val visibleRows: List<FeedRowPlacement>,
+    val visibleMedia: List<VisibleMedia>,
 )
 
 internal fun logFeedItemSizeChange(
@@ -128,66 +147,73 @@ internal fun logFeedItemSizeChange(
     viewportEnd: Int,
     videoPreloadingEnabled: Boolean,
 ) {
-    val current = currentFeedPosition(listState)
+    val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
     val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == mediaKey }
-    logFeedLayoutEvent(
-        context = context,
-        event = "item-size-change pos=$feedPosition kind=$mediaKind " +
-            "id=${MediaDiagnostics.shortId(mediaKey)} " +
-            "media=${beforeWidth}x${beforeHeight}->${afterWidth}x${afterHeight}px " +
-            "row=${row?.offset ?: -1}px/${row?.size ?: -1}px scrolling=${current.scrolling}",
-        before = null,
-        current = current,
-        listState = listState,
-        visibleMedia = visibleMedia,
-        viewportStart = viewportStart,
-        viewportEnd = viewportEnd,
-        videoPreloadingEnabled = videoPreloadingEnabled,
-    )
-}
-
-private fun currentFeedPosition(listState: LazyListState) = FeedScrollPosition(
-    scrolling = listState.isScrollInProgress,
-    firstVisibleIndex = listState.firstVisibleItemIndex,
-    firstVisibleKey = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.key?.toString(),
-    firstVisibleOffset = listState.firstVisibleItemScrollOffset,
-)
-
-private fun logFeedLayoutEvent(
-    context: Context,
-    event: String,
-    before: FeedScrollPosition?,
-    current: FeedScrollPosition,
-    listState: LazyListState,
-    visibleMedia: List<VisibleMedia>,
-    viewportStart: Int,
-    viewportEnd: Int,
-    videoPreloadingEnabled: Boolean,
-) {
-    val layout = listState.layoutInfo
-    val visibleItems = layout.visibleItemsInfo.joinToString(";") { item ->
+    val visibleRows = listState.layoutInfo.visibleItemsInfo.joinToString(";") { item ->
         "index=${item.index}:id=${MediaDiagnostics.shortId(item.key.toString())}:" +
             "top=${item.offset}px:size=${item.size}px"
     }.ifBlank { "none" }
-    val measuredMedia = visibleMedia.sortedBy { it.feedIndex }.joinToString(";") { item ->
-        "pos=${item.feedIndex}:id=${MediaDiagnostics.shortId(item.key)}:" +
-            "top=${item.offset - viewportStart}px:height=${item.size}px"
-    }.ifBlank { "none" }
-    val previous = before?.let {
-        "previous=${it.firstVisibleIndex}:${it.firstVisibleKey?.let(MediaDiagnostics::shortId) ?: "none"}:" +
-            "offset=${it.firstVisibleOffset}px:scrolling=${it.scrolling} "
-    }.orEmpty()
+    val visibleSummary = mediaSummary(visibleMedia, viewportStart, viewportEnd)
     MediaDiagnostics.log(
         context,
-        "feed layout event=$event videoPreloading=$videoPreloadingEnabled $previous" +
-            "firstVisible=${current.firstVisibleIndex}:" +
-            "${current.firstVisibleKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
-            "scrollOffset=${current.firstVisibleOffset}px viewport=" +
-            "${layout.viewportStartOffset}..${layout.viewportEndOffset}px " +
-            "mediaViewport=${viewportStart}..${viewportEnd}px visibleItems=$visibleItems " +
-            "media=$measuredMedia",
+        "feed card measured-size-change videoPreloading=$videoPreloadingEnabled " +
+            "pos=$feedPosition kind=$mediaKind id=${MediaDiagnostics.shortId(mediaKey)} " +
+            "before=${beforeWidth}x${beforeHeight}px after=${afterWidth}x${afterHeight}px " +
+            "scrolling=${listState.isScrollInProgress} " +
+            "firstVisible=${listState.firstVisibleItemIndex}:" +
+            "${firstVisible?.key?.toString()?.let(MediaDiagnostics::shortId) ?: "none"} " +
+            "scrollOffset=${listState.firstVisibleItemScrollOffset}px " +
+            "row=${row?.offset ?: -1}px/${row?.size ?: -1}px " +
+            "visibleRows=$visibleRows visibleMedia=$visibleSummary",
     )
 }
+
+private fun changedRowSizes(before: List<FeedRowPlacement>, after: List<FeedRowPlacement>): List<String> {
+    val beforeByKey = before.associateBy { it.key }
+    return after.mapNotNull { current ->
+        val previous = beforeByKey[current.key] ?: return@mapNotNull null
+        if (previous.heightPx == current.heightPx) return@mapNotNull null
+        "${MediaDiagnostics.shortId(current.key)}:${previous.heightPx}->${current.heightPx}px"
+    }
+}
+
+private fun logFeedLayoutTransition(
+    context: Context,
+    event: String,
+    before: FeedLayoutSnapshot?,
+    current: FeedLayoutSnapshot,
+    resizedRows: List<String>,
+    videoPreloadingEnabled: Boolean,
+) {
+    fun side(snapshot: FeedLayoutSnapshot?): String {
+        if (snapshot == null) return "none"
+        val rows = snapshot.visibleRows.joinToString(";") { row ->
+            "index=${row.index}:id=${MediaDiagnostics.shortId(row.key)}:" +
+                "top=${row.offsetPx}px:size=${row.heightPx}px"
+        }.ifBlank { "none" }
+        val media = mediaSummary(snapshot.visibleMedia, snapshot.viewportStart, snapshot.viewportEnd)
+        return "first=${snapshot.firstVisibleIndex}:" +
+            "${snapshot.firstVisibleKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+            "scrollOffset=${snapshot.firstVisibleOffset}px scrolling=${snapshot.scrolling} " +
+            "viewport=${snapshot.viewportStart}..${snapshot.viewportEnd}px " +
+            "rows=[$rows] media=[$media]"
+    }
+    MediaDiagnostics.log(
+        context,
+        "feed layout transition event=$event videoPreloading=$videoPreloadingEnabled " +
+            "elapsedMs=${SystemClock.elapsedRealtime()} " +
+            "resizedRows=${resizedRows.ifEmpty { listOf("none") }.joinToString(",")} " +
+            "before={${side(before)}} after={${side(current)}}",
+    )
+}
+
+private fun mediaSummary(items: List<VisibleMedia>, viewportStart: Int, viewportEnd: Int): String =
+    items.sortedBy { it.feedIndex }.joinToString(";") { item ->
+        val overlap = visibleOverlapPixels(item, viewportStart, viewportEnd)
+        val fraction = (visibleFraction(item, viewportStart, viewportEnd) * 100f).toInt()
+        "pos=${item.feedIndex}:id=${MediaDiagnostics.shortId(item.key)} " +
+            "top=${item.offset}px height=${item.size}px overlap=${overlap}px visible=${fraction}%"
+    }.ifBlank { "none" }
 
 private class ScrollFrameAccumulator(private val frameBudgetNs: Long) {
     private var frameCount = 0

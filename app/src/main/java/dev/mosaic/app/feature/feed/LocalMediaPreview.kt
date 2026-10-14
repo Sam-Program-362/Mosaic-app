@@ -22,15 +22,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.AudioAttributes
@@ -48,13 +49,20 @@ import coil3.request.ImageRequest
 import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlin.math.roundToInt
+
+private class PreviewGeometryReporter {
+    var last: PreviewItemGeometry? = null
+}
 
 @Composable
 internal fun LocalMediaPreview(
     post: FeedPost,
     active: Boolean,
     imageLoader: ImageLoader,
-    onBounds: (Rect) -> Unit = {},
+    onBounds: (PreviewItemGeometry) -> Unit = {},
     viewer: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
     videoPreloader: VideoPreloadSession? = null,
@@ -62,11 +70,18 @@ internal fun LocalMediaPreview(
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
     preloadingEnabled: Boolean = true,
+    initialAspectRatio: Float? = null,
+    onAspectRatioObserved: (Float, String) -> Unit = { _, _ -> },
 ) {
     val document = post.media.document
     val colors = LocalMosaicColors.current
     val diagnosticContext = LocalContext.current.applicationContext
-    var ratio by remember(document.contentUri, document.modifiedAtMillis) { mutableFloatStateOf(4f / 3f) }
+    val geometryKey = remember(post.media.key.stableKey, document.modifiedAtMillis, document.sizeBytes) {
+        mediaGeometryCacheKey(post.media.key.stableKey, document.modifiedAtMillis, document.sizeBytes)
+    }
+    val geometryReporter = remember(geometryKey) { PreviewGeometryReporter() }
+    val reservedRatio = remember(geometryKey) { reservedMediaAspectRatio(initialAspectRatio) }
+    var contentRatio by remember(geometryKey) { mutableFloatStateOf(reservedRatio) }
     var savedPositionMillis by remember(post.media.key.stableKey) { mutableLongStateOf(0L) }
     var savedPlayWhenReady by remember(post.media.key.stableKey) { mutableStateOf(true) }
     val clickModifier = onOpenViewer?.let {
@@ -74,32 +89,44 @@ internal fun LocalMediaPreview(
     } ?: Modifier
     val sizeModifier = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
     BoxWithConstraints(sizeModifier.then(clickModifier)
-        .onGloballyPositioned { onBounds(it.boundsInRoot()) }
-        .background(if (viewer) Color.Black else colors.mediaBackdrop)) {
-        fun updateRatio(nextRatio: Float, source: String) {
-            if (!nextRatio.isFinite() || nextRatio <= 0f) return
-            val oldRatio = ratio
-            if (!viewer && kotlin.math.abs(nextRatio - oldRatio) >= 0.01f) {
-                MediaDiagnostics.log(
-                    diagnosticContext,
-                    "preview geometry pos=$feedPosition kind=${document.kind.name.lowercase()} " +
-                        "id=${MediaDiagnostics.shortId(post.media.key.stableKey)} source=$source " +
-                        "widthDp=${maxWidth.value} ratio=$oldRatio->$nextRatio " +
-                        "heightDp=${feedPreviewHeightDp(maxWidth.value, oldRatio)}->" +
-                        feedPreviewHeightDp(maxWidth.value, nextRatio),
-                )
+        .onGloballyPositioned { coordinates ->
+            val position = coordinates.positionInParent()
+            val geometry = PreviewItemGeometry(
+                topInItemPx = position.y.roundToInt(),
+                widthPx = coordinates.size.width,
+                heightPx = coordinates.size.height,
+            )
+            if (geometryReporter.last != geometry) {
+                geometryReporter.last = geometry
+                onBounds(geometry)
             }
-            ratio = nextRatio
+        }
+        .background(if (viewer) Color.Black else colors.mediaBackdrop)) {
+        fun observeRatio(nextRatio: Float, source: String) {
+            if (!nextRatio.isFinite() || nextRatio <= 0f) return
+            val oldContentRatio = contentRatio
+            val reservedHeight = if (viewer) null else feedPreviewHeightDp(maxWidth.value, reservedRatio)
+            MediaDiagnostics.log(
+                diagnosticContext,
+                "preview geometry pos=$feedPosition kind=${document.kind.name.lowercase()} " +
+                    "id=${MediaDiagnostics.shortId(post.media.key.stableKey)} source=$source " +
+                    "contentRatio=$oldContentRatio->$nextRatio reservedRatio=$reservedRatio " +
+                    "reservedHeightDp=${reservedHeight ?: "viewer"} layoutHeightStable=true " +
+                    "widthDp=${maxWidth.value}",
+            )
+            onAspectRatioObserved(nextRatio, source)
+            if (document.kind == MediaKind.Video && active) contentRatio = nextRatio
         }
 
-        val previewHeight = if (viewer) maxHeight else feedPreviewHeightDp(maxWidth.value, ratio).dp
+        val previewHeight = if (viewer) maxHeight else feedPreviewHeightDp(maxWidth.value, reservedRatio).dp
         val previewSize = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(previewHeight)
         Box(previewSize, contentAlignment = Alignment.Center) {
             when {
                 document.kind == MediaKind.Video && active -> VideoPreview(
                     post = post,
                     viewer = viewer,
-                    aspectRatio = ratio,
+                    aspectRatio = contentRatio,
+                    reservedContainerAspectRatio = reservedRatio,
                     imageLoader = imageLoader,
                     videoPreloader = videoPreloader,
                     feedPosition = feedPosition,
@@ -110,20 +137,20 @@ internal fun LocalMediaPreview(
                         savedPositionMillis = position
                         savedPlayWhenReady = playWhenReady
                     },
-                    onRatio = { updateRatio(it, "player-video-size") },
+                    onRatio = { observeRatio(it, "player-video-size") },
                 )
                 document.kind == MediaKind.Video && shouldLoadVideoPoster(videoPreloadingEnabled, videoPreviewVisible) ->
                     VideoThumbnail(
                         post = post,
                         imageLoader = imageLoader,
-                        onRatio = { updateRatio(it, "video-thumbnail") },
+                        onRatio = { observeRatio(it, "video-thumbnail") },
                     )
                 document.kind == MediaKind.Video -> Text("MP4 · playback paused", color = colors.textSecondary)
                 document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = colors.textSecondary)
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,
                     description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
-                    onRatio = { updateRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
+                    onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
         }
@@ -220,6 +247,7 @@ private fun VideoPreview(
     post: FeedPost,
     viewer: Boolean,
     aspectRatio: Float,
+    reservedContainerAspectRatio: Float,
     imageLoader: ImageLoader,
     videoPreloader: VideoPreloadSession?,
     feedPosition: Int,
@@ -266,6 +294,7 @@ private fun VideoPreview(
         object {
             var frame: AspectRatioFrameLayout? = null
             var texture: TextureView? = null
+            var surfaceSize: IntSize? = null
         }
     }
 
@@ -343,7 +372,19 @@ private fun VideoPreview(
             if (source != null) player.setMediaSource(source)
             else player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             if (initialPositionMillis > 0L) player.seekTo(initialPositionMillis)
+            MediaDiagnostics.log(
+                context,
+                "player prepare begin token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                    "id=${MediaDiagnostics.shortId(stableKey)} containerReservedRatio=$reservedContainerAspectRatio " +
+                    "videoContentRatio=$aspectRatio " +
+                    "surface=${viewHolder.surfaceSize?.width ?: -1}x${viewHolder.surfaceSize?.height ?: -1}px",
+            )
             player.prepare()
+            MediaDiagnostics.log(
+                context,
+                "player prepare requested token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                    "id=${MediaDiagnostics.shortId(stableKey)} state=${playbackStateName(player.playbackState)}",
+            )
             player.playWhenReady = initiallyPlayWhenReady
         } catch (error: Exception) {
             failed = true
@@ -391,6 +432,23 @@ private fun VideoPreview(
                     "firstFrame=$hasRenderedFirstFrame unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
             )
         }
+    }
+
+    LaunchedEffect(player, stableKey) {
+        var previousOverlay: Boolean? = null
+        snapshotFlow { videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading }
+            .distinctUntilChanged()
+            .collect { overlayVisible ->
+                MediaDiagnostics.log(
+                    context,
+                    "player overlay transition token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                        "id=${MediaDiagnostics.shortId(stableKey)} " +
+                        "from=${previousOverlay?.toString() ?: "initial"} to=$overlayVisible " +
+                        "state=${playbackStateName(player.playbackState)} firstFrame=$hasRenderedFirstFrame " +
+                        "failed=$failed activationMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
+                )
+                previousOverlay = overlayVisible
+            }
     }
 
     LaunchedEffect(player) {
@@ -446,7 +504,21 @@ private fun VideoPreview(
                     viewHolder.texture = texture
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().onSizeChanged { size ->
+                val before = viewHolder.surfaceSize
+                if (before != size) {
+                    MediaDiagnostics.log(
+                        context,
+                        "player surface geometry token=${playerDiagnosticToken ?: -1} " +
+                            "pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                            "before=${before?.width ?: -1}x${before?.height ?: -1}px " +
+                            "after=${size.width}x${size.height}px containerReservedRatio=$reservedContainerAspectRatio " +
+                            "videoContentRatio=$aspectRatio " +
+                            "source=surface-measure",
+                    )
+                    viewHolder.surfaceSize = size
+                }
+            },
             update = { it.setAspectRatio(aspectRatio) },
             onRelease = { frame ->
                 viewHolder.texture?.let { texture ->

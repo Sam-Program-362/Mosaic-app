@@ -46,10 +46,10 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: mosaic-debug-signing-${{ github.ref_name }}-v1
-      - name: Unit tests, lint, and preload-enabled debug APK
+      - name: Unit tests, lint, and preload-disabled baseline debug APK
         shell: bash
         run: |
-          if ./gradlew testDebugUnitTest lint assembleDebug --stacktrace 2>&1 | tee verification.log; then
+          if ./gradlew testDebugUnitTest lint assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee verification.log; then
             echo "Android verification passed"
           else
             python3 - <<'PYERROR'
@@ -60,26 +60,26 @@ jobs:
           PYERROR
             exit 1
           fi
-      - name: Build paired video-preloading diagnostic APKs
+      - name: Build preload-enabled comparison APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p diagnostic-apks
-          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-enabled.apk
-          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = true' app/build/generated/source/buildConfig
-          if ./gradlew testDebugUnitTest assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee video-preload-disabled-build.log; then
-            echo "Video-preloading-disabled unit tests and debug APK build passed"
+          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = false' app/build/generated/source/buildConfig
+          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-disabled.apk
+          if ./gradlew testDebugUnitTest assembleDebug -PmosaicVideoPreloading=true --stacktrace 2>&1 | tee video-preload-enabled-build.log; then
+            echo "Video-preloading-enabled unit tests and debug APK build passed"
           else
             python3 - <<'PYERROR'
           from pathlib import Path
-          message = Path('video-preload-disabled-build.log').read_text()[-50000:]
+          message = Path('video-preload-enabled-build.log').read_text()[-50000:]
           message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-          print(f'::error title=Video-preloading-disabled APK::{message}')
+          print(f'::error title=Video-preloading-enabled APK::{message}')
           PYERROR
             exit 1
           fi
-          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = false' app/build/generated/source/buildConfig
-          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-disabled.apk
+          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = true' app/build/generated/source/buildConfig
+          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-enabled.apk
           sha256sum diagnostic-apks/*.apk > diagnostic-apks/SHA256SUMS.txt
       - name: Check packaged privacy permissions
         run: |
@@ -141,7 +141,7 @@ jobs:
             app/build/reports/
             app/schemas/
             verification.log
-            video-preload-disabled-build.log
+            video-preload-enabled-build.log
             sdk-setup.log
             apk-permissions-enabled.txt
             apk-permissions-disabled.txt
