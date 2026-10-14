@@ -1,9 +1,10 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the newest successful debug APK from this development branch that includes the
-Room v2 migration and Saved feed. This is a test build, not a release. Do not uninstall
-the older build just to install this one; the cached development signing key should
-allow an in-place update and preserve folder selections. If Android reports a signing
+Use the verified debug APK from [CI run 38511038772](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
+on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, and the final viewer motion.
+This is a test build, not a release. Do not uninstall the older build just to install
+this one; the cached development signing key should allow an in-place update and
+preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
 private Saved copies and selected-folder grants; it never changes source media.
 

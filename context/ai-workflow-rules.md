@@ -36,8 +36,8 @@ background stop behavior, or every storage edge case. Phase 4 CI is not phone
 acceptance: actual vertical swiping/back/scroll restoration and confirmed removal
 still need device feedback. Phase 5 CI run 38469093930 passed migration/copy/UI tests,
 lint, packaged privacy and debug APK build; the exact generated v2 schema is committed
-with d267f16. CI runs 38509513570 and 38510281049 compiled viewer-motion changes but
-failed the new animation test's initial media-content assertion; the first timing change
-was insufficient. The current worktree starts with visible content and manually tests the
-reverse-close retention. It awaits rerun; do not claim motion verified yet. Keep custom
-communities and other future features explicit; a visible label alone is not proof.
+with d267f16. Earlier runs 38509513570 and 38510281049 exposed a timing issue in the
+new animation test; the final test isolates reverse-close retention. CI run 38511038772
+passed 60 tests, lint, packaged privacy, schema and debug APK build with the final motion
+change. Phone verification remains open. Keep custom communities and other future
+features explicit; a visible label alone is not proof.

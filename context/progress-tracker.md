@@ -9,15 +9,14 @@ provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 te
 lint, schema consistency, APK privacy and debug build. Follow-up run 38469093930 also
 passed those checks; its exact generated Room v2 schema was decoded from four CI
 annotation chunks (6,024 bytes, identity hash `9c5465636830273745be40f054484124`).
-Schema and viewer expand/fade work were committed as d267f16 and pushed to the
-session branch. CI runs 38509513570 (d267f16) and 38510281049 (073461e) compiled main/test Kotlin,
-then failed the new animation UI test at the same initial media-content assertion; later
-privacy/schema checks did not run. Waiting 350 ms did not fix it. The current worktree
-isolates the reverse-close case by starting from a visible viewer, then manually clocks
-exit retention/removal; this revised test still needs a rerun. Phase 4/5 phone acceptance remains pending. User-reported Phase 3 evidence
-confirms Home photos, folder isolation and video playback; GIF, mute, offscreen/background
-playback, viewer motion/paging and removal are not yet confirmed on-device. This is not
-a complete first release.
+Schema and viewer expand/fade work were committed and pushed. Two early CI runs
+(38509513570, 38510281049) exposed an unreliable entrance assertion in the new UI test;
+the final test isolates reverse-close retention. Green CI run 38511038772 at 1c4cd8d
+passed 60 tests (0 failures/errors/skips), lint, schema consistency, packaged APK
+privacy checks and debug build. The viewer motion is CI-verified, but phone acceptance
+remains pending. User-reported Phase 3 evidence confirms Home photos, folder isolation
+and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
+removal are not yet confirmed on-device. This is not a complete first release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
@@ -129,11 +128,11 @@ Phase 4 CI iterations:
   identity hash `9c5465636830273745be40f054484124`).
 - New Phase 4 visual follow-up adds reversible grow/fade motion for opening/closing the
   full-screen viewer and a UI transition test, following the user-supplied dark/orange
-  reference without copying web-only functions. Runs 38509513570 and 38510281049 compiled
-  sources but failed the new UI test's initial media-content assertion. The first timing
-  adjustment did not resolve it; the current worktree starts from a visible viewer and
-  manually clocks reverse-close retention/removal. It needs another CI run. Phase 4/5
-  device acceptance remains pending.
+  reference without copying web-only functions. Runs 38509513570 and 38510281049 exposed
+  an unreliable entrance assertion in the test; the final test isolates reverse-close
+  retention. Run 38511038772 at 1c4cd8d passed all 60 tests, lint, schema consistency,
+  packaged privacy checks and debug APK build. Phase 4/5 device acceptance remains
+  pending.
 
 ## Decisions
 User delegated routine technical decisions on 2026-10-14. Retain the Kotlin/Compose/

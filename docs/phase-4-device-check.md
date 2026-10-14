@@ -10,11 +10,11 @@ lifecycle behavior.
 
 ## Install the test build
 
-1. Open the [Android CI runs](https://github.com/Sam-Program-362/Mosaic-app/actions)
-   for `arena/b0f3e3cf-mosaic-app` and choose the newest successful run. The original
-   Phase 4 baseline is [run 38463132363](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363);
-   it predates Saved copies and the new viewer motion, so do not use it for those checks.
-2. Download the `mosaic-debug-and-reports` artifact from the selected run, extract the
+1. Use the verified current development build from [CI run 38511038772](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
+   on `arena/b0f3e3cf-mosaic-app`. It includes the final viewer motion and Phase 5
+   changes. The original Phase 4 baseline is [run 38463132363](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363);
+   it predates both and must not be used for these checks.
+2. Download the `mosaic-debug-and-reports` artifact from run 38511038772, extract the
    ZIP, and open `app/build/outputs/apk/debug/app-debug.apk`.
 3. Ensure the phone has enough free **internal** storage for downloading, extracting,
    and installing. If Android reports a signature/package conflict with an older
@@ -22,8 +22,9 @@ lifecycle behavior.
    to reinstall. Removing Mosaic clears its saved folder selections/access, but
    never changes the original media; select folders again after a reinstall.
 
-Phase 3 and Phase 4 builds use the same cached development signing key, so Phase 4
-should update a Phase 3 install normally. Production signing is separate.
+Debug builds on this branch use the same cached development signing key, so the
+current test APK should update an earlier development install normally. Production
+signing is separate.
 
 ## Small viewer check
 

@@ -20,10 +20,10 @@ GIF/video while RESUMED; Android Back and accessible toolbar Back close the view
 feed stays composed beneath it with playback and accessibility semantics disabled,
 preserving the original scroll position. Viewer hides system bars and restores their
 prior visibility on exit. Phase 5 Save-copy source passed CI run 38469093930 before
-these new viewer-motion edits. CI runs 38509513570 and 38510281049 compiled the
-animation code but the new UI test failed its initial content assertion; the first timing
-adjustment was insufficient. The current test isolates reverse-close retention and awaits
-rerun; phone verification remains open.
+these new viewer-motion edits. The final motion change passed CI run 38511038772 at
+1c4cd8d (60 tests, lint, schema, packaged privacy and debug build). Earlier CI attempts
+exposed a test timing issue that was resolved by isolating reverse-close retention.
+Phone verification remains open.
 Drawer/container roles use semantic neutral colors (fixing purple defaults in the
 user's initial screenshot). Settings persists Light/Dark. Folder management retains
 picker/retry/reselection and now has a confirmed **Remove from Mosaic** action. This
@@ -48,11 +48,10 @@ viewer/removal have not yet been confirmed on-device. Phase 4 CI passed 53 tests
 lint, schema and APK privacy checks. Phase 5 CI run 38469093930 passed 59 tests, lint,
 tracked-schema consistency, packaged privacy and debug APK build. The exact generated
 Room v2 schema was recovered from four CI annotation chunks (6,024 bytes; hash
-`9c5465636830273745be40f054484124`) and committed to source. CI runs 38509513570 and
-38510281049 compiled viewer motion but failed its new UI test's initial content
-assertion. The current test isolates reverse-close retention and awaits rerun. No
-pixel-match, physical paging, provider permission-release, hardware-codec or Phase 5
-device-acceptance claim.
+`9c5465636830273745be40f054484124`) and committed to source. CI run 38511038772 passed
+60 tests, lint, schema, packaged privacy and debug build with the final viewer-motion
+change. No pixel-match, physical paging, provider permission-release, hardware-codec or
+Phase 5 device-acceptance claim.
 
 ## Remaining UI scope and Phase 5 verification
 Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed
@@ -63,8 +62,8 @@ was left unchanged. Saved-copy removal is out of scope. Custom community creatio
 names/selects/reviews folder membership; custom artwork policy remains unresolved.
 Local deterministic folder artwork uses first static image by case-insensitive name,
 with neutral initials otherwise. Existing no-folder, unavailable, decode/missing-media,
-and empty states remain. Phase 5 CI passed before the current motion changes; final
-schema check and Phase 4/5 phone acceptance remain pending.
+and empty states remain. The combined Phase 5/viewer-motion CI run passed schema
+consistency and APK checks. Phase 4/5 phone acceptance remains pending.
 
 ## Central semantic colors
 Defined in `ui/theme/MosaicTheme.kt`; values are starting points, not pixel-verified
