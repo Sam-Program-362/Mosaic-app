@@ -56,8 +56,12 @@ migration and feed/viewer actions passed CI run 38469093930 (59 tests, lint, tra
 schema consistency, packaged privacy and debug APK build). The exact KSP-generated v2
 schema is committed. Current viewer motion passed CI run 38511038772 at 1c4cd8d: 60
 tests, lint, schema consistency, APK privacy and debug build. Earlier attempts exposed
-and resolved an entrance-test timing issue. Phone acceptance is still pending. Custom
-communities remain planned. This is not first-release completion.
+and resolved an entrance-test timing issue. The Drive-reference UI adaptation passed CI
+run 38543107645 at `b667dcc` (67 tests, lint, schema consistency, packaged APK privacy
+and debug build); the debug APK and reports are available as CI artifact 11883232388.
+The reference-inspired Dark fallback is a provisional default. Physical acceptance for
+the refreshed UI, search and video controls remains pending. Custom communities remain
+planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

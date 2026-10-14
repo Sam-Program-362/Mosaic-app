@@ -1,12 +1,30 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the verified debug APK from [CI run 38511038772](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
-on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, and the final viewer motion.
+Use the verified debug APK from [CI run 38543107645](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
+on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, viewer motion, and the
+reference-inspired UI/search updates. The workflow passed 67 tests, lint, schema
+consistency, packaged privacy checks, and the debug APK build.
 This is a test build, not a release. Do not uninstall the older build just to install
 this one; the cached development signing key should allow an in-place update and
 preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
 private Saved copies and selected-folder grants; it never changes source media.
+
+## Reference-inspired UI and local search
+
+- Open the top-left drawer. Confirm Home, **All communities**, selected-folder
+  communities, Saved, Manage folders, and Settings are available there. Navigation uses
+  the header/drawer; there should be no bottom navigation or side rail.
+- Search Home/community feeds by a known filename, folder label, or media type. Clear
+  the query and confirm the feed returns. Search is metadata-only; it does not inspect
+  photo/video contents or contact a service.
+- Open **All communities**, search for a selected folder, and open it. If a folder is
+  unavailable, confirm its community remains in the directory and the warning/status is
+  visible rather than silently treating the folder as removed.
+- In Settings, switch Light/Dark and restart Mosaic; confirm the chosen appearance is
+  retained and the folder/community/Saved counts are sensible.
+- If testing an MP4, confirm it starts muted, the play/pause and mute/unmute controls
+  work, and playback stops when the video leaves the active foreground view.
 
 ## Save from the feed and viewer
 

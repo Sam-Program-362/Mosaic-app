@@ -57,5 +57,9 @@ source URIs. Keep the explicit Room v1→v2 migration and exact CI-generated sch
 Run 38469093930 passed 59 tests, lint, tracked-schema consistency, APK privacy and debug
 build; its v2 schema was recovered from four chunked annotations. CI run 38511038772
 passed 60 tests, lint, schema consistency, packaged APK privacy and debug build with the
-final viewer transition. Earlier test-timing failures are resolved. Claim phone
-acceptance only after on-device checks.
+final viewer transition. Earlier test-timing failures are resolved. The Drive-reference
+UI follow-up adds tests for indexed-metadata search and relative-time formatting, Settings
+library stats/theme callback, and community directory loading/filtering/unavailable rows.
+CI run 38543107645 at `b667dcc` passed 67 tests, lint, schema consistency, packaged APK
+privacy and debug build. Do not equate CI with device acceptance; claim phone results
+only after on-device checks.

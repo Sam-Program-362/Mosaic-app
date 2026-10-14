@@ -39,5 +39,8 @@ lint, packaged privacy and debug APK build; the exact generated v2 schema is com
 with d267f16. Earlier runs 38509513570 and 38510281049 exposed a timing issue in the
 new animation test; the final test isolates reverse-close retention. CI run 38511038772
 passed 60 tests, lint, packaged privacy, schema and debug APK build with the final motion
-change. Phone verification remains open. Keep custom communities and other future
-features explicit; a visible label alone is not proof.
+change. The Drive-reference UI adaptation at `b667dcc` passed CI run 38543107645: 67
+tests, lint, schema consistency, packaged APK privacy and debug APK. Its UI/theme/search/
+video-control behavior remains unverified on a physical phone. The run's debug APK and
+reports are artifact 11883232388. No merge or release was made. Keep custom communities
+and other future features explicit; a visible label alone is not proof.

@@ -23,25 +23,27 @@ safe folder removal; this is still a development app, not a complete first relea
 - Persistent Light/Dark appearance. No runtime network, broad storage permissions,
   accounts, or telemetry.
 
-**Unverified UI follow-up in the current branch:** searchable local-media/community
-  metadata, revised feed/video controls, a searchable community directory, updated
-  Settings and folder-management screens, and header/drawer-only navigation (no bottom
-  bar or rail). Verify this source with CI before treating it as passing.
+**Recent reference-inspired UI adaptation (CI-verified):** local metadata search for
+  media and communities, relative media timestamps, updated feed/video controls, a
+  searchable community directory, redesigned Settings/folder screens, and header/drawer-
+  only navigation (no bottom bar or rail). Search is limited to indexed metadata.
 
 **Still not implemented:** custom communities, comments, real votes, Saved-copy removal,
 and production release/signing.
 
 ## Verification and phone evidence
 
-[Latest verified viewer-motion CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
-passed **60 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
+[Latest Android CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
+passed **67 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
 and packaged APK privacy checks**. The APK has no network or broad storage/media
-permissions. This predates the unverified UI follow-up above.
+permissions. Artifact **mosaic-debug-and-reports** (ID `11883232388`) contains the debug
+APK and verification reports. CI does not substitute for physical-device checks.
 
 The user reports from the Phase 3 phone check that photos appear in Home, selecting
 a folder shows only its media, and videos play. GIF animation, sound/mute behavior,
-background/offscreen stopping, Phase 4 paging, and folder removal have not yet been
-confirmed on-device. See the [Phase 4 phone check](docs/phase-4-device-check.md).
+background/offscreen stopping, Phase 4 paging/removal, and the latest theme/search/
+Settings/navigation UI have not yet been confirmed on-device. See the [Phase 4 phone
+check](docs/phase-4-device-check.md) and [Phase 5 copy check](docs/phase-5-device-check.md).
 
 ## Build
 

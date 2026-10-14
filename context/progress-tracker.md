@@ -14,34 +14,32 @@ Schema and viewer expand/fade work were committed and pushed. Two early CI runs
 the final test isolates reverse-close retention. Green CI run 38511038772 at 1c4cd8d
 passed 60 tests (0 failures/errors/skips), lint, schema consistency, packaged APK
 privacy checks and debug build. The viewer motion is CI-verified, but phone acceptance
-remains pending. User-reported Phase 3 evidence confirms Home photos, folder isolation
+remains pending. The Drive-reference UI follow-up passed CI run 38543107645 at `b667dcc`:
+67 tests, lint, schema consistency, packaged privacy and debug APK all passed. Phone
+acceptance for the new theme/feed/navigation UI remains pending. User-reported Phase 3 evidence confirms Home photos, folder isolation
 and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
 removal are not yet confirmed on-device. This is not a complete first release.
 
-## Drive-reference UI adaptation follow-up — source in progress
-After the verified viewer commit `b916c31`, the current session branch has a
-UI-adaptation slice awaiting CI: Dark fallback, indexed-metadata search and relative-time helpers,
-feed-card/video-control updates, a searchable local community directory, Settings and
-folder-management redesign, and top-header/drawer routing only. The explicit user
-constraint is honored in source: no bottom navigation and no navigation rail. Added
-Compose tests for Settings/directory/feed search and unit tests for search/time buckets.
-The Drive ZIP was inspected; it remains untracked and must not be committed. GitHub run
-38523338581 compiled main Android Kotlin source but failed compiling test sources because
-the new tests explicitly imported `assertExists`/`assertDoesNotExist`, which are member
-methods in this Compose API. Those imports were removed. Run 38523840274 compiled main
-and test Kotlin but one relative-time test failed: its 36-hour-old timestamp was before
-the Unix epoch, correctly taking the helper's invalid-date path. The test's fixed `now`
-was moved forward. Run 38524387833 compiled main/tests and ran 67 tests, but the new
-Settings UI test still failed at its first library-stat assertion. The stat component now
-exposes an accessible `Label: count` description, and the test targets that description
-instead of visible label text. Run 38542503093 passed those stat assertions but failed
-at the post-click selection assertion: the test records the selection callback without
-updating the screen's immutable `theme` input, so the Light row correctly remains
-unselected in that test setup. The test now checks the callback only; a fresh CI run is
-pending. No passing full test/lint/APK/privacy check or phone result exists for this slice yet. `git diff --check`
-passes. Local Gradle is blocked because this sandbox has no Java. Continue using the
-authorized GitHub workflow only on `arena/b0f3e3cf-mosaic-app`; this remains unverified
-source, not a passing release.
+## Drive-reference UI adaptation follow-up — CI verified, phone check pending
+The current session branch adapts the inspected Drive reference without copying the
+web app wholesale: Dark fallback, indexed-metadata search and relative-time helpers,
+feed-card/video-control updates, searchable local communities, Settings/library stats,
+and redesigned folder-management cards. Navigation is through the top header and drawer
+only—no bottom navigation or navigation rail. Search covers already-indexed names,
+folder labels, MIME type, and media kind only; no content scan or runtime network was
+added. Compose tests cover Settings, directory loading/unavailable rows and local feed
+search; unit tests cover search and relative-time buckets.
+
+CI iterations 38523338581, 38523840274, 38524387833 and 38542503093 exposed test import,
+fixture and Settings assertion issues; each was corrected. Final run
+[38543107645](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
+at commit `b667dcc` passed 67 tests (0 failures/errors/skips), lint, schema consistency,
+packaged APK privacy checks and debug APK build. Artifact `mosaic-debug-and-reports`
+(ID `11883232388`, about 21 MB) includes the debug APK and reports. The Drive ZIP was
+inspected and remains untracked; do not commit it. Local Gradle remains unavailable
+because Java is not installed. CI does not establish phone acceptance: the new UI/theme,
+video controls and search still need device feedback. This is not a complete first
+release; no merge or release was made.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.

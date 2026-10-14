@@ -15,8 +15,10 @@ Implemented layout:
   empty states and Settings.
 - `ui/theme/`: centralized semantic colors and Material theme mapping.
 - `data/preferences/`: application-context Preferences DataStore; Light/Dark theme
-  preference persists. No system theme mode. Fresh/unknown values now default to Dark
-  to follow the inspected reference; this UI adaptation is awaiting CI verification.
+  preference persists. No system theme mode. Fresh/unknown values default to Dark
+  to follow the inspected reference. This adaptation passed CI run 38543107645
+  (67 tests, lint, schema consistency, packaged privacy and debug APK); device acceptance
+  for the refreshed screens remains pending.
 - Version catalog centralizes dependencies. Gradle wrapper checked in; Material icon
   extended artifact is included for the new local playback/theme controls.
 
@@ -85,7 +87,7 @@ file is written, copied, moved, renamed or deleted. No schema/table version chan
 Phase 4 CI passed 53 tests, lint, Room schema consistency, packaged privacy checks
 and debug APK. Physical viewer/paging and permission-release acceptance is pending.
 
-## Phase 5 source in progress — Saved copies
+## Phase 5 implemented — Saved copies
 `SavedCopyRepository` opens the selected source URI read-only and streams it on
 `Dispatchers.IO` into a unique UUID-named file under the app-private `filesDir/saved-media`
 directory. It first writes a `.partial` file, rejects empty copies, flushes and renames
@@ -102,8 +104,10 @@ Room database version 2 adds only the Saved table/index with an explicit v1→v2
 migration; existing folder/media data is retained. CI run 38469093930 passed 59 tests,
 lint, tracked-schema consistency, APK privacy and debug build. Its exact KSP-generated
 v2 schema was decoded from chunked CI annotations into source; no schema JSON was
-hand-authored. The current viewer-motion follow-up has not been verified yet. Phone
-acceptance is still pending.
+hand-authored. Viewer motion passed CI run 38511038772. The reference-inspired UI follow-up
+passed run 38543107645 (67 tests, lint, schema, APK privacy and debug build). Phone
+acceptance for viewer, permissions, Saved copies, theme, search and refreshed controls
+remains pending.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy

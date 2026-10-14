@@ -30,33 +30,29 @@ management retains picker/retry/reselection and a confirmed **Remove from Mosaic
 action. This removes local index/community and attempts to release Mosaic's saved read
 grant; it never changes original media. Failed permission release shows a warning.
 
-## Drive-reference adaptation follow-up — source in progress
+## Drive-reference adaptation — CI verified, phone acceptance pending
 The user-supplied `google_drive/mosaic-media-browsing-reference-app (Claude).zip` was
 inspected rather than copying its web screens wholesale. The reference informed the
 orange/charcoal theme, compact feed post hierarchy, media metadata, Settings sections,
 and folder/community presentation. Its web-only interactions are not permission to add
 accounts, online features, real voting, or comments.
 
-Current unverified source adaptation adds a searchable directory of selected-folder
-communities, local metadata search on Home/community/Saved feeds, relative media time,
-photo/GIF/video labels, revised post cards, visible play/pause and mute/unmute video
-controls, reference-inspired Settings/library stats, and card-style folder management.
-Missing/unknown theme values now fall back to Dark. All main navigation is through the
-top header and drawer; there is deliberately **no bottom navigation or navigation
-rail**. Added Compose tests cover Settings, community-directory behavior, and feed
-search, plus unit coverage for search and relative-time buckets. Run 38523338581
-compiled main Kotlin but failed compiling the new tests because member assertions were
-incorrectly imported as top-level functions. Run 38523840274 compiled main and tests but
-one relative-time test used a past timestamp before the Unix epoch; the fixed test clock
-was moved forward. Run 38524387833 ran 67 tests but the Settings test's first library-
-stat matcher expected a standalone exact label. Library-stat surfaces now expose an
-accessible `Label: count` description, and the test asserts that description. A clean
-rerun exposed a second Settings assertion issue: after clicking Light, the test expected
-selection to update even though its callback does not update the immutable theme input.
-Run 38542503093 passed the library-stat assertions and failed at that post-click check;
-the test now checks the callback only. Another CI run is pending. No passing full tests/
-lint/APK or physical-device result exists for this follow-up; do not treat it as verified
-until CI succeeds. Physical-device behavior is separate acceptance.
+Source now adds a searchable directory of selected-folder communities, local metadata
+search on Home/community/Saved feeds, relative media time, photo/GIF/video labels, revised
+post cards, visible play/pause and mute/unmute video controls, reference-inspired
+Settings/library stats, and card-style folder management. Missing/unknown theme values
+fall back to Dark. Navigation is through the top header and drawer only; there is
+**no bottom navigation or navigation rail**. Compose tests cover Settings and directory
+behavior plus feed search; unit tests cover search and relative-time buckets.
+
+Early CI runs 38523338581, 38523840274, 38524387833, and 38542503093 exposed test import,
+fixture, and assertion issues; they were corrected. Final run
+[38543107645](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
+at commit `b667dcc` passed 67 tests (0 failures/errors/skips), lint, Room schema
+consistency, packaged APK privacy checks, and debug APK build. The `mosaic-debug-and-reports`
+artifact (ID `11883232388`) contains the test APK and reports. The Drive ZIP remains
+untracked. No physical-device acceptance has been performed for this adaptation; the
+new theme, feed, search and video controls still need phone feedback.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
