@@ -158,6 +158,27 @@ copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed
 lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).
 Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
+## First-frame loading correction and crash-investigation instrumentation — in progress
+`videoFrameFallback` now only exposes the loading overlay while the player is loading,
+not failed, and has not rendered its first frame. The thumbnail remains until that first
+rendered-frame callback; a failure suppresses loading and surfaces the existing error state.
+The regression test enumerates all eight combinations of first-frame/loading/failure, with
+an explicit post-frame buffering case.
+
+For repeated-scroll investigation, debug-only diagnostics count allocated-but-unreleased
+ExoPlayer instances, each session's managed source count, active entries, pending preload
+requests and manager invalidation calls. TextureView attach/detach order, player cleanup,
+manager invalidation, and manager release failures are logged with sanitized identifiers
+and exception types only; no media URI/path is logged. Source review finds active manager
+sources are protected until player release and then reconciled, while manager candidates are
+bounded by the existing window. `VideoPreview` creates its player in `remember` and releases
+it from `DisposableEffect`; the new paired tokens can show if an allocation has no release
+(including an abandoned composition), but no such imbalance has been measured. Rapid
+decoder/player churn and repeated invalidations are possible behaviors to measure, not
+established causes. No physical-device reproduction,
+crash log or native tombstone is available; crash resolution is not claimed. Exact logcat,
+PID/stall discrimination, and bugreport steps are in `docs/phase-5-device-check.md`.
+
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy
 metadata; custom-community membership remains for a later slice. Media bytes remain

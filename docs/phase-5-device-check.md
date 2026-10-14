@@ -73,6 +73,57 @@ builds. Record app/device details and time from each video becoming dominant to 
 visible frame; do not increase the buffer target based only on a unit test or APK build.
 No device timing or actual scrolling/playback evidence is available in this workspace.
 
+## Repeated-scroll crash capture — required before assigning a cause
+
+The source currently has debug-only resource events for unreleased player instances,
+per-session managed Media3 sources, pending preload requests, manager invalidation count,
+and TextureView attach/detach ordering. These are diagnostic counters, not evidence that a
+leak or crash exists. Capture the failure before changing buffer sizes or preload policy.
+
+1. Install the latest debug APK from the artifact above with an in-place update. Record
+   device model, Android version/build, app build/commit and whether the same files work
+   when opened once. These commands capture device details and the pre-run app PID:
+
+   ```sh
+   adb shell getprop ro.product.model
+   adb shell getprop ro.build.version.release
+   adb shell getprop ro.build.fingerprint
+   adb shell pidof dev.mosaic.app
+   ```
+2. Before launching Mosaic, start a full log capture in a terminal and leave it running:
+
+   ```sh
+   adb logcat -c
+   adb logcat -b all -v threadtime > mosaic-video-logcat.txt
+   ```
+
+3. Reproduce the user's sequence: enter a video before its first frame is visible; scroll
+   across at least 10 mixed photo/video posts; rapidly reverse across several videos; repeat
+   until the original symptom would normally occur; then return to a previously viewed
+   video. Do not clear the log until the sequence finishes or the app stops responding.
+4. Stop logcat capture with Ctrl+C. Check the `MosaicMedia` resource snapshots and
+   `AndroidRuntime`, `libc`, `DEBUG`, `ExoPlayer`, `MediaCodec` and `Media3` records. Record
+   `adb shell pidof dev.mosaic.app` before and immediately after the symptom. A process
+   death with a `FATAL EXCEPTION` / fatal-signal record is a crash; a still-running PID
+   with an unresponsive surface is a stall (also check the ANR report). A changing PID
+   can indicate a restart; include the timestamps.
+5. For a native fatal signal, missing stack, or apparent ANR, collect a bugreport promptly:
+
+   ```sh
+   adb bugreport mosaic-video-bugreport.zip
+   ```
+
+   The bugreport may contain private device data. Keep it local unless you choose to share
+   it. If sharing logs, preserve the full exception/native stack while redacting local file
+   paths and private content URIs; never attach private media.
+
+Compare successive `resources` events for each session: `unreleasedPlayers`,
+`managedSources`, `pendingPreloadRequests`, `activeEntries`, and `invalidateCalls`. The
+player count should return to its prior level after leaving a video; source and pending
+counts should remain bounded by the candidate window plus any active source awaiting release,
+then settle. The counters help localize growth; they do not by themselves prove the crash
+cause. No physical-device crash log or repeated-scroll run is available from this workspace.
+
 ## Save from the feed and viewer
 
 1. Open Home, tap **Save copy** on a photo, and confirm the success message.

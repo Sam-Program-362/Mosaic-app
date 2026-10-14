@@ -47,20 +47,30 @@ class FeedUiTest {
         compose.onNodeWithContentDescription("Launch video thumbnail").assertExists()
     }
 
-    @Test fun cachedPosterRemainsTheFallbackUntilFirstRenderedFrameAndErrorsStopTheSpinner() {
-        val readyWithoutFrame = videoFrameFallback(hasRenderedFirstFrame = false, failed = false, loading = false)
-        org.junit.Assert.assertTrue(readyWithoutFrame.showThumbnail)
-        org.junit.Assert.assertFalse(readyWithoutFrame.showLoading)
-        org.junit.Assert.assertFalse(readyWithoutFrame.showError)
+    @Test fun videoFrameFallbackCoversFirstFrameBufferingAndFailureCombinations() {
+        for (hasRenderedFirstFrame in listOf(false, true)) {
+            for (loading in listOf(false, true)) {
+                for (failed in listOf(false, true)) {
+                    val fallback = videoFrameFallback(hasRenderedFirstFrame, failed, loading)
+                    org.junit.Assert.assertEquals(!hasRenderedFirstFrame, fallback.showThumbnail)
+                    org.junit.Assert.assertEquals(
+                        loading && !failed && !hasRenderedFirstFrame,
+                        fallback.showLoading,
+                    )
+                    org.junit.Assert.assertEquals(failed, fallback.showError)
+                }
+            }
+        }
 
-        val failedBeforeFrame = videoFrameFallback(hasRenderedFirstFrame = false, failed = true, loading = true)
-        org.junit.Assert.assertTrue(failedBeforeFrame.showThumbnail)
-        org.junit.Assert.assertFalse(failedBeforeFrame.showLoading)
-        org.junit.Assert.assertTrue(failedBeforeFrame.showError)
-
-        org.junit.Assert.assertFalse(videoFrameFallback(
-            hasRenderedFirstFrame = true, failed = false, loading = false,
-        ).showThumbnail)
+        // A brief BUFFERING state after a frame is visible must not cover the video.
+        val bufferingAfterFirstFrame = videoFrameFallback(
+            hasRenderedFirstFrame = true,
+            failed = false,
+            loading = true,
+        )
+        org.junit.Assert.assertFalse(bufferingAfterFirstFrame.showThumbnail)
+        org.junit.Assert.assertFalse(bufferingAfterFirstFrame.showLoading)
+        org.junit.Assert.assertFalse(bufferingAfterFirstFrame.showError)
     }
 
     @Test fun everySaveTapStartsAnotherIndependentCopyRequest() {

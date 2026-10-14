@@ -91,6 +91,20 @@ at `50132da`: 83 tests, lint, schema consistency, packaged privacy and debug APK
 artifact `mosaic-debug-and-reports` is ID `11899788396`. Physical-device scroll/playback
 and before/after timing remain unverified; do not infer smoother transitions from CI.
 
+## First-render buffering correction and crash evidence — follow-up in progress
+The initial loading overlay is now limited to `loading && !failed && !hasRenderedFirstFrame`.
+The cached thumbnail still covers preparation through the actual rendered-frame event; brief
+buffering after that event no longer places a spinner over the video. A Media3 error still
+stops loading and displays the existing error state. Unit tests cover all eight frame/loading/
+failure combinations. No rendering or device playback claim is inferred from those tests.
+
+A repeated-scroll investigation adds debug-only counts for unreleased players, managed
+preload sources, pending preload requests, active entries and invalidation calls, plus
+TextureView attachment/detachment ordering. Logs avoid paths/URIs. These counters do not
+establish a crash cause; no device reproduction or crash logs are available. Exact capture
+instructions are in `docs/phase-5-device-check.md`; do not claim crash resolution until the
+specified on-device sequence has been repeated with full logcat evidence.
+
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
 specification: charcoal surfaces, warm orange actions, clear Home/Saved/community

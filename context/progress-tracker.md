@@ -63,6 +63,29 @@ evidence, not an agent-run test. This is not a complete first release.
   device startup measurement, MP4 decode run, or real scrolling/playback evidence is
   available. Device acceptance remains pending; do not claim the sticky transition fixed.
 
+## First-frame loading overlay and repeated-scroll crash investigation — implementation in progress
+- `showLoading` now requires `!hasRenderedFirstFrame` in addition to `loading && !failed`;
+  error still stops loading and remains visible, while pre-first-frame fallback is unchanged.
+  Tests enumerate all eight combinations and explicitly cover first-frame=true / failed=false /
+  loading=true.
+- Debug-only diagnostics now track player instances from creation through release, manager
+  source counts, unresolved preload requests, invalidation calls, active-entry counts and
+  TextureView attach/detach/release order. IDs are process-local or hashed; no URIs/paths are
+  logged. Manager invalidation/create/release exceptions are logged by cause type and rethrown.
+- Source review finds a bounded per-session candidate set, explicit active-source protection
+  until player release, and both TextureView detach paths clearing the view-holder before player
+  release. `VideoPreview` creates its player in `remember` and releases it from `DisposableEffect`;
+  the new allocation/release tokens can reveal an unpaired allocation if composition is abandoned.
+  Rapid activation can still cause decoder churn; repeated manager invalidations can occur as
+  windows/handoffs change. These are hypotheses to measure, not an assigned crash cause.
+- No device crash log, native tombstone, or repeated-scroll run is available here. `adb`, an
+  Android device and a representative MP4 fixture are unavailable. Capture steps (full logcat,
+  PID check, bugreport for native/ANR failures) are in `docs/phase-5-device-check.md`.
+- For this new change, local `./gradlew testDebugUnitTest`, `./gradlew lint` and
+  `./gradlew assembleDebug` each stopped before Gradle startup (`JAVA_HOME` unset; no `java`).
+  GitHub CI rerun is pending. The previous green run below validates only its earlier code
+  state. Do not claim the crash is fixed.
+
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
 and Media3 one-second neighboring-video buffers. Inactive MP4 cards request a local

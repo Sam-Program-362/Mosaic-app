@@ -180,7 +180,7 @@ internal data class VideoFrameFallback(
 internal fun videoFrameFallback(hasRenderedFirstFrame: Boolean, failed: Boolean, loading: Boolean) =
     VideoFrameFallback(
         showThumbnail = !hasRenderedFirstFrame,
-        showLoading = loading && !failed,
+        showLoading = loading && !failed && !hasRenderedFirstFrame,
         showError = failed,
     )
 
@@ -217,8 +217,18 @@ private fun VideoPreview(
     var controlsVisible by remember(stableKey, viewer) { mutableStateOf(true) }
     var seekFeedback by remember(stableKey) { mutableStateOf<String?>(null) }
     var seekFeedbackToken by remember(stableKey) { mutableIntStateOf(0) }
-    val player = remember(stableKey, uri, videoPreloader) {
-        videoPreloader?.createPlayer() ?: ExoPlayer.Builder(context).build()
+    val (player, playerDiagnosticToken) = remember(stableKey, uri, videoPreloader) {
+        try {
+            val createdPlayer = videoPreloader?.createPlayer() ?: ExoPlayer.Builder(context).build()
+            createdPlayer to MediaDiagnostics.playerCreated(context)
+        } catch (error: Exception) {
+            MediaDiagnostics.log(
+                context,
+                "player create error pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                    "cause=${MediaDiagnostics.causeTypes(error)}",
+            )
+            throw error
+        }
     }
     val audioAttributes = remember {
         AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
@@ -235,7 +245,9 @@ private fun VideoPreview(
         val activationStartedAt = SystemClock.elapsedRealtime()
         MediaDiagnostics.log(
             context,
-            "player active pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} viewer=$viewer",
+            "player active token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
+                "id=${MediaDiagnostics.shortId(stableKey)} viewer=$viewer " +
+                "unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
         )
         val listener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
@@ -310,12 +322,23 @@ private fun VideoPreview(
         onDispose {
             onPlaybackStateCaptured(player.currentPosition.coerceAtLeast(0L), player.playWhenReady)
             player.removeListener(listener)
-            viewHolder.texture?.let(player::clearVideoTextureView)
+            viewHolder.texture?.let { texture ->
+                MediaDiagnostics.log(
+                    context,
+                    "texture detach phase=player-dispose token=${playerDiagnosticToken ?: -1} available=${texture.isAvailable}",
+                )
+                player.clearVideoTextureView(texture)
+            }
             viewHolder.texture = null
             viewHolder.frame = null
             player.release()
+            MediaDiagnostics.playerReleased(context, playerDiagnosticToken)
             videoPreloader?.releasePlayback(stableKey, latestPreloadingEnabled.value)
-            MediaDiagnostics.log(context, "player released pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)}")
+            MediaDiagnostics.log(
+                context,
+                "player cleanup complete pos=$feedPosition id=${MediaDiagnostics.shortId(stableKey)} " +
+                    "unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
+            )
         }
     }
 
@@ -364,6 +387,10 @@ private fun VideoPreview(
                         ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
                     )
                     player.setVideoTextureView(texture)
+                    MediaDiagnostics.log(
+                        context,
+                        "texture attach token=${playerDiagnosticToken ?: -1} available=${texture.isAvailable}",
+                    )
                     viewHolder.frame = this
                     viewHolder.texture = texture
                 }
@@ -371,7 +398,14 @@ private fun VideoPreview(
             modifier = Modifier.fillMaxSize(),
             update = { it.setAspectRatio(aspectRatio) },
             onRelease = { frame ->
-                viewHolder.texture?.let(player::clearVideoTextureView)
+                viewHolder.texture?.let { texture ->
+                    MediaDiagnostics.log(
+                        context,
+                        "texture detach phase=android-view-release token=${playerDiagnosticToken ?: -1} " +
+                            "available=${texture.isAvailable}",
+                    )
+                    player.clearVideoTextureView(texture)
+                }
                 if (viewHolder.frame === frame) {
                     viewHolder.texture = null
                     viewHolder.frame = null

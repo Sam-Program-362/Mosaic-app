@@ -49,6 +49,7 @@ internal fun videoPreloadDiff(
 @androidx.annotation.OptIn(UnstableApi::class)
 internal class VideoPreloadSession(context: Context) {
     private val appContext = context.applicationContext
+    private val diagnosticsSessionId = Integer.toUnsignedString(System.identityHashCode(this), 16)
     private val statusControl = NearbyVideoStatusControl()
     private val requestsByMediaId = ConcurrentHashMap<String, VideoPreloadRequest>()
     private val requestsByUri = ConcurrentHashMap<String, List<VideoPreloadRequest>>()
@@ -66,6 +67,7 @@ internal class VideoPreloadSession(context: Context) {
     private val desired = linkedMapOf<String, VideoPreloadRequest>()
     private val activePlaybackPositions = linkedMapOf<String, Int>()
     private var anchorPosition: Int? = null
+    private var invalidateCalls = 0L
     @Volatile private var activeTransferKey: String? = null
     @Volatile private var currentManagerPosition: Int? = null
     private var isReleased = false
@@ -77,21 +79,26 @@ internal class VideoPreloadSession(context: Context) {
             if (request != null) completedKeys += request.key
             MediaDiagnostics.log(
                 appContext,
-                "preload complete pos=${request?.feedPosition ?: -1} " +
+                "preload complete session=$diagnosticsSessionId pos=${request?.feedPosition ?: -1} " +
                     "id=${request?.key?.let(MediaDiagnostics::shortId) ?: "unknown"} " +
-                    "submitToCompleteMs=${submittedAt?.let { (SystemClock.elapsedRealtime() - it).toString() } ?: "unknown"}",
+                    "submitToCompleteMs=${submittedAt?.let { (SystemClock.elapsedRealtime() - it).toString() } ?: "unknown"} " +
+                    "pendingPreloadRequests=${submittedAtMillis.size} " +
+                    "unreleasedPlayers=${MediaDiagnostics.unreleasedPlayerCount()}",
             )
         }
 
         override fun onError(exception: PreloadException) {
             val request = requestsByMediaId[exception.mediaItem.mediaId]
             val submittedAt = request?.let { submittedAtMillis.remove(it.key) }
+            request?.let { preloadIoStarted.remove("${it.key}@${it.feedPosition}") }
             MediaDiagnostics.log(
                 appContext,
-                "preload error pos=${request?.feedPosition ?: -1} " +
+                "preload error session=$diagnosticsSessionId pos=${request?.feedPosition ?: -1} " +
                     "id=${request?.key?.let(MediaDiagnostics::shortId) ?: "unknown"} " +
                     "cause=${MediaDiagnostics.causeTypes(exception)} " +
-                    "submitToErrorMs=${submittedAt?.let { (SystemClock.elapsedRealtime() - it).toString() } ?: "unknown"}",
+                    "submitToErrorMs=${submittedAt?.let { (SystemClock.elapsedRealtime() - it).toString() } ?: "unknown"} " +
+                    "pendingPreloadRequests=${submittedAtMillis.size} " +
+                    "unreleasedPlayers=${MediaDiagnostics.unreleasedPlayerCount()}",
             )
         }
     }
@@ -149,7 +156,8 @@ internal class VideoPreloadSession(context: Context) {
         }
         MediaDiagnostics.log(
             appContext,
-            "playback handoff pos=$feedPosition id=${MediaDiagnostics.shortId(key)} preload=$preloadState",
+            "playback handoff session=$diagnosticsSessionId pos=$feedPosition " +
+                "id=${MediaDiagnostics.shortId(key)} preload=$preloadState",
         )
         return manager.getMediaSource(video.mediaItem)
     }
@@ -171,9 +179,32 @@ internal class VideoPreloadSession(context: Context) {
 
     fun release() {
         if (isReleased) return
+        MediaDiagnostics.log(
+            appContext,
+            "resources session=$diagnosticsSessionId event=session-release " +
+                "activeEntries=${activePlaybackPositions.size} " +
+                "unreleasedPlayers=${MediaDiagnostics.unreleasedPlayerCount()} " +
+                "managedSources=${manager.sourceCount} pendingPreloadRequests=${submittedAtMillis.size} " +
+                "invalidateCalls=$invalidateCalls",
+        )
+        if (activePlaybackPositions.isNotEmpty()) {
+            MediaDiagnostics.log(
+                appContext,
+                "lifecycle warning session=$diagnosticsSessionId manager-release-with-active-entries=" +
+                    activePlaybackPositions.size,
+            )
+        }
         isReleased = true
         manager.removeListener(preloadListener)
-        manager.release()
+        try {
+            manager.release()
+        } catch (error: Exception) {
+            MediaDiagnostics.log(
+                appContext,
+                "manager release error session=$diagnosticsSessionId cause=${MediaDiagnostics.causeTypes(error)}",
+            )
+            throw error
+        }
         managed.clear()
         desired.clear()
         activePlaybackPositions.clear()
@@ -187,6 +218,8 @@ internal class VideoPreloadSession(context: Context) {
     private fun reconcile(startPreloading: Boolean) {
         val current = managed.mapValues { it.value.request }
         val diff = videoPreloadDiff(current, desired.values.toList(), activePlaybackPositions.keys)
+        val removedCount = diff.removeKeys.size
+        val addedCount = diff.upsertRequests.size
         diff.removeKeys.forEach(::removeManaged)
         diff.upsertRequests.forEach(::addManaged)
 
@@ -214,8 +247,32 @@ internal class VideoPreloadSession(context: Context) {
                     )
                 }
             }
-            manager.invalidate()
+            invalidateCalls++
+            MediaDiagnostics.log(
+                appContext,
+                "manager session=$diagnosticsSessionId invalidate begin call=$invalidateCalls " +
+                    "activePlayers=${MediaDiagnostics.unreleasedPlayerCount()} " +
+                    "managedSources=${manager.sourceCount} pendingPreloadRequests=${submittedAtMillis.size}",
+            )
+            try {
+                manager.invalidate()
+            } catch (error: Exception) {
+                MediaDiagnostics.log(
+                    appContext,
+                    "manager invalidate error session=$diagnosticsSessionId call=$invalidateCalls " +
+                        "cause=${MediaDiagnostics.causeTypes(error)}",
+                )
+                throw error
+            }
         }
+        MediaDiagnostics.log(
+            appContext,
+            "resources session=$diagnosticsSessionId event=reconcile removed=$removedCount " +
+                "added=$addedCount candidates=${desired.size} " +
+                "activeEntries=${activePlaybackPositions.size} activePlayers=${MediaDiagnostics.unreleasedPlayerCount()} " +
+                "managedSources=${manager.sourceCount} pendingPreloadRequests=${submittedAtMillis.size} " +
+                "invalidateCalls=$invalidateCalls",
+        )
     }
 
     private fun addManaged(request: VideoPreloadRequest) {
@@ -260,10 +317,11 @@ internal class VideoPreloadSession(context: Context) {
                     val submittedAt = submittedAtMillis[preloadRequest.key]
                     MediaDiagnostics.log(
                         appContext,
-                        "preload io-start pos=${preloadRequest.feedPosition} " +
+                        "preload io-start session=$diagnosticsSessionId pos=${preloadRequest.feedPosition} " +
                             "id=${MediaDiagnostics.shortId(preloadRequest.key)} " +
                             "submitToIoMs=${submittedAt?.let { (SystemClock.elapsedRealtime() - it).toString() } ?: "unknown"} " +
-                            "network=$isNetwork",
+                            "network=$isNetwork pendingPreloadRequests=${submittedAtMillis.size} " +
+                            "unreleasedPlayers=${MediaDiagnostics.unreleasedPlayerCount()}",
                     )
                 }
                 return

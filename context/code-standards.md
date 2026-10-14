@@ -74,3 +74,11 @@ lint, schema consistency, packaged APK privacy checks and debug build (artifact
 38575809505 at `50132da`: 83 tests, lint, schema consistency, packaged privacy and debug
 APK build (artifact `11899788396`). Do not equate CI with device acceptance or claim phone
 results before on-device checks.
+
+For the first-frame overlay, preserve the cached thumbnail until the rendered-frame callback;
+show the loading overlay only before that event, while loading and not failed. Test all eight
+first-frame/loading/failure combinations, especially buffering after a rendered frame. Keep
+crash investigation evidence-led: debug-only counters may expose unreleased player instances,
+managed sources, pending preloads, active entries and invalidation calls, but must not log local
+paths/URIs or claim a root cause. Capture full device logcat and PID/ANR evidence before
+attributing repeated-scroll crashes; unit tests, lint, and APK builds do not resolve them.
