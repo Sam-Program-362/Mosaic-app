@@ -39,6 +39,26 @@ class LibraryRepositoryTest {
         assertEquals(FolderStatus.Available, store.records.getValue("tree").status)
     }
 
+    @Test fun refreshRetainsProtectedCurrentAndNeighboringMediaWhileRefreshingOtherEntries() = runTest {
+        val store = FakeStore()
+        val source = FakeSource()
+        val repository = LibraryRepository(store, source)
+        source.result = ScanResult.Success(listOf(media("active"), media("neighbor"), media("stale")))
+        repository.addFolder(FolderSelection("tree", 0))
+
+        source.result = ScanResult.Success(listOf(
+            media("active").copy(fullName = "renamed.jpg"),
+            media("fresh"),
+        ))
+        repository.refresh(preserveMedia = setOf(MediaKey("tree", "active"), MediaKey("tree", "neighbor")))
+
+        val updated = store.media.getValue("tree").associateBy { it.documentId }
+        assertEquals(setOf("active", "neighbor", "fresh"), updated.keys)
+        assertEquals("same.jpg", updated.getValue("active").fullName)
+        assertEquals("same.jpg", updated.getValue("neighbor").fullName)
+        assertFalse("stale" in updated)
+    }
+
     @Test fun reselectingSameTreeDoesNotCreateDuplicateFolder() = runTest {
         val store = FakeStore()
         val source = FakeSource()
@@ -130,8 +150,17 @@ class LibraryRepositoryTest {
             records.remove(folderId)
             media.remove(folderId)
         }
-        override suspend fun commitScan(folderId: String, media: List<MediaDocument>) {
-            this.media[folderId] = media
+        override suspend fun commitScan(
+            folderId: String,
+            media: List<MediaDocument>,
+            preserveDocumentIds: Set<String>,
+        ) {
+            val preservedById = this.media[folderId].orEmpty()
+                .filter { it.documentId in preserveDocumentIds }.associateBy { it.documentId }
+            val scannedIds = media.mapTo(mutableSetOf()) { it.documentId }
+            val nextMedia = media.map { preservedById[it.documentId] ?: it }.toMutableList()
+            preservedById.values.filter { it.documentId !in scannedIds }.forEach { nextMedia.add(it) }
+            this.media[folderId] = nextMedia
             records[folderId] = records.getValue(folderId).copy(status = FolderStatus.Available, failure = null)
         }
         override suspend fun markUnavailable(folderId: String, failure: ScanFailure) {

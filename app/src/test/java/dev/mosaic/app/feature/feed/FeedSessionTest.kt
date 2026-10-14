@@ -109,6 +109,45 @@ class FeedSessionTest {
         assertNull(activePreview(listOf(VisibleMedia("gif", -400, 400)), 0, 1000, setOf("gif")))
         assertNull(activePreview(emptyList(), 0, 1000, setOf("video")))
     }
+    @Test fun nearbyMediaWindowIsBoundedToCurrentAndNearestPhotoOrVideoOnEachSide() {
+        val posts = listOf(
+            post("far-photo", MediaKind.Image),
+            post("before-gif", MediaKind.Gif),
+            post("before-video", MediaKind.Video),
+            post("current-gif", MediaKind.Gif),
+            post("after-gif", MediaKind.Gif),
+            post("after-photo", MediaKind.Image),
+            post("far-video", MediaKind.Video),
+        )
+
+        val window = nearbyMediaWindow(posts, centerIndex = 3)
+
+        assertEquals(listOf("current-gif", "before-video", "after-photo"),
+            window.map { it.post.media.document.documentId })
+        assertEquals(listOf(0, -1, 1), window.map { it.direction })
+        assertTrue(window.all { kotlin.math.abs(it.feedIndex - 3) <= 3 })
+    }
+    @Test fun nearbyMediaWindowHandlesEdgesAndInvalidIndices() {
+        val posts = listOf(post("current", MediaKind.Image), post("next-gif", MediaKind.Gif),
+            post("next-video", MediaKind.Video))
+        assertEquals(listOf("current", "next-video"), nearbyMediaWindow(posts, 0)
+            .map { it.post.media.document.documentId })
+        assertTrue(nearbyMediaWindow(posts, -1).isEmpty())
+        assertTrue(nearbyMediaWindow(emptyList(), 0).isEmpty())
+    }
+    @Test fun videoTimeAndRelativeSeekAreFormattedAndClamped() {
+        assertEquals("0:00", formatVideoTime(-1))
+        assertEquals("0:13", formatVideoTime(13_000))
+        assertEquals("1:01", formatVideoTime(61_999))
+        assertEquals("1:02:03", formatVideoTime(3_723_000))
+        assertEquals(0L, seekVideoPosition(5_000, 10_000, -10_000))
+        assertEquals(10_000L, seekVideoPosition(5_000, 10_000, 10_000))
+        assertEquals(13_000L, seekVideoPosition(3_000, -1, 10_000))
+    }
+    private fun post(id: String, kind: MediaKind) = FeedPost(
+        item("folder", id, "$id.${if (kind == MediaKind.Video) "mp4" else "jpg"}", kind = kind),
+        DecorativeCounts(1, 0), null,
+    )
     private fun item(folder: String, id: String, name: String = "$id.jpg", time: Long? = null, kind: MediaKind = MediaKind.Image) =
         IndexedMedia(folder, "Folder $folder", MediaDocument(id, "content://test/$id", name, "image/jpeg", kind, time, null))
 }

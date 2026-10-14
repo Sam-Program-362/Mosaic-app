@@ -20,6 +20,7 @@ class MosaicApplication : Application() {
         ImageLoader.Builder(applicationContext).components {
             if (Build.VERSION.SDK_INT >= 28) add(AnimatedImageDecoder.Factory())
             else add(GifDecoder.Factory())
+            add(VideoFrameDecoder.Factory())
         }.build()
     }
 

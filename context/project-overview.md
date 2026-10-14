@@ -23,13 +23,19 @@ or proprietary assets to copy.
   never inspect media bytes or use a network service.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
-  sound toggle. Stop/release inactive and off-screen media.
+  sound toggle. Stop/release inactive and off-screen media. A bounded current-plus-one-
+  neighbor-per-side window preloads local image/video frames and short video buffers;
+  inactive MP4 cards show a frame thumbnail rather than a paused placeholder.
+- Active video offers play/pause, mute/unmute, seek timeline and elapsed/duration,
+  double-tap ±10-second seeking, and tap-to-hide/show player controls.
 - Every Save invocation makes another collision-safe app-managed persistent copy.
   Copies render independently after source deletion/access loss. Failures clean
   incomplete copies/records; never alter original media.
-- Refresh at launch, resume, and explicit refresh. Reconcile deletions only after
-  successful scans. Failed scans are not empty scans. Keep unavailable folder
-  communities/metadata and recover when access returns.
+- Full refresh at a cold process start and explicit refresh; warm background resume
+  rescans/reconciles other items while retaining the current and bounded preloaded
+  media IDs/feed session. Reconcile deletions only after successful scans. Failed
+  scans are not empty scans. Keep unavailable folder communities/metadata and recover
+  when access returns.
 - Home, searchable communities directory, and navigation through the header/drawer
   only (no bottom navigation or navigation rail); drawer/menu expose Saved, folders,
   communities, and Settings. Consistent Light/Dark themes and loading/empty/error/
@@ -59,8 +65,11 @@ tests, lint, schema consistency, APK privacy and debug build. Earlier attempts e
 and resolved an entrance-test timing issue. The Drive-reference UI adaptation passed CI
 run 38543107645 at `b667dcc` (67 tests, lint, schema consistency, packaged APK privacy
 and debug build); the debug APK and reports are available as CI artifact 11883232388.
-The reference-inspired Dark fallback is a provisional default. Physical acceptance for
-the refreshed UI, search and video controls remains pending. Custom communities remain
+The reference-inspired Dark fallback is a provisional default. A 2026-10-14 follow-up
+now implements bounded nearby image/video preloading, inactive-video frame thumbnails,
+Reddit-inspired playback/seek controls and warm-resume media retention; GitHub CI and
+physical-device acceptance for that follow-up are pending. The earlier refreshed UI,
+search and controls also still need physical acceptance. Custom communities remain
 planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.

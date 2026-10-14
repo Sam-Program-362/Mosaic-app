@@ -45,6 +45,7 @@ ksp {
 dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
+    implementation(libs.coil.video)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     testImplementation(libs.androidx.compose.ui.test.junit4)

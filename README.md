@@ -13,13 +13,17 @@ safe folder removal; this is still a development app, not a complete first relea
   the tapped post and uses a frozen copy of the originating feed order.
 - Every **Save copy** tap creates another independent app-managed copy; Saved items
   remain local and use the same viewer. Saved-copy removal is not implemented.
-- Viewer playback is limited to the current foreground page; MP4 starts muted and
-  exposes play/pause and mute/unmute controls. Back returns to the originating feed.
+- Only the current foreground video plays. MP4 starts muted and exposes play/pause,
+  mute, seek/time/duration, double-tap ±10-second seeking and tap-to-hide/show controls
+  in the viewer. Inactive videos show a local first-frame thumbnail.
+- The current feed position and at most one nearby image/video on either side are kept
+  warm with local Coil frame/image prefetch and a short Media3 video buffer.
 - Manage folders supports add, refresh, access recovery, and confirmed **Remove
   from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
   saved read grant; it never alters or deletes original media.
-- Room metadata, direct-child SAF scanning, refresh/resume reconciliation, and
-  unavailable-folder retention/retry.
+- Room metadata, direct-child SAF scanning, unavailable-folder retention/retry, and
+  selective warm-resume reconciliation. A cold process start or explicit refresh still
+  fully scans; a warm resume refreshes other entries while preserving the active window.
 - Persistent Light/Dark appearance. No runtime network, broad storage permissions,
   accounts, or telemetry.
 
@@ -33,6 +37,10 @@ and production release/signing.
 
 ## Verification and phone evidence
 
+The video/preload/warm-resume follow-up is implemented in source but has not yet run
+through GitHub CI or physical-device acceptance. The latest green Android build below
+covers the preceding UI revision, not this follow-up.
+
 [Latest Android CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38543107645)
 passed **67 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
 and packaged APK privacy checks**. The APK has no network or broad storage/media
@@ -42,8 +50,10 @@ APK and verification reports. CI does not substitute for physical-device checks.
 The user reports from the Phase 3 phone check that photos appear in Home, selecting
 a folder shows only its media, and videos play. GIF animation, sound/mute behavior,
 background/offscreen stopping, Phase 4 paging/removal, and the latest theme/search/
-Settings/navigation UI have not yet been confirmed on-device. See the [Phase 4 phone
-check](docs/phase-4-device-check.md) and [Phase 5 copy check](docs/phase-5-device-check.md).
+Settings/navigation UI have not yet been confirmed on-device. In a newer user report,
+photos remain smooth but video loading/advance is sticky and inactive video cards show a
+paused placeholder; the current preloading/thumbnail/control/resume changes still need
+phone verification. See the [Phase 4 phone check](docs/phase-4-device-check.md) and [Phase 5 copy check](docs/phase-5-device-check.md).
 
 ## Build
 

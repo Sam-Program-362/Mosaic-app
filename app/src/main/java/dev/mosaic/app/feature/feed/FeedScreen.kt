@@ -37,6 +37,7 @@ import coil3.decode.BitmapFactoryDecoder
 import coil3.request.ImageRequest
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
+import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 
@@ -58,6 +59,7 @@ fun FeedScreen(
     emptyTitle: String? = null,
     emptyDescription: String? = null,
     searchQuery: String = "",
+    onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
@@ -70,16 +72,46 @@ fun FeedScreen(
     val animatedKeys = remember(visiblePosts) {
         visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
     }
+    val allMediaKeys = remember(visiblePosts) { visiblePosts.map { it.media.key.stableKey }.toSet() }
     val previewBounds = remember { mutableStateMapOf<String, Rect>() }
     var viewport by remember { mutableStateOf(Rect.Zero) }
-    val activeKey by remember(animatedKeys) {
+    val visibleMedia by remember(animatedKeys, allMediaKeys) {
         derivedStateOf {
-            activePreview(previewBounds.map { (key, bounds) ->
+            previewBounds.map { (key, bounds) ->
                 VisibleMedia(key, bounds.top.roundToInt(), bounds.height.roundToInt())
-            }, viewport.top.roundToInt(), viewport.bottom.roundToInt(), animatedKeys)
+            }
         }
     }
+    val activeKey by remember(animatedKeys, visibleMedia, viewport) {
+        derivedStateOf {
+            activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), animatedKeys)
+        }
+    }
+    val centerKey by remember(animatedKeys, allMediaKeys, visibleMedia, viewport) {
+        derivedStateOf {
+            activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), animatedKeys)
+                ?: activePreview(visibleMedia, viewport.top.roundToInt(), viewport.bottom.roundToInt(), allMediaKeys)
+        }
+    }
+    val centerIndex = remember(visiblePosts, centerKey) {
+        centerKey?.let { key -> visiblePosts.indexOfFirst { it.media.key.stableKey == key } } ?: -1
+    }
+    val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
     var sorting by remember { mutableStateOf(false) }
+    val videoPreloader = rememberVideoPreloadSession()
+    val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
+    LaunchedEffect(preloadWindow) {
+        retainedCallback(preloadWindow.map { it.post.media.key }.toSet())
+    }
+    DisposableEffect(Unit) {
+        onDispose { retainedCallback(emptySet()) }
+    }
+    NearbyMediaPreloader(
+        candidates = preloadWindow,
+        imageLoader = imageLoader,
+        videoSession = videoPreloader,
+        enabled = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+    )
     // Intentional session changes scroll to the start; theme/menu changes do not.
     LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) { listState.scrollToItem(0) }
     LazyColumn(
@@ -144,18 +176,19 @@ fun FeedScreen(
             val key = post.media.key.stableKey
             DisposableEffect(key) { onDispose { previewBounds.remove(key) } }
             MediaPostCard(post, imageLoader,
-                onPreviewBounds = { bounds -> if (key in animatedKeys) previewBounds[key] = bounds },
+                onPreviewBounds = { bounds -> if (previewBounds[key] != bounds) previewBounds[key] = bounds },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
+                videoPreloader = videoPreloader,
             )
         }
     }
 }
 
 @Composable
-fun MediaPostCard(
+internal fun MediaPostCard(
     post: FeedPost,
     imageLoader: ImageLoader,
     active: Boolean,
@@ -163,6 +196,7 @@ fun MediaPostCard(
     onOpenViewer: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
     hideCommunity: Boolean = false,
+    videoPreloader: VideoPreloadSession? = null,
 ) {
     val colors = LocalMosaicColors.current
     val mediaLabel = when (post.media.document.kind) {
@@ -199,7 +233,7 @@ fun MediaPostCard(
             maxLines = 2,
         )
         LocalMediaPreview(post, active, imageLoader, onPreviewBounds,
-            viewer = false, onOpenViewer = onOpenViewer)
+            viewer = false, onOpenViewer = onOpenViewer, videoPreloader = videoPreloader)
         Row(
             Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

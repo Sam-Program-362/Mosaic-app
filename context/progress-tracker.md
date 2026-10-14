@@ -1,8 +1,8 @@
 # Progress tracker
 
 ## Current phase
-Phase 5 — independent Save copy and Saved-feed implementation in progress.
-Date: 2026-10-14. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
+Phase 5 follow-up — bounded video/image preloading, player controls and warm-resume
+retention in progress. Date: 2026-10-14. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
 APK privacy and debug build at commit 02085fb. Phase 5 CI iterations 38466413293 and
 38467526012 exposed an unattached Robolectric provider NPE; run 38467045590 caught a
 provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 tests,
@@ -18,7 +18,23 @@ remains pending. The Drive-reference UI follow-up passed CI run 38543107645 at `
 67 tests, lint, schema consistency, packaged privacy and debug APK all passed. Phone
 acceptance for the new theme/feed/navigation UI remains pending. User-reported Phase 3 evidence confirms Home photos, folder isolation
 and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
-removal are not yet confirmed on-device. This is not a complete first release.
+removal are not yet confirmed on-device. The user now reports smooth photos but sticky video
+loading/advance and a paused placeholder for inactive videos. This is user-reported device
+evidence, not an agent-run test. This is not a complete first release.
+
+## Video preload, controls and warm-resume follow-up — implementation in progress
+Source now uses a bounded current/neighbor media window (at most one eligible item on
+each side, scanning no farther than three feed entries), Coil local image/video-frame
+prefetch, and Media3 1-second neighboring-video buffers. Inactive MP4 cards request a
+local first-frame thumbnail. The player adds play/pause, mute, seek/time/duration,
+double-tap ±10-second seeking, tap-to-hide/show, and position/play state retention across
+lifecycle deactivation. Warm ON_RESUME keeps the feed epoch and Room rows for current /
+preloaded IDs while refreshing other entries; a new process and explicit refresh remain
+full refreshes. Unit/repository/Room/UI tests were added. No database schema or runtime
+network permission changed. `./gradlew testDebugUnitTest` is blocked locally because
+Java is absent; GitHub CI and physical-device acceptance are still pending. The user
+explicitly authorized the session-branch push for CI/debug-APK verification; no merge
+or release is in scope.
 
 ## Drive-reference UI adaptation follow-up — CI verified, phone check pending
 The current session branch adapts the inspected Drive reference without copying the

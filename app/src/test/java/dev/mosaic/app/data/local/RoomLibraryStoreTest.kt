@@ -41,6 +41,24 @@ class RoomLibraryStoreTest {
         assertNull(empty.folder.failure)
     }
 
+    @Test fun successfulRefreshRetainsOnlyProtectedMediaRowsAndReconcilesTheRest() = runTest {
+        store.putFolder(FolderRecord("tree", "Photos", true))
+        store.commitScan("tree", listOf(media("active"), media("neighbor"), media("stale")))
+
+        store.commitScan(
+            "tree",
+            listOf(media("active").copy(fullName = "renamed.jpg"), media("fresh")),
+            preserveDocumentIds = setOf("active", "neighbor"),
+        )
+
+        val rows = database.libraryDao().getMedia("tree").associateBy { it.documentId }
+        assertEquals(setOf("active", "neighbor", "fresh"), rows.keys)
+        assertEquals("same.jpg", rows.getValue("active").fullName)
+        assertEquals("same.jpg", rows.getValue("neighbor").fullName)
+        assertFalse("stale" in rows)
+        assertEquals(FolderStatus.Available, store.folders.first().single().folder.status)
+    }
+
     @Test fun failedTransactionRollsBackBothDeletionAndAvailabilityUpdate() = runTest {
         store.putFolder(FolderRecord("tree", "Photos", true))
         store.commitScan("tree", listOf(media("existing")))

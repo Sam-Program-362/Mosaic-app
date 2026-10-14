@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +63,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.FolderStatus
+import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.data.source.FolderPickerContract
 import dev.mosaic.app.feature.feed.AnimatedMediaViewerOverlay
@@ -70,6 +72,7 @@ import dev.mosaic.app.feature.feed.FeedScreen
 import dev.mosaic.app.feature.feed.FeedSnapshot
 import dev.mosaic.app.feature.feed.FeedSort
 import dev.mosaic.app.feature.feed.ViewerSession
+import dev.mosaic.app.feature.feed.nearbyMediaWindow
 import dev.mosaic.app.feature.folders.CommunityDirectoryScreen
 import dev.mosaic.app.feature.folders.FolderManagement
 import dev.mosaic.app.feature.folders.LibraryViewModel
@@ -98,8 +101,14 @@ fun MosaicApp(
     var retainedViewerSession by remember { mutableStateOf<ViewerSession?>(null) }
     val viewerVisibility = remember { MutableTransitionState(false) }
     val viewerVisible = viewerVisibility.currentState || viewerVisibility.targetState || !viewerVisibility.isIdle
+    var feedRetainedMedia by remember { mutableStateOf(emptySet<MediaKey>()) }
+    var viewerRetainedMedia by remember { mutableStateOf(emptySet<MediaKey>()) }
+    val resumeProtectedMedia by rememberUpdatedState(
+        if (viewerVisible && viewerRetainedMedia.isNotEmpty()) viewerRetainedMedia else feedRetainedMedia,
+    )
     val openViewer: (FeedSnapshot, Int) -> Unit = { snapshot, page ->
         val session = ViewerSession(snapshot, page)
+        viewerRetainedMedia = nearbyMediaWindow(snapshot.posts, page).map { it.post.media.key }.toSet()
         retainedViewerSession = session
         viewerSession = session
         viewerVisibility.targetState = true
@@ -183,7 +192,7 @@ fun MosaicApp(
     }
     val addFolder: () -> Unit = { launchPicker(null) }
 
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { library.refresh() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { library.refreshAfterResume(resumeProtectedMedia) }
     val message by library.message.collectAsStateWithLifecycle()
     LaunchedEffect(message) {
         val text = message ?: return@LaunchedEffect
@@ -450,6 +459,7 @@ fun MosaicApp(
                                 "Save a separate copy from any post to keep it here, even if its source folder is removed."
                             } else null,
                             searchQuery = searchQuery,
+                            onRetainedMediaChanged = { feedRetainedMedia = it },
                             modifier = Modifier.padding(padding).then(
                                 if (viewerVisible) Modifier.clearAndSetSemantics {} else Modifier
                             ),
@@ -461,6 +471,7 @@ fun MosaicApp(
                             imageLoader = imageLoader,
                             onClose = closeViewer,
                             onSaveCopy = { post -> library.saveCopy(post.media) },
+                            onRetainedMediaChanged = { viewerRetainedMedia = it },
                         )
                     }
                 }
@@ -492,6 +503,7 @@ fun MosaicApp(
                         imageLoader = imageLoader,
                         onClose = closeViewer,
                         onSaveCopy = { post -> library.saveCopy(post.media) },
+                        onRetainedMediaChanged = { viewerRetainedMedia = it },
                     )
                 }
                 else -> when {

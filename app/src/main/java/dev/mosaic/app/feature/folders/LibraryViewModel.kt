@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.IndexedMedia
+import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.SAVED_MEDIA_FOLDER_ID
 import dev.mosaic.app.core.model.toIndexedMedia
 import dev.mosaic.app.data.repository.LibraryRepository
@@ -34,6 +35,7 @@ class LibraryViewModel(
     private val repository: LibraryRepository,
     private val savedCopyRepository: SavedCopyRepository,
 ) : ViewModel() {
+    private val resumeRefreshPolicy = ResumeRefreshPolicy()
     private val mutableBusy = MutableStateFlow(false)
     val busy = mutableBusy.asStateFlow()
     private val mutableMessage = MutableStateFlow<String?>(null)
@@ -110,6 +112,15 @@ class LibraryViewModel(
         runOperation {
             repository.refresh(folderId)
             mutableEpoch.value = Random.nextLong()
+        }
+    }
+
+    /** A fresh process performs a full scan; later foreground returns preserve the active media window. */
+    fun refreshAfterResume(protectedMedia: Set<MediaKey>) {
+        val plan = resumeRefreshPolicy.next(protectedMedia)
+        runOperation {
+            repository.refresh(preserveMedia = plan.preserveMedia)
+            if (plan.regenerateFeedSession) mutableEpoch.value = Random.nextLong()
         }
     }
 

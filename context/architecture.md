@@ -41,17 +41,25 @@ Available/Unavailable status and failure reason persist. Successful scans replac
 one folder's media and status atomically; failures update status only. Room upsert
 avoids deleting dependent rows during reselection. No destructive migration fallback.
 Persist only READ permission from actual result flags; nonpersistent access is clearly
-labelled. Same-tree reselection restores access without duplicate identity. Lifecycle
-resume/explicit refresh scan serialized operations; no background service/WorkManager.
+labelled. Same-tree reselection restores access without duplicate identity. Cold-start,
+warm-resume and explicit refresh scans are serialized; no background service/WorkManager.
+A warm resume retains the current and bounded preloaded media rows and feed epoch/order
+while reconciling other entries. A cold process start and explicit refresh fully reconcile.
 Null/missing-required-column/loading/error cursors never authorize deletion.
 
 ## Phase 3 implementation
 `feature/feed/` owns pure feed ordering/count/title/artwork/visibility rules, lazy
-post UI, local image/GIF preview and composition-scoped MP4 players. Coil 3.1.0 uses
-Compose/GIF modules without a network fetcher; an application-context ImageLoader
-provides bounded shared caching. Static photo/avatar requests explicitly select a
-static decoder; only GIF previews opt into animation. Media3 1.6.1 creates at most one inline player for
-visible foreground media, muted by default and disposed offscreen/inactive.
+post UI, local image/GIF/video-frame previews and composition-scoped MP4 players.
+Coil 3.1.0 uses Compose/GIF/video-frame modules without a network fetcher; an
+application-context ImageLoader provides bounded shared caching. Static photo/avatar
+requests explicitly select a static decoder; only GIF previews opt into animation.
+Inactive videos decode a local first-frame thumbnail. The feed/viewer window prefetches
+at most one image/video item on each side (searching no farther than three feed entries);
+Media3 1.6.1 `DefaultPreloadManager` buffers one second for each adjacent video source.
+These sources do not create extra playing players. Media3 creates at most one inline
+player for visible foreground media, muted by default and disposed offscreen/inactive.
+The active player exposes play/pause, mute, a seek slider and elapsed/duration; full-screen
+video supports left/right double-tap ±10-second seeking and tap-to-hide/show controls.
 Room joined projections filter Available status before UI; no schema version change.
 ViewModel combines available metadata + scope + sort + session epoch off main thread.
 Random rank/count seed depends on epoch + length-prefixed folder/document identity;
@@ -108,6 +116,24 @@ hand-authored. Viewer motion passed CI run 38511038772. The reference-inspired U
 passed run 38543107645 (67 tests, lint, schema, APK privacy and debug build). Phone
 acceptance for viewer, permissions, Saved copies, theme, search and refreshed controls
 remains pending.
+
+## Video and warm-resume follow-up — source implemented, verification pending
+`nearbyMediaWindow` selects the current item and at most one eligible photo/video on
+both sides, searching no farther than three feed entries. Coil prefetches static images
+and video first frames into its local memory cache. A composition-scoped Media3
+`DefaultPreloadManager` buffers one second for each neighboring video (not an extra
+playing player); the same window is used by the frozen viewer pager. Inactive MP4
+cards render a cached local frame. `VideoPreview` retains its position/play-when-ready
+state across lifecycle deactivation, and provides play/pause, mute, seek/duration,
+full-screen double-tap seeking and tap-to-toggle controls.
+
+`ResumeRefreshPolicy` treats a new ViewModel/process as cold: full scan and a new feed
+epoch. Later ON_RESUME scans keep the existing feed epoch/order and pass current plus
+preloaded `MediaKey`s to the repository. A successful Room transaction retains those
+existing rows (including their old metadata) while reconciling all other scanned rows;
+failed scans still retain the whole prior index. No schema version change, background
+service, network access or source writes were introduced. GitHub CI and phone acceptance
+for this follow-up remain pending.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy

@@ -35,8 +35,9 @@ repeated independent saves, source deletion, playback lifecycle, themes and acce
 Phase 3 tests additionally cover feed membership, stable random sessions, timestamp
 fallback/ties, display counts, artwork, titles, viewport animation ownership and
 Compose decorative-action semantics. Media players must remain composition-scoped;
-image loading must stay local-only. Do not equate CI with real hardware decoder or
-foreground/offscreen playback acceptance.
+image loading must stay local-only. Bound adjacent preloads (one item each side) and
+never create extra playing players for them. Do not equate CI with real hardware decoder
+or foreground/offscreen playback acceptance.
 
 Inspect merged APK permissions after adding media libraries; transitive manifests
 must not silently add network or broad storage/media access. Keep static artwork
@@ -61,5 +62,7 @@ final viewer transition. Earlier test-timing failures are resolved. The Drive-re
 UI follow-up adds tests for indexed-metadata search and relative-time formatting, Settings
 library stats/theme callback, and community directory loading/filtering/unavailable rows.
 CI run 38543107645 at `b667dcc` passed 67 tests, lint, schema consistency, packaged APK
-privacy and debug build. Do not equate CI with device acceptance; claim phone results
-only after on-device checks.
+privacy and debug build. A 2026-10-14 video/lifecycle follow-up now adds tests for the
+bounded media window, playback-time formatting/seeking, resume policy, protected Room
+reconciliation and inactive-video thumbnail semantics. Its CI run is pending; do not
+equate CI with device acceptance or claim phone results before on-device checks.

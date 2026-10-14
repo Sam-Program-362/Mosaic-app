@@ -44,3 +44,9 @@ tests, lint, schema consistency, packaged APK privacy and debug APK. Its UI/them
 video-control behavior remains unverified on a physical phone. The run's debug APK and
 reports are artifact 11883232388. No merge or release was made. Keep custom communities
 and other future features explicit; a visible label alone is not proof.
+
+The user's 2026-10-14 phone report says photos are smooth, video loading/advance feels
+sticky, and inactive video currently shows a paused placeholder. Source now has bounded
+neighbor preloading, local video-frame thumbnails, playback/seek controls and warm-resume
+media retention. These changes are not CI-verified or phone-verified yet; treat the
+original observations as user-reported evidence and the new behavior as pending.

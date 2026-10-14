@@ -54,6 +54,20 @@ artifact (ID `11883232388`) contains the test APK and reports. The Drive ZIP rem
 untracked. No physical-device acceptance has been performed for this adaptation; the
 new theme, feed, search and video controls still need phone feedback.
 
+## User-reported video feedback follow-up — source implemented, verification pending
+The user reports that photos are smooth but video load/advance feels sticky, and that
+inactive MP4 cards show a paused placeholder instead of a thumbnail. The new source
+selects at most one nearby image/video on each side for local Coil frame/image prefetch
+and short Media3 buffering; inactive videos request a first-frame thumbnail. Exactly
+one visible video still plays. Active video now has play/pause, mute, timeline, elapsed /
+duration, left/right double-tap ±10-second seek, and tap-to-hide/show player controls.
+On warm resume the app preserves current/preloaded media IDs and feed order while
+reconciling other entries; a cold process start and explicit refresh still do a full
+refresh. Tests for bounded selection, time/seek helpers, thumbnail semantics, resume
+policy and Room/repository preservation have been added. This follow-up has not yet
+passed GitHub CI or been checked on the user's phone; the initial observation is user
+feedback, not an agent-run device test.
+
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android
 specification: charcoal surfaces, warm orange actions, clear Home/Saved/community

@@ -33,6 +33,20 @@ class FeedUiTest {
         compose.onNodeWithText("Save copy").assertIsNotEnabled()
         compose.onNodeWithText("Comments").assertDoesNotExist()
     }
+    @Test fun inactiveVideoShowsAThumbnailRequestInsteadOfPausedText() {
+        val media = IndexedMedia("folder", "Clips", MediaDocument(
+            "video", "content://missing/video", "Launch.mp4", "video/mp4", MediaKind.Video, null, null,
+        ))
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                Column { MediaPostCard(FeedPost(media, DecorativeCounts(1, 0), null), loader, active = false) }
+            }
+        }
+
+        compose.onNodeWithText("MP4 · playback paused").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Launch video thumbnail").assertExists()
+    }
+
     @Test fun everySaveTapStartsAnotherIndependentCopyRequest() {
         val media = IndexedMedia("folder", "Travel", MediaDocument("id", "content://missing/id", "summer.jpg",
             "image/jpeg", MediaKind.Image, null, null))

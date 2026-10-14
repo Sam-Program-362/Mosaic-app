@@ -4,7 +4,9 @@ Use the verified debug APK from [CI run 38543107645](https://github.com/Sam-Prog
 on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, viewer motion, and the
 reference-inspired UI/search updates. The workflow passed 67 tests, lint, schema
 consistency, packaged privacy checks, and the debug APK build.
-This is a test build, not a release. Do not uninstall the older build just to install
+This is a test build, not a release. The linked artifact predates the 2026-10-14
+video/preload/warm-resume source follow-up; wait for the newer CI artifact before using
+this guide to accept those changes. Do not uninstall the older build just to install
 this one; the cached development signing key should allow an in-place update and
 preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
@@ -25,6 +27,23 @@ private Saved copies and selected-folder grants; it never changes source media.
   retained and the folder/community/Saved counts are sensible.
 - If testing an MP4, confirm it starts muted, the play/pause and mute/unmute controls
   work, and playback stops when the video leaves the active foreground view.
+
+## Video thumbnails, controls and warm resume — new source follow-up
+
+Run these checks on the newer debug APK once its CI run passes:
+
+- Inactive MP4 cards should show a recognizable local first-frame thumbnail, not the
+  old “MP4 · playback paused” label. Compare scrolling through nearby photos/videos;
+  only the visible/active video should play, and advancing should feel less sticky.
+- Open an MP4 in the viewer. Verify play/pause, mute/unmute, current time/duration,
+  progress seeking, left-side double-tap back 10 seconds, right-side double-tap forward
+  10 seconds, and tap to hide/show player controls. Confirm the player starts muted.
+- Start a video, scroll enough to load its immediate neighbors, then minimize Mosaic and
+  resume. Confirm the same feed position/current video and playback position return,
+  nearby preloaded media stays available, other feed entries can refresh, and the feed
+  does not jump to the top. Do not expect playback while the app is backgrounded.
+- Fully close/relaunch Mosaic and confirm a complete refresh is still allowed.
+- Repeat in the full-screen pager if convenient; only its current page should play.
 
 ## Save from the feed and viewer
 

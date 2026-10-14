@@ -32,8 +32,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +52,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
+import dev.mosaic.app.core.model.MediaKey
 
 internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
 
@@ -63,6 +66,7 @@ internal fun AnimatedMediaViewerOverlay(
     imageLoader: ImageLoader,
     onClose: () -> Unit,
     onSaveCopy: (FeedPost) -> Unit,
+    onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -84,6 +88,7 @@ internal fun AnimatedMediaViewerOverlay(
                 imageLoader = imageLoader,
                 onClose = onClose,
                 onSaveCopy = onSaveCopy,
+                onRetainedMediaChanged = onRetainedMediaChanged,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -99,6 +104,7 @@ fun MediaViewer(
     imageLoader: ImageLoader,
     onClose: () -> Unit,
     onSaveCopy: ((FeedPost) -> Unit)? = null,
+    onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (snapshot.posts.isEmpty()) {
@@ -113,6 +119,23 @@ fun MediaViewer(
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
     }
+    val preloadWindow = remember(snapshot.posts, pagerState.currentPage) {
+        nearbyMediaWindow(snapshot.posts, pagerState.currentPage)
+    }
+    val videoPreloader = rememberVideoPreloadSession()
+    val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
+    LaunchedEffect(preloadWindow) {
+        retainedCallback(preloadWindow.map { it.post.media.key }.toSet())
+    }
+    DisposableEffect(Unit) {
+        onDispose { retainedCallback(emptySet()) }
+    }
+    NearbyMediaPreloader(
+        candidates = preloadWindow,
+        imageLoader = imageLoader,
+        videoSession = videoPreloader,
+        enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+    )
     Box(modifier.fillMaxSize().background(Color.Black)) {
         VerticalPager(
             state = pagerState,
@@ -126,6 +149,7 @@ fun MediaViewer(
                 active = page == pagerState.currentPage && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
                 imageLoader = imageLoader,
                 viewer = true,
+                videoPreloader = videoPreloader,
             )
         }
         val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]

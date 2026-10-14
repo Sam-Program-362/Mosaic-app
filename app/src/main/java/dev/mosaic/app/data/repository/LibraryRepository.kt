@@ -2,6 +2,7 @@ package dev.mosaic.app.data.repository
 
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderSelection
+import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.ScanResult
 import dev.mosaic.app.data.source.FolderSource
 import kotlinx.coroutines.sync.Mutex
@@ -27,8 +28,17 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         registration.persistedRead
     }
 
-    suspend fun refresh(folderId: String? = null) = operations.withLock {
-        store.getFolders().filter { folderId == null || it.id == folderId }.forEach { scan(it.id) }
+    suspend fun refresh(
+        folderId: String? = null,
+        preserveMedia: Set<MediaKey> = emptySet(),
+    ) = operations.withLock {
+        store.getFolders().filter { folderId == null || it.id == folderId }.forEach { folder ->
+            val preserveDocumentIds = preserveMedia.asSequence()
+                .filter { it.folderId == folder.id }
+                .map { it.documentId }
+                .toSet()
+            scan(folder.id, preserveDocumentIds)
+        }
     }
 
     /** Remove the local selection and its index; originals stay in their provider. */
@@ -41,9 +51,9 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         grantReleased
     }
 
-    private suspend fun scan(folderId: String) {
+    private suspend fun scan(folderId: String, preserveDocumentIds: Set<String> = emptySet()) {
         when (val result = source.scan(folderId)) {
-            is ScanResult.Success -> store.commitScan(folderId, result.media)
+            is ScanResult.Success -> store.commitScan(folderId, result.media, preserveDocumentIds)
             is ScanResult.Failed -> store.markUnavailable(folderId, result.reason)
         }
     }

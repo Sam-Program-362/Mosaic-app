@@ -103,3 +103,48 @@ fun activePreview(visible: List<VisibleMedia>, start: Int, end: Int, animatedKey
         .map { it.key to (minOf(it.offset + it.size, end) - maxOf(it.offset, start)).coerceAtLeast(0) }
         .filter { it.second > 0 }
         .maxByOrNull { it.second }?.first
+
+/** At most the current post plus one nearby photo/video on either side are retained/preloaded. */
+data class NearbyMediaCandidate(val post: FeedPost, val feedIndex: Int, val direction: Int)
+
+private const val NEARBY_MEDIA_SEARCH_DISTANCE = 3
+
+fun nearbyMediaWindow(posts: List<FeedPost>, centerIndex: Int): List<NearbyMediaCandidate> {
+    if (centerIndex !in posts.indices) return emptyList()
+    val result = mutableListOf(NearbyMediaCandidate(posts[centerIndex], centerIndex, direction = 0))
+    fun isPreloadable(post: FeedPost) = post.media.document.kind == MediaKind.Image ||
+        post.media.document.kind == MediaKind.Video
+
+    val firstPreviousIndex = (centerIndex - NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtLeast(0)
+    val previousIndex = (centerIndex - 1 downTo firstPreviousIndex).firstOrNull { isPreloadable(posts[it]) }
+    if (previousIndex != null) result += NearbyMediaCandidate(posts[previousIndex], previousIndex, direction = -1)
+
+    val lastNextIndex = (centerIndex + NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtMost(posts.lastIndex)
+    val nextIndex = if (centerIndex < lastNextIndex) {
+        (centerIndex + 1..lastNextIndex).firstOrNull { isPreloadable(posts[it]) }
+    } else null
+    if (nextIndex != null) result += NearbyMediaCandidate(posts[nextIndex], nextIndex, direction = 1)
+    return result
+}
+
+fun formatVideoTime(positionMillis: Long): String {
+    val totalSeconds = positionMillis.coerceAtLeast(0L) / 1_000L
+    val seconds = (totalSeconds % 60L).toString().padStart(2, '0')
+    val totalMinutes = totalSeconds / 60L
+    return if (totalMinutes >= 60L) {
+        "${totalMinutes / 60L}:${(totalMinutes % 60L).toString().padStart(2, '0')}:$seconds"
+    } else {
+        "$totalMinutes:$seconds"
+    }
+}
+
+fun seekVideoPosition(currentMillis: Long, durationMillis: Long, offsetMillis: Long): Long {
+    val current = currentMillis.coerceAtLeast(0L)
+    val target = if (offsetMillis > 0L && current > Long.MAX_VALUE - offsetMillis) {
+        Long.MAX_VALUE
+    } else {
+        current + offsetMillis
+    }.coerceAtLeast(0L)
+    val duration = durationMillis.takeIf { it > 0L } ?: Long.MAX_VALUE
+    return target.coerceAtMost(duration)
+}

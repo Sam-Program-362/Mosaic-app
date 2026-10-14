@@ -35,10 +35,25 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
         dao.deleteFolder(folderId)
     }
 
-    override suspend fun commitScan(folderId: String, media: List<MediaDocument>) {
+    override suspend fun commitScan(
+        folderId: String,
+        media: List<MediaDocument>,
+        preserveDocumentIds: Set<String>,
+    ) {
         database.withTransaction {
+            val preservedById = if (preserveDocumentIds.isEmpty()) {
+                emptyMap()
+            } else {
+                dao.getMedia(folderId).asSequence()
+                    .filter { it.documentId in preserveDocumentIds }
+                    .associate { it.documentId to it.toDocument() }
+            }
+            val scannedIds = media.mapTo(mutableSetOf()) { it.documentId }
+            val nextMedia = media.map { preservedById[it.documentId] ?: it }.toMutableList()
+            preservedById.values.filter { it.documentId !in scannedIds }.forEach { nextMedia.add(it) }
+
             dao.clearMedia(folderId)
-            dao.insertMedia(media.map {
+            dao.insertMedia(nextMedia.map {
                 MediaEntity(folderId, it.documentId, it.contentUri, it.fullName, it.mimeType,
                     it.kind, it.modifiedAtMillis, it.sizeBytes)
             })
@@ -52,3 +67,7 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
 }
 
 private fun FolderEntity.toRecord() = FolderRecord(id, label, persistedRead, status, failure)
+
+private fun MediaEntity.toDocument() = MediaDocument(
+    documentId, contentUri, fullName, mimeType, kind, modifiedAtMillis, sizeBytes,
+)
