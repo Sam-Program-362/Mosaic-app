@@ -39,20 +39,14 @@ and production release/signing.
 
 ## Verification and phone evidence
 
-The previous paired preloading diagnostic passed CI, but the current geometry-stability changes
-are pending hosted verification and physical-device acceptance. The prior artifact was
-`mosaic-debug-and-reports` ID `11909443268` from run `38595248869`; it predates the current
-geometry fix and should not be used to accept it.
+The current geometry-stability changes passed hosted verification in
+[run 38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253):
+93 tests (0 failures/errors/skips) in both preload modes, lint, both debug APK builds,
+schema consistency, and privacy checks. The paired development APKs and reports are in
+artifact `mosaic-debug-and-reports` ID `11916277533`. The older artifact ID `11909443268`
+from run `38595248869` predates these geometry changes and must not be used to accept them.
 
-The user now reports a same-device comparison: preloading enabled made photo scrolling sticky;
-with preloading disabled, photos felt smooth, but a separate shift remains when the next video
-starts loading. The disabled build has not crashed during the user's tests. This is user-reported
-evidence, not log-correlated attribution or crash-resolution proof. Current source keeps video
-preloading disabled by default, stabilizes each composed row's reserved media height against
-asynchronous ratio callbacks, derives viewport positions from LazyColumn item offsets and
-row-relative preview geometry, and records event-level scroll/layout/player transitions. The
-new changes need CI and a repeated mixed portrait/landscape phone test before calling the issue
-fixed. See the [Phase 5 device check](docs/phase-5-device-check.md).
+The user reports a same-device comparison: preloading enabled made photo scrolling sticky; with preloading disabled, photos felt smooth, but a separate shift remained when the next video started loading. The disabled build had not crashed during the user's tests. This is user-reported evidence, not log-correlated attribution or crash-resolution proof. Current source keeps video preloading disabled by default, stabilizes each composed row's reserved media height against asynchronous ratio callbacks, derives viewport positions from LazyColumn item offsets and row-relative preview geometry, and records event-level scroll/layout/player transitions. Repeated mixed portrait/landscape physical-device testing with transition logs is still required before calling the issue fixed. See the [Phase 5 device check](docs/phase-5-device-check.md).
 
 Other physical-device checks remain open: GIF animation, sound/mute behavior, background/offscreen
 stopping, Phase 4 paging/removal, and the latest theme/search/Settings/navigation UI. See the

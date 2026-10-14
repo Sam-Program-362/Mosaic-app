@@ -154,9 +154,12 @@ changes only root position. It caches valid per-media ratios for later compositi
 the current row height before image/video callbacks; decoded media content still fits to its own
 aspect ratio inside that container. New logs include row-size before/after snapshots, active
 selection and explicit scroll events, aspect-ratio source/cache, player prepare/overlay/first frame,
-and one coarse UI-frame/CPU summary per scroll burst. CI run 38595248869 verifies the earlier
-A/B build only; the current source changes are still pending CI and device verification. No fix
-or causal attribution is claimed yet.
+and one coarse UI-frame/CPU summary per scroll burst. The current source passed CI run
+[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253): 93 tests
+with 0 failures/errors/skips in both preload modes, lint, both debug APK builds, schema consistency
+and packaged privacy checks (artifact `11916277533`). The earlier run `38595248869` covers only
+the previous A/B source. Physical-device verification remains pending; CI does not confirm smooth
+scrolling, eliminate the reported shift, attribute a cause, or prove crash resolution.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

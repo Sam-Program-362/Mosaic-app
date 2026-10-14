@@ -108,4 +108,9 @@ content fit/cache only, never that row's reserved height. Keep the poster/loadin
 that same container and preserve source aspect with fit rather than stretching. Log explicit
 feed `scrollToItem` triggers, selection changes, before/after visible row geometry, ratio source,
 player preparation/overlay/first-frame, and coarse frame/UI-thread CPU summaries. Tests, lint,
-and APK builds still do not establish on-device acceptance.
+and APK builds still do not establish on-device acceptance. The current geometry/default change
+passed CI run [38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253):
+93 tests (0 failures/errors/skips) in both preload modes, lint, both debug APK builds, schema
+consistency and packaged privacy checks (artifact `11916277533`). The preceding CI attempt
+`38607037687` caught a diagnostic timestamp scope error, fixed before the green run. Same-device
+scrolling and crash evidence remain separate acceptance requirements.

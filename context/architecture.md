@@ -190,12 +190,16 @@ remeasurement, first-visible key/index/offset, active-selection transitions, the
 `scrollToItem` trigger/result, aspect-ratio source/cache changes, player preparation, overlay
 transitions and first-frame events, plus coarse frame/UI-thread CPU summaries. Only the explicit
 scope/sort/session/search reset calls `scrollToItem`; no media activation/ratio/first-frame path
-requests feed re-anchoring. The previous diagnostic build passed CI run
+requests feed re-anchoring. The prior controlled A/B build passed run
 [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869) at `742caf3`
-(88 tests in both preload modes, lint, paired APK builds, schema and APK privacy checks; artifact
-`11909443268`). That run predates these geometry changes. Current changes still require hosted
-CI and a physical-device mixed portrait/landscape fast-scroll test; no fix or crash resolution is
-claimed until those checks pass.
+(88 tests in both modes; artifact `11909443268`) but predates these geometry changes. Current
+source passed run
+[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253) at `cacd82d`:
+93 tests with 0 failures/errors/skips in both preload modes, lint, both debug APK builds, schema
+consistency and packaged privacy checks; artifact `11916277533`. The first geometry commit's CI
+run `38607037687` caught a diagnostic variable-scope compile error, fixed before the green run.
+A physical-device mixed portrait/landscape fast-scroll test remains necessary; no root cause or
+crash resolution is claimed until device evidence is captured and reviewed.
 
 ## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,

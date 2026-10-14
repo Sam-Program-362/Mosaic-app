@@ -3,13 +3,15 @@
 ## Current phase
 Phase 5 follow-up — stabilize video-triggered feed geometry using the user's on-device A/B as
 new evidence, keep video preloading disabled by default, and add event-level geometry/player
-correlation. The previous paired diagnostic build passed CI run
-[38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869) at `742caf3`
-(88 tests in both modes, lint, paired debug APKs, Room schema/privacy checks; artifact
-`11909443268`). The current geometry/default changes are not yet CI-verified. Local Gradle still
-cannot start because Java is absent; no `adb` or connected device is available in this checkout.
-The 75-second recording and raw phone logs have not been attached, so the new implementation
-still needs hosted CI and user-device verification before any fix is claimed.
+correlation. Current geometry/default changes passed CI run
+[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253) at `cacd82d`:
+93 tests with 0 failures/errors/skips in both preload modes, lint, disabled-baseline and
+preload-enabled debug APK builds, Room schema consistency, and packaged privacy checks. Artifact
+`mosaic-debug-and-reports` ID `11916277533`. The first geometry commit's CI run
+`38607037687` caught an out-of-scope diagnostic timestamp; that was corrected in `cacd82d` and
+the follow-up CI passed. Local Gradle still cannot start because Java is absent; no `adb` or
+connected device is available in this checkout. The 75-second recording and raw phone logs have
+not been attached, so physical-device verification remains mandatory before any fix is claimed.
 
 The prior video-transition correctness/performance pass passed GitHub CI run 38575809505 at
 `50132da` (83 tests, lint, schema/privacy checks and debug APK); physical-device behavior
@@ -34,7 +36,7 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   preloader's foreground gate to lifecycle-only. These are source facts, not proof of device
   jank. Ratio-driven sizing, stable keys and the feed-session scroll reset predate those changes.
 
-## New user A/B evidence and geometry-stability change — CI/device pending
+## New user A/B evidence and geometry-stability change — CI verified, device pending
 - The user reports: preload-enabled photo scrolling felt sticky; disabled photo scrolling felt
   smooth; with disabled preloading the feed still shifted when the next video loaded; the disabled
   build had not crashed during their tests. This supports an aggregate video-preload contribution
@@ -48,17 +50,18 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   outer row size. The `scrollToItem(0)` effect is keyed to folder/sort/epoch/search changes, item
   keys are stable media identities, and player activation has no scroll call. These mechanisms
   have not yet been correlated to a specific recorded jump.
-- Current source (pending CI) keeps video preloading disabled by default; visible media position
-  uses LazyList row offsets plus preview geometry relative to the row, avoiding root-coordinate
-  snapshot writes on ordinary scrolling. A bounded per-feed ratio cache seeds later compositions;
-  asynchronous dimensions can refine that cache and the video surface's content fit, but the
-  currently composed card keeps its reserved height. Loading/poster/player stay within that box.
-  Unknown first-visit media uses a 4:3 reservation while its content remains aspect-fitted.
-- Event diagnostics now include full before/after visible rows on size changes, active-selection
+- Current source keeps video preloading disabled by default; visible media position uses LazyList
+  row offsets plus preview geometry relative to the row, avoiding root-coordinate snapshot writes
+  on ordinary scrolling. A bounded per-feed ratio cache seeds later compositions; asynchronous
+  dimensions can refine that cache and the video surface's content fit, but the currently composed
+  card keeps its reserved height. Loading/poster/player stay within that box. Unknown first-visit
+  media uses a 4:3 reservation while its content remains aspect-fitted.
+- Event diagnostics include full before/after visible rows on size changes, active-selection
   transitions, explicit programmatic scroll trigger/result, row-relative preview geometry, ratio
   source/cache changes, player preparation/loading-overlay/first-frame transitions, and coarse
-  frame/main-thread-CPU summaries. The physical-device mixed-orientation test remains required;
-  no exact cause, fix, or crash resolution is claimed yet.
+  frame/main-thread-CPU summaries. CI run `38607618253` passed 93 tests in both preload modes,
+  lint, both debug APK builds, schema consistency, and privacy checks. The physical-device
+  mixed-orientation test remains required; no exact cause, fix, or crash resolution is claimed.
 
 ## Video transition correctness/performance correction — CI verified, device pending
 - Home viewport anchoring uses the largest overlap across all media. Playback requires an

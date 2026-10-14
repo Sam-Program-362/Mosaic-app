@@ -1,17 +1,21 @@
 # Phase 5 phone check — Saved copies, playback and feed geometry
 
-The current geometry-stability source and preload-disabled default are awaiting hosted CI. The
-previous paired diagnostic APKs are from [run 38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
-at `742caf3`, artifact `mosaic-debug-and-reports` (ID `11909443268`); they predate the current
-geometry changes and must not be used to accept them. They contain the earlier enabled/disabled
-pair and reports only. After the current source passes CI, use the new paired APK artifact linked
-from that run; this guide will then be synchronized with its run and artifact ID.
-
-The user has since reported on-device that preload-enabled photos felt sticky, preload-disabled
-photos felt smooth, and a shift remained as a visible video began loading. The disabled build had
-not crashed during the user's testing. These are user observations, not log-correlated root-cause
-or crash-resolution evidence. A physical-device repeat with the current geometry code is required.
+Use the paired APKs from [CI run 38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253)
+on `arena/b0f3e3cf-mosaic-app` at `cacd82d`. Download artifact `mosaic-debug-and-reports`, ID
+`11916277533`; it contains the preload-disabled baseline APK, explicit preload-enabled comparison
+APK, checksums and reports. CI passed 93 tests (0 failures/errors/skips) in both modes, lint on the
+disabled baseline, both APK builds, Room schema consistency, and privacy checks for both APKs.
 This is a development test build, not a release.
+
+The user reports the prior on-device comparison found sticky photo scrolling with preloading on,
+smooth photos with it off, and a separate shift when a visible video loads; no crash occurred in
+their disabled-build testing. Those are user observations, not raw log-correlated root-cause or
+crash-resolution evidence. The current geometry code still needs the repeated physical-device
+mixed portrait/landscape scroll test and logs before it can be accepted.
+
+The earlier paired artifact from run 38595248869 (ID `11909443268`) predates the geometry
+changes; do not use it to accept the fix. Older APK artifacts `11908916275`, `11905094822`,
+`11903168202`, `11899788396`, `11898528123` and `11890760322` also predate the current behavior.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
@@ -104,8 +108,9 @@ happened when the next video began loading with preloading disabled. The disable
 crashed during the user's tests; that is not a crash-resolution result and does not isolate any
 individual preload operation.
 
-The current source changes the build default to preload-disabled. CI will produce paired APKs
-with the same package, signing key and diagnostics:
+The current source changes the build default to preload-disabled. The verified paired APKs
+with the same package, signing key and diagnostics are in run `38607618253`, artifact
+`mosaic-debug-and-reports` ID `11916277533` (linked at the top of this guide):
 
 - `mosaic-debug-video-preload-disabled.apk` — baseline/default; no Media3 neighbor buffer,
   adjacent Coil video-frame prefetch, or offscreen video-poster decoding. Visible inactive-video
@@ -118,7 +123,7 @@ For local builds use `./gradlew assembleDebug -PmosaicVideoPreloading=false` for
 (default is also false); only after the disabled geometry test is stable use
 `-PmosaicVideoPreloading=true` for the comparison. The Gradle property accepts only `true`/`false`.
 The earlier paired artifact `11909443268` predates the current geometry changes and must not be
-used to accept this fix; use the newly built artifact linked at the top of this guide.
+used to accept this fix; use artifact `11916277533` linked at the top of this guide.
 
 Install/update in place; do not uninstall, clear app data or change source folders. Choose
 **Sort: Newest**, note the starting feed positions, device model, Android version and refresh
