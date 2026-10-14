@@ -17,7 +17,7 @@ remained unverified. The latest portrait/landscape fast-scroll follow-up passed 
 38586848533 at `ce78b37` (87 tests, lint, schema/privacy checks and debug APK); hardware-fling
 and crash evidence remain unavailable. Earlier phase/test/build history is retained below.
 
-## New fast-scroll regression report — A/B instrumentation in progress
+## New fast-scroll regression report — CI verified, device comparison pending
 - User reports reduced smoothness and unexpected shifts in the photo-only “2D Images” feed,
   plus multiple “Loading video...” overlays while scrolling “Anime Vid.” No exact offset or
   device logs were supplied; the mentioned 75-second recording is absent from the workspace.
