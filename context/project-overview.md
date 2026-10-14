@@ -86,7 +86,12 @@ edges; these are observations, not a confirmed cause. A focused ratio/visible-fr
 handoff correction and debug diagnostics now cover that path without changing preload bounds or
 duration. CI run 38586848533 at `ce78b37` passed 87 tests, lint, schema/privacy checks and debug
 APK build (artifact `11905094822`). No device fling, MP4 decode, crash log or root cause is
-verified. Custom communities remain planned. This is not first-release completion.
+verified. A newer user report notes reduced smoothness/shifts in the photo-only feed and multiple
+video-loading overlays in a mixed feed. A controlled build-time video-preloading A/B plus feed
+geometry/frame diagnostics passed CI run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
+at `f005b18`: 88 tests, lint, paired debug APKs, Room schema and privacy checks for both APKs;
+artifact `mosaic-debug-and-reports` is ID `11908916275`. Phone comparison and root-cause evidence
+remain pending. Custom communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain

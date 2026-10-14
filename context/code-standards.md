@@ -97,4 +97,7 @@ lint, schema/privacy checks and debug APK build. Physical fling/codec/crash veri
 separate. For the new scroll-regression report, compare otherwise-identical debug APKs with
 video preloading enabled/disabled; leave photo prefetch and visible-player behavior constant.
 Log only coarse geometry transitions and per-scroll timing summaries (not per-frame lines or
-local paths), and do not assign a device cause before the same-sequence phone comparison.
+local paths), and do not assign a device cause before the same-sequence phone comparison. The
+paired diagnostic workflow passed run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
+with 88 tests, lint, both debug APK builds, schema and privacy checks for both variants; artifact
+`11908916275`. Hardware comparison remains a separate requirement.

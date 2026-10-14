@@ -165,6 +165,16 @@ copy or player-count scope changed. Final CI run 38575809505 at `50132da` passed
 lint, schema consistency, packaged privacy checks and debug APK build (artifact `11899788396`).
 Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
+A new feed-smoothness report now has a build-time A/B switch: `-PmosaicVideoPreloading=false`
+removes neighboring Media3 video loads and adjacent video-frame image prefetch without changing
+photo prefetch, feed geometry/selection, visible posters or active-player preparation. Debug feed
+instrumentation logs measured media/card size changes, first-visible key/offset, visible row
+geometry, and aggregate frame/UI-thread CPU per scroll. CI run
+[38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388) at `f005b18`
+passed 88 tests, lint, paired enabled/disabled debug APK builds, schema and both APK privacy
+checks (artifact `11908916275`). This is build/test evidence only; no on-device comparison or
+cause is established.
+
 ## First-frame loading correction and crash-investigation instrumentation — CI verified, device pending
 `videoFrameFallback` now only exposes the loading overlay while the player is loading,
 not failed, and has not rendered its first frame. The thumbnail remains until that first

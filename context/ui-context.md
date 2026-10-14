@@ -135,7 +135,9 @@ unexpectedly, while “Anime Vid” can show multiple “Loading video...” ove
 scroll. No exact offsets or recording are present in the workspace. A build-time A/B disables
 nearby video preloading while retaining static-photo prefetch and the currently displayed video
 poster/active player. Debug records capture list anchor/offset, visible row/media dimensions,
-layout-size transitions, scroll frame intervals and approximate main-thread CPU. Run the same
+layout-size transitions, scroll frame intervals and approximate main-thread CPU. The paired
+APK workflow passed CI run [38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
+(88 tests, lint, two APK builds, schema and privacy checks; artifact `11908916275`). Run the same
 photo-only and mixed-feed swipe sequence in both APKs; photo improvement, shift persistence and
 player-overlay timing remain unknown until on-device logs are reviewed. Keep layout/photo
 regression separate from player readiness and do not implement a speculative fix beforehand.

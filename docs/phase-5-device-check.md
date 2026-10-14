@@ -1,14 +1,16 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the latest debug APK from [CI run 38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533)
-on `arena/b0f3e3cf-mosaic-app` at `ce78b37`; it includes Room v2, Saved, viewer motion,
-the reference-inspired UI/search, playback controls, the first-frame loading-overlay fix,
-ratio-aware visibility/active-video handoff tests, and expanded debug-only geometry/player
-diagnostics. The workflow passed 87 tests, lint, schema consistency, packaged privacy checks,
-and the debug APK build. Download the `mosaic-debug-and-reports` artifact (ID `11905094822`).
-Earlier APK artifacts `11903168202`, `11899788396`, `11898528123` and `11890760322` predate
-the targeted portrait/landscape handoff follow-up.
-This is a test build, not a release. No physical-device acceptance has been recorded yet.
+Use the paired diagnostic APKs from [CI run 38593502388](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38593502388)
+on `arena/b0f3e3cf-mosaic-app` at `f005b18`. Download the `mosaic-debug-and-reports` artifact
+(ID `11908916275`); it contains `mosaic-debug-video-preload-enabled.apk` and
+`mosaic-debug-video-preload-disabled.apk` plus checksums/reports. The workflow passed 88 tests,
+lint, both APK builds, Room schema consistency, and packaged privacy checks for both APKs.
+The paired builds include Room v2, Saved, viewer motion, the reference-inspired UI/search,
+playback controls, first-frame loading correction, portrait/landscape handoff diagnostics and
+new feed-layout/frame samplers. Earlier APK artifacts `11905094822`, `11903168202`,
+`11899788396`, `11898528123` and `11890760322` predate this controlled video-preload A/B.
+This is a test build, not a release. No physical-device comparison or acceptance has been
+recorded yet.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing
 conflict, stop and report it before removing app data. Uninstalling Mosaic clears its
