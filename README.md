@@ -16,10 +16,14 @@ safe folder removal; this is still a development app, not a complete first relea
 - Only the current foreground video plays. MP4 starts muted and exposes play/pause,
   mute, seek/time/duration, double-tap ±10-second seeking and tap-to-hide/show controls
   in the viewer. Inactive videos show a local first-frame thumbnail.
-- Static-photo prefetch remains local and bounded. Neighboring video buffering, nearby
-  video-frame prefetch, and offscreen video-poster decoding are disabled by default after
-  the user-reported photo-jank A/B; use `-PmosaicVideoPreloading=true` only for controlled
-  diagnostics, not as an assumed performance improvement.
+- Feed photos fill the available media width and use their own decoded intrinsic aspect
+  ratio, with a safe temporary fallback when dimensions are unavailable; photos are fit,
+  not stretched or cropped to a video frame. Their established height is stable across
+  later callbacks. The dedicated video/GIF frame policy remains separate and unchanged.
+- Bounded nearby static-photo prefetch remains local. The production video-preload manager,
+  neighboring-video buffering, offscreen video-frame prefetch, speculative offscreen video
+  posters, and their diagnostic build toggle have been removed. Visible video posters,
+  active-player preparation, controls, and first-rendered-frame overlay behavior remain.
 - Manage folders supports add, refresh, access recovery, and confirmed **Remove
   from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
   saved read grant; it never alters or deletes original media.
@@ -39,14 +43,20 @@ and production release/signing.
 
 ## Verification and phone evidence
 
-The current geometry-stability changes passed hosted verification in
-[run 38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253):
-93 tests (0 failures/errors/skips) in both preload modes, lint, both debug APK builds,
-schema consistency, and privacy checks. The paired development APKs and reports are in
-artifact `mosaic-debug-and-reports` ID `11916277533`. The older artifact ID `11909443268`
-from run `38595248869` predates these geometry changes and must not be used to accept them.
+The current focused change removes video-specific preloading from production and gives feed photos
+full-width natural-ratio geometry while preserving the dedicated video frame and playback flow.
+Its unit tests, lint, privacy/schema checks, debug APK build, and hosted CI are **pending**. Local
+Gradle verification is blocked because this checkout has no Java executable and `JAVA_HOME` is
+unset. Do not use older paired preload-mode APKs to accept this change; the current build has no
+preload toggle. See the [Phase 5 device check](docs/phase-5-device-check.md) for the single-APK
+phone sequence and exact acceptance criteria.
 
-The user reports a same-device comparison: preloading enabled made photo scrolling sticky; with preloading disabled, photos felt smooth, but a separate shift remained when the next video started loading. The disabled build had not crashed during the user's tests. This is user-reported evidence, not log-correlated attribution or crash-resolution proof. Current source keeps video preloading disabled by default, stabilizes each composed row's reserved media height against asynchronous ratio callbacks, derives viewport positions from LazyColumn item offsets and row-relative preview geometry, and records event-level scroll/layout/player transitions. Repeated mixed portrait/landscape physical-device testing with transition logs is still required before calling the issue fixed. See the [Phase 5 device check](docs/phase-5-device-check.md).
+The user's earlier same-device comparison reported sticky photo scrolling and a crash with video
+preloading enabled; with it disabled, photos felt smooth and video loading was fast enough. A
+separate shift when a video began loading had also been reported. These are user observations, not
+log-correlated attribution. No crash-resolution claim is justified by removing preloading alone.
+Physical-device verification of photo proportions, video behavior, feed position stability, and
+repeat-scroll crash behavior remains separate from CI.
 
 Other physical-device checks remain open: GIF animation, sound/mute behavior, background/offscreen
 stopping, Phase 4 paging/removal, and the latest theme/search/Settings/navigation UI. See the

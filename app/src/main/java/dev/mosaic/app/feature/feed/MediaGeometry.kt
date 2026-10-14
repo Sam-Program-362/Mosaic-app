@@ -1,5 +1,7 @@
 package dev.mosaic.app.feature.feed
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import kotlin.math.abs
 
 /** Geometry of the preview relative to its LazyColumn row, independent of scroll offset. */
@@ -42,41 +44,50 @@ internal data class AspectRatioCacheUpdate(
 )
 
 /**
- * Per-feed-session cache. Decoded dimensions can seed a later composition, but do not resize the
- * already-laid-out row that discovered them. The cache is bounded so a long feed cannot grow it
- * without limit.
+ * Per-feed-session cache. Each key has an observable state so a dimension learned by static-photo
+ * prefetch can seed a later LazyColumn composition. The cache is bounded for long feeds.
  */
 internal class MediaAspectRatioCache(private val maxEntries: Int = MAX_CACHED_MEDIA_ASPECT_RATIOS) {
-    private val entries = LinkedHashMap<String, CachedMediaAspectRatio>(16, 0.75f, true)
+    private val entries = LinkedHashMap<String, MutableState<CachedMediaAspectRatio?>>(16, 0.75f, true)
 
     init {
         require(maxEntries > 0)
     }
 
-    fun get(key: String): CachedMediaAspectRatio? = entries[key]
+    @Synchronized
+    fun get(key: String): CachedMediaAspectRatio? {
+        val state = entries[key] ?: mutableStateOf<CachedMediaAspectRatio?>(null).also { entries[key] = it }
+        trimToBound()
+        return state.value
+    }
 
+    @Synchronized
     fun record(key: String, ratio: Float, source: String): AspectRatioCacheUpdate {
-        val previous = entries[key]
-        if (!ratio.isFinite() || ratio <= 0f) {
+        val state = entries[key] ?: mutableStateOf<CachedMediaAspectRatio?>(null).also { entries[key] = it }
+        val previous = state.value
+        if (!isValidMediaAspectRatio(ratio)) {
+            trimToBound()
             return AspectRatioCacheUpdate(previous, previous, changed = false)
         }
 
         val candidate = CachedMediaAspectRatio(ratio, source)
         val shouldReplace = previous == null ||
             (sourcePriority(source) > sourcePriority(previous.source) && abs(previous.ratio - ratio) >= MIN_ASPECT_RATIO_CHANGE)
-        if (shouldReplace) {
-            entries[key] = candidate
-            while (entries.size > maxEntries) {
-                val eldestKey = entries.entries.iterator().next().key
-                entries.remove(eldestKey)
-            }
+        if (shouldReplace) state.value = candidate
+        trimToBound()
+        return AspectRatioCacheUpdate(previous, state.value, changed = shouldReplace)
+    }
+
+    private fun trimToBound() {
+        while (entries.size > maxEntries) {
+            val eldestKey = entries.entries.iterator().next().key
+            entries.remove(eldestKey)
         }
-        return AspectRatioCacheUpdate(previous, entries[key], changed = shouldReplace)
     }
 
     private fun sourcePriority(source: String): Int = when (source) {
         "player-video-size" -> 2
-        "image", "video-thumbnail", "gif-frame" -> 1
+        "image", "image-prefetch", "video-thumbnail", "gif-frame" -> 1
         else -> 0
     }
 
@@ -89,7 +100,43 @@ internal class MediaAspectRatioCache(private val maxEntries: Int = MAX_CACHED_ME
 internal fun mediaGeometryCacheKey(stableKey: String, modifiedAtMillis: Long?, sizeBytes: Long?): String =
     "$stableKey|modified=${modifiedAtMillis ?: "unknown"}|size=${sizeBytes ?: "unknown"}"
 
-internal fun reservedMediaAspectRatio(cachedRatio: Float?): Float =
-    cachedRatio?.takeIf { it.isFinite() && it > 0f } ?: DEFAULT_RESERVED_MEDIA_ASPECT_RATIO
+internal fun isValidMediaAspectRatio(ratio: Float): Boolean = ratio.isFinite() && ratio > 0f
 
+/** Width divided by height, taken from Coil's decoded intrinsic dimensions. */
+internal fun intrinsicImageAspectRatio(widthPx: Int, heightPx: Int): Float? {
+    if (widthPx <= 0 || heightPx <= 0) return null
+    return (widthPx.toDouble() / heightPx.toDouble()).toFloat().takeIf(::isValidMediaAspectRatio)
+}
+
+/** Exact height for a photo rendered at the available feed width; there is no product crop/cap. */
+internal fun naturalPhotoHeightDp(widthDp: Float, aspectRatio: Float): Float? {
+    if (!widthDp.isFinite() || widthDp <= 0f || !isValidMediaAspectRatio(aspectRatio)) return null
+    val height = widthDp.toDouble() / aspectRatio.toDouble()
+    if (!height.isFinite() || height <= 0.0 || height > Float.MAX_VALUE) return null
+    return height.toFloat()
+}
+
+internal fun safePhotoAspectRatio(cachedRatio: Float?): Float =
+    cachedRatio?.takeIf(::isValidMediaAspectRatio) ?: DEFAULT_PHOTO_PLACEHOLDER_ASPECT_RATIO
+
+internal data class PhotoAspectRatioState(val ratio: Float, val dimensionsEstablished: Boolean)
+
+/** Resolve the first valid decoded ratio once; later loading/recomposition callbacks cannot resize it. */
+internal fun establishPhotoAspectRatio(
+    currentRatio: Float,
+    dimensionsEstablished: Boolean,
+    decodedRatio: Float?,
+): PhotoAspectRatioState {
+    val current = safePhotoAspectRatio(currentRatio)
+    if (dimensionsEstablished) return PhotoAspectRatioState(current, dimensionsEstablished = true)
+    val resolved = decodedRatio?.takeIf(::isValidMediaAspectRatio)
+        ?: return PhotoAspectRatioState(current, dimensionsEstablished = false)
+    return PhotoAspectRatioState(resolved, dimensionsEstablished = true)
+}
+
+/** Video/GIF frame reservation retained from the existing player presentation policy. */
+internal fun reservedMediaAspectRatio(cachedRatio: Float?): Float =
+    cachedRatio?.takeIf(::isValidMediaAspectRatio) ?: DEFAULT_RESERVED_MEDIA_ASPECT_RATIO
+
+internal const val DEFAULT_PHOTO_PLACEHOLDER_ASPECT_RATIO = 1f
 internal const val DEFAULT_RESERVED_MEDIA_ASPECT_RATIO = 4f / 3f

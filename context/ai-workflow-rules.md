@@ -46,9 +46,31 @@ reports are artifact 11883232388. No merge or release was made. Keep custom comm
 and other future features explicit; a visible label alone is not proof.
 
 The user's 2026-10-14 phone report says photos are smooth, video loading/advance feels
-sticky, and inactive video currently shows a paused placeholder. Source now has bounded
-neighbor preloading, local video-frame thumbnails, playback/seek controls and warm-resume
-media retention. CI run 38556928293 at `a11fde2` passed 74 tests, lint, schema consistency,
-packaged privacy checks and debug APK build; artifact 11890760322 is available. Treat the
-original observations as user-reported evidence, and leave the new behavior pending until
-physical-device verification.
+sticky, and inactive video currently shows a paused placeholder. The then-current implementation
+added bounded neighbor preloading and local video-frame thumbnails; its historical CI result is
+recorded above. Treat the observations as user-reported evidence, not agent-run device tests.
+
+## Current focused production request (2026-10-15)
+The user superseded the previous suggestion of keeping video preloading disabled by default or
+behind a diagnostic toggle. Permanently remove or safely bypass all video-specific preload paths:
+neighboring-video buffering, offscreen video-frame prefetch, and speculative offscreen-video
+poster decoding. Do not leave the old manager/lifecycle APIs or a diagnostic Gradle toggle in the
+production app. Preserve bounded static-photo prefetch, visible video posters, active-player
+preparation on activation, playback controls/interactions, the dedicated video frame/aspect policy,
+viewer behavior, and the first-rendered-frame overlay correction.
+
+Feed photos must fill available media width and use decoded/oriented intrinsic dimensions for
+height without distortion, crop-to-video-frame, or arbitrary aspect clamps. Handle unknown/invalid
+and delayed dimensions with a safe temporary placeholder; establish the first valid ratio and keep
+height stable thereafter. Preserve stable item keys/navigation; media loading/first-frame events
+must not change photo geometry or cause unnecessary anchor corrections. Add tests for photo
+orientation/dimensions/Fit behavior and delayed dimensions, video presentation/playback invariants,
+feed position stability, production absence of video preload, normal static-photo prefetch and
+visible-video posters. Keep the patch focused.
+
+The earlier user report was: preload-enabled scrolling felt sticky and the app crashed; preload-
+disabled photo scrolling was smooth and video loading fast enough. This is user evidence, not
+log-correlated causality or proof that the crash is fixed. Never claim crash resolution because
+preloading was removed. Unit tests, lint, privacy/schema checks, debug APK generation, CI status,
+and physical-device acceptance must be reported separately. A development APK is required for
+phone verification; no merge to main or release is authorized.

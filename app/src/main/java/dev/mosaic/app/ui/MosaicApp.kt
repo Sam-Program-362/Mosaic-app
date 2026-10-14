@@ -72,7 +72,7 @@ import dev.mosaic.app.feature.feed.FeedScreen
 import dev.mosaic.app.feature.feed.FeedSnapshot
 import dev.mosaic.app.feature.feed.FeedSort
 import dev.mosaic.app.feature.feed.ViewerSession
-import dev.mosaic.app.feature.feed.nearbyMediaWindow
+import dev.mosaic.app.feature.feed.nearbyPhotoWindow
 import dev.mosaic.app.feature.folders.CommunityDirectoryScreen
 import dev.mosaic.app.feature.folders.FolderManagement
 import dev.mosaic.app.feature.folders.LibraryViewModel
@@ -108,7 +108,7 @@ fun MosaicApp(
     )
     val openViewer: (FeedSnapshot, Int) -> Unit = { snapshot, page ->
         val session = ViewerSession(snapshot, page)
-        viewerRetainedMedia = nearbyMediaWindow(snapshot.posts, page).map { it.post.media.key }.toSet()
+        viewerRetainedMedia = nearbyPhotoWindow(snapshot.posts, page).map { it.post.media.key }.toSet()
         retainedViewerSession = session
         viewerSession = session
         viewerVisibility.targetState = true

@@ -27,6 +27,7 @@ jobs:
       - name: Install Android 35 platform and build tools
         shell: bash
         run: |
+          set -o pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           if "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
             echo "Android SDK ready"
@@ -46,10 +47,19 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: mosaic-debug-signing-${{ github.ref_name }}-v1
-      - name: Unit tests, lint, and preload-disabled baseline debug APK
+      - name: Guard against video-preload manager reintroduction
         shell: bash
         run: |
-          if ./gradlew testDebugUnitTest lint assembleDebug -PmosaicVideoPreloading=false --stacktrace 2>&1 | tee verification.log; then
+          if grep -R -n -E 'DefaultPreloadManager|BasePreloadManager|NearbyMediaPreloader|VideoPreloadSession|mosaicVideoPreloading|VIDEO_PRELOADING_ENABLED' app/src/main app/build.gradle.kts; then
+            echo '::error::Video-preloading code or build toggles must not be included in the production app.'
+            exit 1
+          fi
+          echo 'Production app contains no video-preload manager or diagnostic toggle.'
+      - name: Unit tests, lint, and debug APK build
+        shell: bash
+        run: |
+          set -o pipefail
+          if ./gradlew testDebugUnitTest lint assembleDebug --stacktrace 2>&1 | tee verification.log; then
             echo "Android verification passed"
           else
             python3 - <<'PYERROR'
@@ -60,42 +70,19 @@ jobs:
           PYERROR
             exit 1
           fi
-      - name: Build preload-enabled comparison APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p diagnostic-apks
-          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = false' app/build/generated/source/buildConfig
-          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-disabled.apk
-          if ./gradlew testDebugUnitTest assembleDebug -PmosaicVideoPreloading=true --stacktrace 2>&1 | tee video-preload-enabled-build.log; then
-            echo "Video-preloading-enabled unit tests and debug APK build passed"
-          else
-            python3 - <<'PYERROR'
-          from pathlib import Path
-          message = Path('video-preload-enabled-build.log').read_text()[-50000:]
-          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-          print(f'::error title=Video-preloading-enabled APK::{message}')
-          PYERROR
-            exit 1
-          fi
-          grep -R --include=BuildConfig.java -Fq 'VIDEO_PRELOADING_ENABLED = true' app/build/generated/source/buildConfig
-          cp app/build/outputs/apk/debug/app-debug.apk diagnostic-apks/mosaic-debug-video-preload-enabled.apk
-          sha256sum diagnostic-apks/*.apk > diagnostic-apks/SHA256SUMS.txt
       - name: Check packaged privacy permissions
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions diagnostic-apks/mosaic-debug-video-preload-enabled.apk > apk-permissions-enabled.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions diagnostic-apks/mosaic-debug-video-preload-disabled.apk > apk-permissions-disabled.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > apk-permissions.txt
           python3 - <<'PYPERMISSIONS'
           from pathlib import Path
           import re
           forbidden = {'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
                        'android.permission.MANAGE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE',
                        'android.permission.WRITE_EXTERNAL_STORAGE'}
-          for path in (Path('apk-permissions-enabled.txt'), Path('apk-permissions-disabled.txt')):
-              text = path.read_text()
-              permissions = re.findall(r"uses-permission: name='([^']+)'", text)
-              assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
-          print('::notice title=APK privacy::Both diagnostic APKs have no network or broad storage/media permissions.')
+          text = Path('apk-permissions.txt').read_text()
+          permissions = re.findall(r"uses-permission: name='([^']+)'", text)
+          assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
+          print('::notice title=APK privacy::Debug APK has no network or broad storage/media permissions.')
           PYPERMISSIONS
       - name: Report tests and check generated schema
         run: |
@@ -112,7 +99,7 @@ jobs:
           assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0, totals
           print(f"::notice title=Verification summary::{totals['tests']} tests; "
                 f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
-                "Lint and enabled/disabled unit tests and debug APK builds passed.")
+                "Unit tests, lint, debug APK build, privacy checks passed.")
           tracked_paths = set(subprocess.check_output(['git', 'ls-files', 'app/schemas'], text=True).splitlines())
           pending_schemas = []
           for path in Path('app/schemas').rglob('*.json'):
@@ -129,6 +116,8 @@ jobs:
                   chunk = encoded[index * chunk_size:(index + 1) * chunk_size]
                   print(f'::notice title=Generated Room schema::{path.as_posix()}|{index + 1}/{total}|{chunk}')
           PYREPORT
+      - name: Record debug APK checksum
+        run: sha256sum app/build/outputs/apk/debug/app-debug.apk > app-debug.sha256
       - name: Upload debug APK and reports
         if: always()
         uses: actions/upload-artifact@v5
@@ -136,13 +125,10 @@ jobs:
           name: mosaic-debug-and-reports
           path: |
             app/build/outputs/apk/debug/*.apk
-            diagnostic-apks/*.apk
-            diagnostic-apks/SHA256SUMS.txt
+            app-debug.sha256
             app/build/reports/
             app/schemas/
             verification.log
-            video-preload-enabled-build.log
             sdk-setup.log
-            apk-permissions-enabled.txt
-            apk-permissions-disabled.txt
+            apk-permissions.txt
           if-no-files-found: warn

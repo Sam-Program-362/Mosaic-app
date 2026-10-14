@@ -104,7 +104,7 @@ data class VisibleMedia(
     val feedIndex: Int = -1,
 )
 
-/** Home feed's ratio-driven preview height, in dp; portrait items retain the existing cap. */
+/** Existing reserved frame height for video/GIF feed cards; static photos use natural height. */
 internal fun feedPreviewHeightDp(widthDp: Float, aspectRatio: Float): Float =
     (widthDp / aspectRatio).coerceIn(MIN_FEED_PREVIEW_HEIGHT_DP, MAX_FEED_PREVIEW_HEIGHT_DP)
 
@@ -171,28 +171,26 @@ private const val MIN_FEED_PREVIEW_HEIGHT_DP = 120f
 private const val MAX_FEED_PREVIEW_HEIGHT_DP = 520f
 
 /**
- * A bounded mixed-media window: current item plus the nearest photo and nearest video
- * within three feed positions in each direction. GIFs are traversed but not prefetched.
+ * A bounded static-photo prefetch/retention window: the current item plus the nearest static photo
+ * within three feed positions in each direction. Videos and GIFs are never speculative targets.
  */
 data class NearbyMediaCandidate(val post: FeedPost, val feedIndex: Int, val direction: Int)
 
-private const val NEARBY_MEDIA_SEARCH_DISTANCE = 3
+private const val NEARBY_PHOTO_SEARCH_DISTANCE = 3
 
-fun nearbyMediaWindow(posts: List<FeedPost>, centerIndex: Int): List<NearbyMediaCandidate> {
+fun nearbyPhotoWindow(posts: List<FeedPost>, centerIndex: Int): List<NearbyMediaCandidate> {
     if (centerIndex !in posts.indices) return emptyList()
     val result = mutableListOf(NearbyMediaCandidate(posts[centerIndex], centerIndex, direction = 0))
 
     for (direction in listOf(-1, 1)) {
-        val firstIndex = if (direction < 0) (centerIndex - NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtLeast(0)
+        val firstIndex = if (direction < 0) (centerIndex - NEARBY_PHOTO_SEARCH_DISTANCE).coerceAtLeast(0)
             else centerIndex + 1
         val lastIndex = if (direction < 0) centerIndex - 1
-            else (centerIndex + NEARBY_MEDIA_SEARCH_DISTANCE).coerceAtMost(posts.lastIndex)
+            else (centerIndex + NEARBY_PHOTO_SEARCH_DISTANCE).coerceAtMost(posts.lastIndex)
         if (firstIndex > lastIndex) continue
         val indices = if (direction < 0) lastIndex downTo firstIndex else firstIndex..lastIndex
         val imageIndex = indices.firstOrNull { posts[it].media.document.kind == MediaKind.Image }
-        val videoIndex = indices.firstOrNull { posts[it].media.document.kind == MediaKind.Video }
         imageIndex?.let { result += NearbyMediaCandidate(posts[it], it, direction) }
-        videoIndex?.let { result += NearbyMediaCandidate(posts[it], it, direction) }
     }
 
     return result.sortedBy { it.feedIndex }

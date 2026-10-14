@@ -65,11 +65,8 @@ internal fun LocalMediaPreview(
     onBounds: (PreviewItemGeometry) -> Unit = {},
     viewer: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
-    videoPreloader: VideoPreloadSession? = null,
-    videoPreloadingEnabled: Boolean = true,
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
-    preloadingEnabled: Boolean = true,
     initialAspectRatio: Float? = null,
     onAspectRatioObserved: (Float, String) -> Unit = { _, _ -> },
 ) {
@@ -82,6 +79,23 @@ internal fun LocalMediaPreview(
     val geometryReporter = remember(geometryKey) { PreviewGeometryReporter() }
     val reservedRatio = remember(geometryKey) { reservedMediaAspectRatio(initialAspectRatio) }
     var contentRatio by remember(geometryKey) { mutableFloatStateOf(reservedRatio) }
+    val cachedPhotoRatio = initialAspectRatio
+        ?.takeIf { !viewer && document.kind == MediaKind.Image && isValidMediaAspectRatio(it) }
+    var photoAspectRatio by remember(geometryKey) {
+        mutableFloatStateOf(safePhotoAspectRatio(cachedPhotoRatio))
+    }
+    var photoAspectRatioEstablished by remember(geometryKey) {
+        mutableStateOf(cachedPhotoRatio != null)
+    }
+    LaunchedEffect(geometryKey, cachedPhotoRatio) {
+        val resolved = establishPhotoAspectRatio(
+            currentRatio = photoAspectRatio,
+            dimensionsEstablished = photoAspectRatioEstablished,
+            decodedRatio = cachedPhotoRatio,
+        )
+        photoAspectRatio = resolved.ratio
+        photoAspectRatioEstablished = resolved.dimensionsEstablished
+    }
     var savedPositionMillis by remember(post.media.key.stableKey) { mutableLongStateOf(0L) }
     var savedPlayWhenReady by remember(post.media.key.stableKey) { mutableStateOf(true) }
     val clickModifier = onOpenViewer?.let {
@@ -102,24 +116,51 @@ internal fun LocalMediaPreview(
             }
         }
         .background(if (viewer) Color.Black else colors.mediaBackdrop)) {
+        val isFeedPhoto = !viewer && document.kind == MediaKind.Image
         fun observeRatio(nextRatio: Float, source: String) {
-            if (!nextRatio.isFinite() || nextRatio <= 0f) return
-            val oldContentRatio = contentRatio
-            val reservedHeight = if (viewer) null else feedPreviewHeightDp(maxWidth.value, reservedRatio)
+            if (!isValidMediaAspectRatio(nextRatio)) return
+            val oldRatio = if (isFeedPhoto) photoAspectRatio else contentRatio
+            val oldHeight = when {
+                viewer -> null
+                isFeedPhoto -> naturalPhotoHeightDp(maxWidth.value, photoAspectRatio)
+                else -> feedPreviewHeightDp(maxWidth.value, reservedRatio)
+            }
+            val nextHeight = when {
+                viewer -> null
+                isFeedPhoto -> naturalPhotoHeightDp(maxWidth.value, nextRatio)
+                else -> feedPreviewHeightDp(maxWidth.value, reservedRatio)
+            }
             MediaDiagnostics.log(
                 diagnosticContext,
                 "preview geometry pos=$feedPosition kind=${document.kind.name.lowercase()} " +
                     "id=${MediaDiagnostics.shortId(post.media.key.stableKey)} source=$source " +
-                    "contentRatio=$oldContentRatio->$nextRatio reservedRatio=$reservedRatio " +
-                    "reservedHeightDp=${reservedHeight ?: "viewer"} layoutHeightStable=true " +
-                    "widthDp=${maxWidth.value}",
+                    "ratio=$oldRatio->$nextRatio reservedRatio=$reservedRatio " +
+                    "heightDp=${oldHeight ?: "viewer"}->${nextHeight ?: "viewer"} " +
+                    "photoDimensionsEstablished=$photoAspectRatioEstablished",
             )
+            if (isFeedPhoto) {
+                val resolved = establishPhotoAspectRatio(
+                    currentRatio = photoAspectRatio,
+                    dimensionsEstablished = photoAspectRatioEstablished,
+                    decodedRatio = nextRatio,
+                )
+                photoAspectRatio = resolved.ratio
+                photoAspectRatioEstablished = resolved.dimensionsEstablished
+            }
             onAspectRatioObserved(nextRatio, source)
             if (document.kind == MediaKind.Video && active) contentRatio = nextRatio
         }
 
-        val previewHeight = if (viewer) maxHeight else feedPreviewHeightDp(maxWidth.value, reservedRatio).dp
-        val previewSize = if (viewer) Modifier.fillMaxSize() else Modifier.fillMaxWidth().height(previewHeight)
+        val photoHeightDp = if (isFeedPhoto) {
+            naturalPhotoHeightDp(maxWidth.value, photoAspectRatio) ?: maxWidth.value
+        } else {
+            null
+        }
+        val previewSize = when {
+            viewer -> Modifier.fillMaxSize()
+            isFeedPhoto -> Modifier.fillMaxWidth().height((photoHeightDp ?: maxWidth.value).dp)
+            else -> Modifier.fillMaxWidth().height(feedPreviewHeightDp(maxWidth.value, reservedRatio).dp)
+        }
         Box(previewSize, contentAlignment = Alignment.Center) {
             when {
                 document.kind == MediaKind.Video && active -> VideoPreview(
@@ -128,9 +169,7 @@ internal fun LocalMediaPreview(
                     aspectRatio = contentRatio,
                     reservedContainerAspectRatio = reservedRatio,
                     imageLoader = imageLoader,
-                    videoPreloader = videoPreloader,
                     feedPosition = feedPosition,
-                    preloadingEnabled = preloadingEnabled,
                     initialPositionMillis = savedPositionMillis,
                     initiallyPlayWhenReady = savedPlayWhenReady,
                     onPlaybackStateCaptured = { position, playWhenReady ->
@@ -139,7 +178,7 @@ internal fun LocalMediaPreview(
                     },
                     onRatio = { observeRatio(it, "player-video-size") },
                 )
-                document.kind == MediaKind.Video && shouldLoadVideoPoster(videoPreloadingEnabled, videoPreviewVisible) ->
+                document.kind == MediaKind.Video && shouldLoadVisibleVideoPoster(videoPreviewVisible) ->
                     VideoThumbnail(
                         post = post,
                         imageLoader = imageLoader,
@@ -177,7 +216,7 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
         onSuccess = {
             loading = false
             val image = it.result.image
-            if (image.width > 0 && image.height > 0) onRatio(image.width.toFloat() / image.height)
+            intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
         },
         onError = { loading = false; failed = true },
     )
@@ -194,7 +233,7 @@ private fun VideoThumbnail(
 ) {
     val context = LocalContext.current.applicationContext
     val request = remember(post.media.key, post.media.document.contentUri, post.media.document.modifiedAtMillis, context) {
-        createPrefetchRequest(context, post)
+        createVisibleVideoPosterRequest(context, post)
     }
     var loading by remember(request) { mutableStateOf(true) }
     var failed by remember(request) { mutableStateOf(false) }
@@ -207,7 +246,7 @@ private fun VideoThumbnail(
         onSuccess = {
             loading = false
             val image = it.result.image
-            if (image.width > 0 && image.height > 0) onRatio(image.width.toFloat() / image.height)
+            intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
         },
         onError = { loading = false; failed = true },
     )
@@ -218,6 +257,8 @@ private fun VideoThumbnail(
         Text("Video thumbnail unavailable.", Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
     }
 }
+
+internal fun shouldLoadVisibleVideoPoster(previewVisible: Boolean): Boolean = previewVisible
 
 internal data class VideoFrameFallback(
     val showThumbnail: Boolean,
@@ -249,9 +290,7 @@ private fun VideoPreview(
     aspectRatio: Float,
     reservedContainerAspectRatio: Float,
     imageLoader: ImageLoader,
-    videoPreloader: VideoPreloadSession?,
     feedPosition: Int,
-    preloadingEnabled: Boolean,
     initialPositionMillis: Long,
     initiallyPlayWhenReady: Boolean,
     onPlaybackStateCaptured: (Long, Boolean) -> Unit,
@@ -274,9 +313,9 @@ private fun VideoPreview(
     var controlsVisible by remember(stableKey, viewer) { mutableStateOf(true) }
     var seekFeedback by remember(stableKey) { mutableStateOf<String?>(null) }
     var seekFeedbackToken by remember(stableKey) { mutableIntStateOf(0) }
-    val (player, playerDiagnosticToken) = remember(stableKey, uri, videoPreloader) {
+    val (player, playerDiagnosticToken) = remember(stableKey, uri) {
         try {
-            val createdPlayer = videoPreloader?.createPlayer() ?: ExoPlayer.Builder(context).build()
+            val createdPlayer = ExoPlayer.Builder(context).build()
             createdPlayer to MediaDiagnostics.playerCreated(context, feedPosition, stableKey)
         } catch (error: Exception) {
             MediaDiagnostics.log(
@@ -298,9 +337,8 @@ private fun VideoPreview(
         }
     }
 
-    val latestPreloadingEnabled = rememberUpdatedState(preloadingEnabled)
     val latestRatioCallback = rememberUpdatedState(onRatio)
-    DisposableEffect(player, stableKey, uri, videoPreloader) {
+    DisposableEffect(player, stableKey, uri) {
         val activationStartedAt = SystemClock.elapsedRealtime()
         MediaDiagnostics.log(
             context,
@@ -368,9 +406,7 @@ private fun VideoPreview(
         // Silent previews must not steal audio focus from the user's music.
         player.setAudioAttributes(audioAttributes, false)
         try {
-            val source = videoPreloader?.sourceForPlayback(stableKey, uri, feedPosition)
-            if (source != null) player.setMediaSource(source)
-            else player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
+            player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             if (initialPositionMillis > 0L) player.seekTo(initialPositionMillis)
             MediaDiagnostics.log(
                 context,
@@ -424,7 +460,6 @@ private fun VideoPreview(
                 stateBeforeRelease,
                 hasRenderedFirstFrame,
             )
-            videoPreloader?.releasePlayback(stableKey, latestPreloadingEnabled.value)
             MediaDiagnostics.log(
                 context,
                 "player cleanup complete token=${playerDiagnosticToken ?: -1} pos=$feedPosition " +
@@ -612,7 +647,7 @@ private fun VideoPreview(
 }
 
 @Composable
-private fun VideoControls(
+internal fun VideoControls(
     playWhenReady: Boolean,
     muted: Boolean,
     positionMillis: Long,

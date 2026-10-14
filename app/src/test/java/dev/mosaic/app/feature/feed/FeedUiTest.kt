@@ -1,8 +1,14 @@
 package dev.mosaic.app.feature.feed
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import coil3.ImageLoader
@@ -33,6 +39,54 @@ class FeedUiTest {
         compose.onNodeWithText("Save copy").assertIsNotEnabled()
         compose.onNodeWithText("Comments").assertDoesNotExist()
     }
+    @Test fun photoPreviewUsesAvailableFeedWidthAndNaturalAspectRatio() {
+        val aspectRatios = listOf(9f / 16f, 16f / 9f, 1f)
+        val photos = aspectRatios.mapIndexed { index, _ ->
+            FeedPost(
+                IndexedMedia(
+                    "folder",
+                    "Travel",
+                    MediaDocument("photo$index", "content://missing/photo$index", "photo$index.jpg", "image/jpeg", MediaKind.Image, null, null),
+                ),
+                DecorativeCounts(1, 0),
+                null,
+            )
+        }
+        val availableWidthsPx = mutableMapOf<Int, Int>()
+        val previewGeometries = mutableMapOf<Int, PreviewItemGeometry>()
+
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    aspectRatios.forEachIndexed { index, aspectRatio ->
+                        Box(Modifier.fillMaxWidth().onSizeChanged { availableWidthsPx[index] = it.width }) {
+                            LocalMediaPreview(
+                                post = photos[index],
+                                active = false,
+                                imageLoader = loader,
+                                initialAspectRatio = aspectRatio,
+                                onBounds = { previewGeometries[index] = it },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            aspectRatios.forEachIndexed { index, aspectRatio ->
+                val geometry = checkNotNull(previewGeometries[index])
+                val availableWidth = checkNotNull(availableWidthsPx[index])
+                org.junit.Assert.assertEquals(availableWidth, geometry.widthPx)
+                org.junit.Assert.assertEquals(
+                    geometry.widthPx.toFloat() / aspectRatio,
+                    geometry.heightPx.toFloat(),
+                    2f,
+                )
+            }
+        }
+    }
+
     @Test fun inactiveVideoShowsAThumbnailRequestInsteadOfPausedText() {
         val media = IndexedMedia("folder", "Clips", MediaDocument(
             "video", "content://missing/video", "Launch.mp4", "video/mp4", MediaKind.Video, null, null,
@@ -45,6 +99,56 @@ class FeedUiTest {
 
         compose.onNodeWithText("MP4 · playback paused").assertDoesNotExist()
         compose.onNodeWithContentDescription("Launch video thumbnail").assertExists()
+    }
+
+    @Test fun offscreenVideoCardDoesNotDecodeOrExposeASpeculativePoster() {
+        val media = IndexedMedia("folder", "Clips", MediaDocument(
+            "video", "content://missing/video", "Launch.mp4", "video/mp4", MediaKind.Video, null, null,
+        ))
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                Column {
+                    MediaPostCard(
+                        FeedPost(media, DecorativeCounts(1, 0), null),
+                        loader,
+                        active = false,
+                        videoPreviewVisible = false,
+                    )
+                }
+            }
+        }
+
+        compose.onNodeWithContentDescription("Launch video thumbnail").assertDoesNotExist()
+        compose.onNodeWithText("MP4 · playback paused").assertExists()
+    }
+
+    @Test fun activeVideoControlsRetainAccessiblePlayMuteAndTimelinePresentation() {
+        val playWhenReady = mutableStateOf(true)
+        val muted = mutableStateOf(true)
+
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                VideoControls(
+                    playWhenReady = playWhenReady.value,
+                    muted = muted.value,
+                    positionMillis = 2_000L,
+                    durationMillis = 10_000L,
+                    isSeeking = false,
+                    seekPositionMillis = 2_000f,
+                    onPlayPause = { playWhenReady.value = !playWhenReady.value },
+                    onMuteToggle = { muted.value = !muted.value },
+                    onSeekChange = {},
+                    onSeekFinished = {},
+                )
+            }
+        }
+
+        compose.onNodeWithContentDescription("Pause video").assertExists().performClick()
+        compose.onNodeWithContentDescription("Play video").assertExists()
+        compose.onNodeWithContentDescription("Unmute video").assertExists().performClick()
+        compose.onNodeWithContentDescription("Mute video").assertExists()
+        compose.onNodeWithText("0:02").assertExists()
+        compose.onNodeWithText("0:10").assertExists()
     }
 
     @Test fun videoFrameFallbackCoversFirstFrameBufferingAndFailureCombinations() {

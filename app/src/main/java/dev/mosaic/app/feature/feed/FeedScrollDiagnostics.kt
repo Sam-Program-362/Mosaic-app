@@ -21,7 +21,6 @@ internal fun FeedScrollDiagnostics(
     listState: LazyListState,
     visibleMedia: State<List<VisibleMedia>>,
     viewportRange: State<Pair<Int, Int>>,
-    videoPreloadingEnabled: Boolean,
     context: Context,
     refreshRateHz: Float,
 ) {
@@ -31,7 +30,7 @@ internal fun FeedScrollDiagnostics(
     val latestViewportRange = rememberUpdatedState(viewportRange)
     val frameBudgetHz = refreshRateHz.takeIf { it.isFinite() && it > 0f } ?: 60f
 
-    LaunchedEffect(listState, context, videoPreloadingEnabled) {
+    LaunchedEffect(listState, context) {
         var previous: FeedLayoutSnapshot? = null
         snapshotFlow {
             val layout = listState.layoutInfo
@@ -75,7 +74,6 @@ internal fun FeedScrollDiagnostics(
                     before = before,
                     current = current,
                     resizedRows = resizedRows,
-                    videoPreloadingEnabled = videoPreloadingEnabled,
                 )
             }
             previous = current
@@ -83,7 +81,7 @@ internal fun FeedScrollDiagnostics(
     }
 
     val frameBudgetNs = (1_000_000_000.0 / frameBudgetHz).toLong().coerceAtLeast(1L)
-    LaunchedEffect(listState, context, frameBudgetNs, videoPreloadingEnabled) {
+    LaunchedEffect(listState, context, frameBudgetNs) {
         snapshotFlow { listState.isScrollInProgress }
             .distinctUntilChanged()
             .collectLatest { scrolling ->
@@ -112,7 +110,7 @@ internal fun FeedScrollDiagnostics(
                 } finally {
                     MediaDiagnostics.log(
                         context,
-                        "feed scroll timing videoPreloading=$videoPreloadingEnabled " +
+                        "feed scroll timing " +
                             "refreshHz=${"%.1f".format(java.util.Locale.US, frameBudgetHz)} " +
                             metrics.summary(),
                     )
@@ -145,7 +143,6 @@ internal fun logFeedItemSizeChange(
     visibleMedia: List<VisibleMedia>,
     viewportStart: Int,
     viewportEnd: Int,
-    videoPreloadingEnabled: Boolean,
 ) {
     val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
     val row = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == mediaKey }
@@ -156,7 +153,7 @@ internal fun logFeedItemSizeChange(
     val visibleSummary = mediaSummary(visibleMedia, viewportStart, viewportEnd)
     MediaDiagnostics.log(
         context,
-        "feed card measured-size-change videoPreloading=$videoPreloadingEnabled " +
+        "feed card measured-size-change " +
             "pos=$feedPosition kind=$mediaKind id=${MediaDiagnostics.shortId(mediaKey)} " +
             "before=${beforeWidth}x${beforeHeight}px after=${afterWidth}x${afterHeight}px " +
             "scrolling=${listState.isScrollInProgress} " +
@@ -183,7 +180,6 @@ private fun logFeedLayoutTransition(
     before: FeedLayoutSnapshot?,
     current: FeedLayoutSnapshot,
     resizedRows: List<String>,
-    videoPreloadingEnabled: Boolean,
 ) {
     fun side(snapshot: FeedLayoutSnapshot?): String {
         if (snapshot == null) return "none"
@@ -200,7 +196,7 @@ private fun logFeedLayoutTransition(
     }
     MediaDiagnostics.log(
         context,
-        "feed layout transition event=$event videoPreloading=$videoPreloadingEnabled " +
+        "feed layout transition event=$event " +
             "elapsedMs=${SystemClock.elapsedRealtime()} " +
             "resizedRows=${resizedRows.ifEmpty { listOf("none") }.joinToString(",")} " +
             "before={${side(before)}} after={${side(current)}}",

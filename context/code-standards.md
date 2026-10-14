@@ -96,21 +96,25 @@ records, never per-frame output or local paths/URIs. The focused follow-up passe
 lint, schema/privacy checks and debug APK build. Physical fling/codec/crash verification remains
 separate.
 
-The user's new on-device A/B reports sticky photo scrolling with video preloading enabled,
-smoother photos with it disabled, and a remaining visible shift as the next video loads in the
-disabled build; no crash occurred in the user's disabled-build test. Treat these as user evidence,
-not per-operation attribution or proof that crashes are resolved. Keep the disabled mode as the
-build default until later conservative experiments justify opt-in video work. Feed geometry must
-use LazyList row offsets plus preview bounds relative to each row; do not write root-position state
-to Compose on every scroll tick. Reserve each composed media row's height from its known/cached
-ratio or a bounded fallback; thumbnail, player-size, loading, and first-frame callbacks may update
-content fit/cache only, never that row's reserved height. Keep the poster/loading overlay inside
-that same container and preserve source aspect with fit rather than stretching. Log explicit
-feed `scrollToItem` triggers, selection changes, before/after visible row geometry, ratio source,
-player preparation/overlay/first-frame, and coarse frame/UI-thread CPU summaries. Tests, lint,
-and APK builds still do not establish on-device acceptance. The current geometry/default change
-passed CI run [38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253):
-93 tests (0 failures/errors/skips) in both preload modes, lint, both debug APK builds, schema
-consistency and packaged privacy checks (artifact `11916277533`). The preceding CI attempt
-`38607037687` caught a diagnostic timestamp scope error, fixed before the green run. Same-device
-scrolling and crash evidence remain separate acceptance requirements.
+The user's 2026-10-15 focused production instruction supersedes the prior disabled-by-default
+A/B approach: permanently remove the production video-preload manager, neighboring-video
+buffering, offscreen video-frame prefetch, speculative offscreen-video poster decoding, and the
+build toggle. Keep bounded local static-photo prefetch, visible posters, and activation-only player
+preparation. Do not replace video preloading with another speculative video mechanism.
+
+Feed photos must fill available media width and use their decoded/oriented intrinsic ratio for
+natural height. Test portrait/landscape/square orientation, width/height, Fit vs. crop/stretch,
+invalid and delayed dimensions, and a stable lock after the first valid ratio. A temporary safe
+placeholder is acceptable only before dimensions are known; do not impose arbitrary ratio/height
+clamps or reuse the video frame. Preserve the separate video/GIF frame policy, poster through
+preparation, playback controls/interactions, viewer behavior, and first-rendered-frame overlay
+correction. Stable feed keys/navigation must remain; video activation/loading/first-frame events
+must not alter photo geometry or trigger unnecessary anchor corrections. Tests should cover that
+position stability, no preloader invocation in production, normal photo/static-prefetch behavior,
+and visible video posters/activation. Keep work focused; no broad feed/player rewrite.
+
+The user-reported preload-enabled stickiness/crash and preload-disabled smooth scrolling/fast-
+enough video remain user evidence, not causality or proof of crash resolution. Earlier reported
+position shift at video activation remains separately unverified. Unit tests, lint, privacy/schema
+checks, APK build, CI, and physical-device acceptance are distinct; never claim phone or crash
+acceptance from CI alone. Verification for this focused change is pending.

@@ -17,25 +17,29 @@ or proprietary assets to copy.
   not ordinary recomposition. Missing modification timestamps need consistent fallback.
 - Filename-based titles; retain full names, use URI/document identity rather than
   filenames as unique IDs. Hiding recognized extensions is a provisional default.
-- Compact post hierarchy: community, filename title, aspect-preserving media,
-  local-time metadata, decorative up/down counts, Save copy. No comments or interactive votes.
+- Compact post hierarchy: community, filename title, full-width media, local-time metadata,
+  decorative up/down counts, Save copy. Feed photos use decoded/oriented intrinsic dimensions
+  for their natural height, with a safe temporary fallback when dimensions are unavailable;
+  preserve portrait/landscape/square proportions with fit, never distortion or crop-to-video-frame.
+  After a valid photo ratio is established, later load callbacks cannot change it. No comments or
+  interactive votes.
 - Search only indexed filename/title, folder label, MIME type, or media-kind metadata;
   never inspect media bytes or use a network service.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
-  sound toggle. Stop/release inactive and off-screen media. A bounded current-plus-one-
-  per-side window retains the current item plus the nearest photo and nearest video
-  in up to three feed positions on either side (at most five candidates). Image/video
-  frames preload independently; short video buffers stay bounded. Inactive MP4 cards
-  show a cached frame thumbnail rather than a paused placeholder.
+  sound toggle. Stop/release inactive and off-screen media. Bounded nearby retention and
+  prefetch target static photos only; the current viewer/feed item remains retained. There is
+  no production video-preload manager, neighboring-video buffer, offscreen video-frame prefetch,
+  or speculative offscreen-video poster decode. A visible inactive MP4 keeps its local poster;
+  player preparation occurs on activation.
 - Active video offers play/pause, mute/unmute, seek timeline and elapsed/duration,
   double-tap ±10-second seeking, and tap-to-hide/show player controls.
 - Every Save invocation makes another collision-safe app-managed persistent copy.
   Copies render independently after source deletion/access loss. Failures clean
   incomplete copies/records; never alter original media.
 - Full refresh at a cold process start and explicit refresh; warm background resume
-  rescans/reconciles other items while retaining the current and bounded preloaded
-  media IDs/feed session. Reconcile deletions only after successful scans. Failed
+  rescans/reconciles other items while retaining the current item and bounded static-photo
+  prefetch/retention window. Reconcile deletions only after successful scans. Failed
   scans are not empty scans. Keep unavailable folder communities/metadata and recover
   when access returns.
 - Home, searchable communities directory, and navigation through the header/drawer
@@ -109,3 +113,20 @@ routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
 provisional. Public naming/trademark review, release SDK policy, folder-community
 renaming/duplicate label policy, and custom-community artwork remain unresolved.
+
+## 2026-10-15 focused production change — verification pending
+The user's new scope supersedes the former disabled-by-default/diagnostic video-preload
+approach. Production video-preload manager/lifecycle code, neighboring-video buffering,
+offscreen video-frame prefetch, and speculative offscreen-video poster decoding have been
+removed rather than retained behind a toggle. Bounded local static-photo prefetch and visible
+video posters remain; a video player prepares only when activated. The photo feed path now
+uses full available media width and intrinsic image ratio, with invalid/late dimensions handled
+by a temporary safe placeholder and first-valid-ratio lock. The separate video/GIF frame policy,
+playback controls, active-player path, viewer behavior, and first-frame overlay logic remain.
+
+The reported enabled-build stickiness/crash and disabled-build smooth photos/fast-enough video
+remain user-observed evidence, not log-correlated causality or proof that the crash is fixed.
+The previously reported video-loading position shift also remains unverified against this code.
+Unit tests, lint, privacy/schema checks, debug build, CI, and physical-device acceptance are
+pending for this focused change. Local Gradle cannot start in this checkout because Java is
+unavailable. `google_drive/` is user data and must not be staged or modified.

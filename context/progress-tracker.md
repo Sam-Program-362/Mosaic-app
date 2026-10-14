@@ -1,25 +1,28 @@
 # Progress tracker
 
-## Current phase
-Phase 5 follow-up — stabilize video-triggered feed geometry using the user's on-device A/B as
-new evidence, keep video preloading disabled by default, and add event-level geometry/player
-correlation. Current geometry/default changes passed CI run
-[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253) at `cacd82d`:
-93 tests with 0 failures/errors/skips in both preload modes, lint, disabled-baseline and
-preload-enabled debug APK builds, Room schema consistency, and packaged privacy checks. Artifact
-`mosaic-debug-and-reports` ID `11916277533`. The first geometry commit's CI run
-`38607037687` caught an out-of-scope diagnostic timestamp; that was corrected in `cacd82d` and
-the follow-up CI passed. Local Gradle still cannot start because Java is absent; no `adb` or
-connected device is available in this checkout. The 75-second recording and raw phone logs have
-not been attached, so physical-device verification remains mandatory before any fix is claimed.
+## Current phase — focused production change, verification pending
+The 2026-10-15 user request supersedes the earlier disabled-by-default/diagnostic video-preload
+approach. Production neighboring-video buffering, offscreen video-frame prefetch, speculative
+offscreen-video poster decoding, and the preload manager/toggle have been removed from the working tree.
+Bounded static-photo prefetch and visible video posters remain; players prepare only on activation.
+Feed photos now use full available width and their decoded/oriented intrinsic ratio for natural
+height, with safe unknown/invalid-dimension fallback and a first-valid-ratio lock. The dedicated
+video/GIF frame policy, playback controls/interactions, viewer, and first-rendered-frame overlay
+correction are to remain unchanged.
 
-The prior video-transition correctness/performance pass passed GitHub CI run 38575809505 at
-`50132da` (83 tests, lint, schema/privacy checks and debug APK); physical-device behavior
-remained unverified. The latest portrait/landscape fast-scroll follow-up passed CI run
-38586848533 at `ce78b37` (87 tests, lint, schema/privacy checks and debug APK); hardware-fling
-and crash evidence remain unavailable. Earlier phase/test/build history is retained below.
+This working tree has implementation and regression-test changes, but none are verified yet. Local
+`./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup because
+`JAVA_HOME` is unset and no `java` executable exists. CI, debug APK, and physical-device results
+are pending. `google_drive/` is untracked user data and must remain untouched/unstaged.
 
-## Previous controlled preload A/B build — CI verified
+User-reported evidence remains: preload-enabled scrolling felt sticky and the app crashed; with
+preloading disabled, photo scrolling felt smooth and video loading was fast enough. A separate
+video-loading position shift was previously reported. These reports are not log-correlated cause
+or crash-resolution proof. Do not claim the crash is fixed because preloading was removed. The old
+geometry/A-B CI result at `38607618253` tested the previous two-mode source; do not use it as
+verification for this change. Historical implementation and CI records follow.
+
+## Historical controlled preload A/B build — CI verified
 - Build property `-PmosaicVideoPreloading=false` bypasses the Media3 neighboring-video
   preloader, nearby Coil video-frame prefetch, and offscreen video-poster decoding while
   retaining static-photo prefetch, visible inactive-video posters, active playback, and feed
@@ -36,7 +39,7 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   preloader's foreground gate to lifecycle-only. These are source facts, not proof of device
   jank. Ratio-driven sizing, stable keys and the feed-session scroll reset predate those changes.
 
-## New user A/B evidence and geometry-stability change — CI verified, device pending
+## Historical disabled-by-default geometry-stability change — CI verified, device pending
 - The user reports: preload-enabled photo scrolling felt sticky; disabled photo scrolling felt
   smooth; with disabled preloading the feed still shifted when the next video loaded; the disabled
   build had not crashed during their tests. This supports an aggregate video-preload contribution
@@ -50,12 +53,12 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   outer row size. The `scrollToItem(0)` effect is keyed to folder/sort/epoch/search changes, item
   keys are stable media identities, and player activation has no scroll call. These mechanisms
   have not yet been correlated to a specific recorded jump.
-- Current source keeps video preloading disabled by default; visible media position uses LazyList
-  row offsets plus preview geometry relative to the row, avoiding root-coordinate snapshot writes
-  on ordinary scrolling. A bounded per-feed ratio cache seeds later compositions; asynchronous
-  dimensions can refine that cache and the video surface's content fit, but the currently composed
-  card keeps its reserved height. Loading/poster/player stay within that box. Unknown first-visit
-  media uses a 4:3 reservation while its content remains aspect-fitted.
+- At that historical checkpoint, video preloading was disabled by default; visible media
+  position used LazyList row offsets plus preview geometry relative to the row, avoiding root-
+  coordinate snapshot writes on ordinary scrolling. A bounded per-feed ratio cache seeded later
+  compositions, while each currently composed row retained its reserved height. This two-mode /
+  default model and shared media reservation are superseded: feed photos now use natural intrinsic
+  ratio, while the separate video/GIF reservation remains.
 - Event diagnostics include full before/after visible rows on size changes, active-selection
   transitions, explicit programmatic scroll trigger/result, row-relative preview geometry, ratio
   source/cache changes, player preparation/loading-overlay/first-frame transitions, and coarse
@@ -63,7 +66,7 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   lint, both debug APK builds, schema consistency, and privacy checks. The physical-device
   mixed-orientation test remains required; no exact cause, fix, or crash resolution is claimed.
 
-## Video transition correctness/performance correction — CI verified, device pending
+## Historical video transition correctness/performance correction — CI verified, device pending
 - Home viewport anchoring uses the largest overlap across all media. Playback requires an
   animated anchor, then selects the most-visible animation meeting the 50% visible-fraction
   threshold; a tall sub-threshold animated edge cannot mask an eligible video. Photo anchors
@@ -100,15 +103,15 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   device startup measurement, MP4 decode run, or real scrolling/playback evidence is
   available. Device acceptance remains pending; do not claim the sticky transition fixed.
 
-## First-frame loading overlay and repeated-scroll crash investigation — CI verified, device pending
+## Retained first-frame loading overlay correction and historical crash investigation
 - `showLoading` now requires `!hasRenderedFirstFrame` in addition to `loading && !failed`;
   error still stops loading and remains visible, while pre-first-frame fallback is unchanged.
   Tests enumerate all eight combinations and explicitly cover first-frame=true / failed=false /
   loading=true.
-- Debug-only diagnostics now track player instances from creation through release, manager
-  source counts, unresolved preload requests, invalidation calls, active-entry counts and
-  TextureView attach/detach/release order. IDs are process-local or hashed; no URIs/paths are
-  logged. Manager invalidation/create/release exceptions are logged by cause type and rethrown.
+- The historical debug diagnostics tracked player instances, manager-source/pending-request
+  counts, invalidations, active entries, and TextureView attach/detach/release order. The video
+  manager and its counters were removed by the current user request; debug-only player lifecycle,
+  hashed-ID, and TextureView diagnostics remain. No paths/URIs are logged.
 - Source review finds a bounded per-session candidate set, explicit active-source protection
   until player release, and both TextureView detach paths clearing the view-holder before player
   release. `VideoPreview` creates its player in `remember` and releases it from `DisposableEffect`;
@@ -126,7 +129,7 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   Room schema checks; debug artifact `mosaic-debug-and-reports` is ID `11903168202`.
   This does not verify physical-device playback or resolve the reported crash.
 
-## Portrait/landscape fast-scroll and player-handoff investigation — CI verified, device pending
+## Historical portrait/landscape fast-scroll and player-handoff investigation — CI verified
 - New user-reported observations: the glitch is subtle during slow scrolling but clear on fast
   swipes at a repeatable point relative to video height. Crash risk has been observed around
   portrait/landscape videos at opposing viewport edges, and one fast pass can be sufficient.

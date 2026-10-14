@@ -1,5 +1,21 @@
 # UI context
 
+## Current 2026-10-15 focused media change — verification pending
+Feed photos now use full available media width and their decoded/oriented intrinsic ratio for height;
+portrait, landscape, square, and panoramic ratios are not cropped to the video frame or arbitrarily
+clamped. Unknown/invalid dimensions use a safe temporary placeholder; the first valid ratio is
+locked for that composed photo so delayed callbacks cannot keep changing its height. Static-photo
+prefetch remains bounded/local. The video-preload manager/toggle, neighboring-video buffering,
+offscreen video-frame prefetch, and speculative offscreen-video poster decode are removed.
+Visible video posters and player preparation on activation remain; controls, viewer, dedicated
+video frame policy, and the first-rendered-frame overlay correction are retained.
+
+The user's prior report (preload-enabled scrolling sticky/crash; preload-disabled photos smooth and
+video loading fast enough) remains user-observed only. The prior video-loading position shift has
+not been rechecked against this focused change. Do not claim crash resolution from preloader removal.
+Tests, lint, privacy/schema checks, debug APK/CI and phone acceptance are separate; current CI and
+device results are pending. The single-APK phone procedure is in `docs/phase-5-device-check.md`.
+
 ## Implemented shell and Phase 3 feeds
 Home shows compact full-width media post cards instead of the indexing-only summary.
 Top-left drawer exposes Home and selectable automatic folder communities, local
@@ -54,7 +70,7 @@ artifact (ID `11883232388`) contains the test APK and reports. The Drive ZIP rem
 untracked. No physical-device acceptance has been performed for this adaptation; the
 new theme, feed, search and video controls still need phone feedback.
 
-## User-reported video feedback follow-up — initial implementation CI-verified, phone pending
+## Historical user-reported video feedback follow-up — later superseded, phone pending
 The user reports that photos are smooth but video load/advance feels sticky, and that
 inactive MP4 cards show a paused placeholder instead of a thumbnail. The prior source
 selected bounded neighboring media for local Coil frame/image prefetch and short Media3
@@ -69,8 +85,8 @@ at `a11fde2`: 74 tests, lint, schema consistency, packaged privacy and debug bui
 The source has not yet been checked on the user's phone; the original observation remains
 user-reported, not an agent-run test.
 
-## Video transition correctness/performance correction — CI verified, device acceptance pending
-The current Home anchor is the greatest viewport overlap across photos/GIFs/videos.
+## Historical video transition correctness/performance correction — CI verified, device pending
+At that time, the Home anchor was the greatest viewport overlap across photos/GIFs/videos.
 Playback requires an animated anchor, then chooses the most-visible animated preview that
 meets the 50% visible-fraction threshold; an eligible neighboring landscape video can take
 over when a taller portrait edge is the anchor but below threshold. A photo anchor still
@@ -93,24 +109,23 @@ at `50132da`: 83 tests, lint, schema consistency, packaged privacy and debug APK
 artifact `mosaic-debug-and-reports` is ID `11899788396`. Physical-device scroll/playback
 and before/after timing remain unverified; do not infer smoother transitions from CI.
 
-## First-render buffering correction and crash evidence — CI verified, device pending
+## Retained first-render buffering correction and historical crash evidence
 The initial loading overlay is now limited to `loading && !failed && !hasRenderedFirstFrame`.
 The cached thumbnail still covers preparation through the actual rendered-frame event; brief
 buffering after that event no longer places a spinner over the video. A Media3 error still
 stops loading and displays the existing error state. Unit tests cover all eight frame/loading/
 failure combinations. No rendering or device playback claim is inferred from those tests.
 
-A repeated-scroll investigation adds debug-only counts for unreleased players, managed
-preload sources, pending preload requests, active entries and invalidation calls, plus
-TextureView attachment/detachment ordering. Logs avoid paths/URIs. These counters do not
-establish a crash cause; no device reproduction or crash logs are available. Exact capture
-instructions are in `docs/phase-5-device-check.md`; do not claim crash resolution until the
-specified on-device sequence has been repeated with full logcat evidence. CI run
+The historical crash investigation added debug-only counters for unreleased players,
+managed preload sources, pending requests, active entries and invalidation calls, plus
+TextureView attachment/detachment ordering. The manager and its preload-specific lifecycle
+counters were removed by the 2026-10-15 production change; player lifecycle/first-frame
+diagnostics remain. No device crash log/reproduction is available. Earlier CI run
 [38581751120](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38581751120) at
-`a9703cb` passed 84 tests, lint, schema/privacy checks, and debug APK build (artifact
-`11903168202`). This verifies source/build only, not device playback or crash behavior.
+`a9703cb` passed 84 tests, lint, schema/privacy checks, and a debug APK build (artifact
+`11903168202`). It does not verify the current source, device playback, or crash resolution.
 
-## Fast-scroll aspect-ratio and player-handoff follow-up — CI verified, device pending
+## Historical fast-scroll aspect-ratio and player-handoff follow-up — CI verified, device pending
 The user reports the glitch is hard to see with slow smooth scrolling but consistent at a
 particular video-height point under fast swipes. A difficult crash has been seen when portrait
 and landscape videos occupy opposing viewport edges; a single fast swipe may be enough. No
@@ -129,37 +144,23 @@ and managed-source handoff; they are not device flings or MP4 decoding. CI run
 `11905094822`). Device reproduction and crash evidence remain pending; no crash cause or
 resolution is claimed. See `docs/phase-5-device-check.md` for the targeted sequence.
 
-## Feed shifts after controlled video-preload comparison — source fix in progress
-The user reports a same-device comparison: video-preloading enabled made photo scrolling feel
-sticky; with video preloading disabled, photos felt smooth. A separate feed shift still occurs
-when the next video enters view and starts loading; the disabled build has not crashed during
-the user's tests. This is user-reported device evidence that the aggregate video-preload work
-contributes to photo jank; it does not isolate the Media3 manager vs. Coil video-frame/presentation
-work, establish why the video-triggered shift occurs, or prove crash safety. Raw logcat/offsets and
-the 75-second recording are not available in the workspace.
+## Historical disabled-by-default preload comparison — superseded 2026-10-15
+The user reported that video-preloading enabled made photo scrolling feel sticky; with it disabled,
+photos felt smooth and a separate shift was still noticed when the next video started loading. The
+user had not reproduced the crash in that disabled-build test. These are user-observed results, not
+per-operation attribution, shift diagnosis, or proof of crash safety. Raw phone logs/offsets were
+not available in the workspace.
 
-Source review confirms the previous implementation initialized every preview at 4:3 and then
-changed its measured feed height when image/video-thumbnail/player-size callbacks delivered an
-aspect ratio. Loading/first-frame controls were already drawn inside a Box, so they should not
-intrinsically resize the outer card. `FeedScreen` also wrote a root-space `Rect` into snapshot state
-on every preview placement change, causing repeated viewport/selection derivation during scroll.
-The feed only calls `scrollToItem(0)` for an intentional folder/sort/epoch/search key change;
-player activation itself has no scroll call, and list item keys are stable media identities.
-These are confirmed code paths, but device logs have not yet tied a particular recorded jump to
-one of them.
-
-The current source keeps video preloading disabled by default, resolves visible-media positions
-from LazyList offsets plus row-relative preview geometry, and avoids snapshot writes when scroll
-changes only root position. It caches valid per-media ratios for later compositions and reserves
-the current row height before image/video callbacks; decoded media content still fits to its own
-aspect ratio inside that container. New logs include row-size before/after snapshots, active
-selection and explicit scroll events, aspect-ratio source/cache, player prepare/overlay/first frame,
-and one coarse UI-frame/CPU summary per scroll burst. The current source passed CI run
-[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253): 93 tests
-with 0 failures/errors/skips in both preload modes, lint, both debug APK builds, schema consistency
-and packaged privacy checks (artifact `11916277533`). The earlier run `38595248869` covers only
-the previous A/B source. Physical-device verification remains pending; CI does not confirm smooth
-scrolling, eliminate the reported shift, attribute a cause, or prove crash resolution.
+The former source used stable media keys, row-relative preview geometry, and a single explicit
+`scrollToItem(0)` for intentional folder/sort/epoch/search resets. It reserved the current row's
+height, cached ratios for later compositions, and recorded scroll/layout/player diagnostics. The
+historical A/B/geometry source passed run
+[38607618253](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38607618253): 93 tests in
+both preload modes, lint, both debug APK builds, schema consistency and packaged privacy checks
+(artifact `11916277533`). That run and its two-toggle model predate the current focused production
+change. The user's 2026-10-15 instruction permanently removes production video preloading instead
+of retaining a disabled-by-default or diagnostic-toggle path. New CI and phone verification are
+pending; the earlier position shift and crash remain separate unverified reports.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

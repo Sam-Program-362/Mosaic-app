@@ -35,7 +35,6 @@ import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.decode.BitmapFactoryDecoder
 import coil3.request.ImageRequest
-import dev.mosaic.app.BuildConfig
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaKey
@@ -71,8 +70,6 @@ fun FeedScreen(
         visibleState.toSnapshot()
     }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val videoPreloadingEnabled = BuildConfig.VIDEO_PRELOADING_ENABLED
-    val videoPreloader = if (videoPreloadingEnabled) rememberVideoPreloadSession() else null
     val animatedKeys = remember(visiblePosts) {
         visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
     }
@@ -147,25 +144,17 @@ fun FeedScreen(
         listState = listState,
         visibleMedia = visibleMediaState,
         viewportRange = viewportRange,
-        videoPreloadingEnabled = videoPreloadingEnabled,
         context = diagnosticContext,
         refreshRateHz = LocalView.current.display?.refreshRate ?: 60f,
     )
-    val preloadWindow = remember(visiblePosts, centerIndex) { nearbyMediaWindow(visiblePosts, centerIndex) }
-    LaunchedEffect(videoPreloadingEnabled) {
-        MediaDiagnostics.log(
-            diagnosticContext,
-            "video preload configuration enabled=$videoPreloadingEnabled " +
-                "visibleVideoPosters=retained offscreenVideoPosterPrefetch=$videoPreloadingEnabled",
-        )
-    }
+    val photoWindow = remember(visiblePosts, centerIndex) { nearbyPhotoWindow(visiblePosts, centerIndex) }
     LaunchedEffect(
         viewportAnchorKey,
         centerIndex,
         activeKey,
         anchorFractionBucket,
         activeFractionBucket,
-        preloadWindow,
+        photoWindow,
         visibleState.sort,
         visibleState.epoch,
         searchQuery,
@@ -175,7 +164,7 @@ fun FeedScreen(
         val anchorVisibleFraction = anchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
         val activeMedia = activeKey?.let { key -> currentVisibleMedia.firstOrNull { it.key == key } }
         val activeVisibleFraction = activeMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
-        val candidateSummary = preloadWindow.joinToString(",") { candidate ->
+        val candidateSummary = photoWindow.joinToString(",") { candidate ->
             "${candidate.feedIndex}:${candidate.post.media.document.kind.name.lowercase()}:${candidate.direction}"
         }.ifBlank { "none" }
         val anchorKind = anchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
@@ -192,7 +181,7 @@ fun FeedScreen(
         }.ifBlank { "none" }
         MediaDiagnostics.log(
             diagnosticContext,
-            "feed selection videoPreloading=$videoPreloadingEnabled viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
+            "feed selection viewport=${(viewportEnd - viewportStart).coerceAtLeast(0)}px " +
                 "anchorPos=$centerIndex anchorKind=${anchorKind ?: "none"} " +
                 "anchorId=${anchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "anchorVisible=${(anchorVisibleFraction * 100f).roundToInt()}% " +
@@ -223,19 +212,36 @@ fun FeedScreen(
     }
     var sorting by remember { mutableStateOf(false) }
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
-    LaunchedEffect(preloadWindow) {
-        retainedCallback(preloadWindow.map { it.post.media.key }.toSet())
+    LaunchedEffect(photoWindow) {
+        retainedCallback(photoWindow.map { it.post.media.key }.toSet())
     }
     DisposableEffect(Unit) {
         onDispose { retainedCallback(emptySet()) }
     }
-    NearbyMediaPreloader(
-        candidates = preloadWindow,
+    NearbyPhotoPrefetcher(
+        candidates = photoWindow,
         anchorPosition = centerIndex.takeIf { it >= 0 },
         imageLoader = imageLoader,
-        videoSession = videoPreloader,
-        videoPreloadingEnabled = videoPreloadingEnabled,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+        onPhotoAspectRatio = { candidate, ratio ->
+            val prefetchedPost = candidate.post
+            val prefetchedDocument = prefetchedPost.media.document
+            val cacheKey = mediaGeometryCacheKey(
+                prefetchedPost.media.key.stableKey,
+                prefetchedDocument.modifiedAtMillis,
+                prefetchedDocument.sizeBytes,
+            )
+            val update = aspectRatioCache.record(cacheKey, ratio, "image-prefetch")
+            if (update.changed) {
+                MediaDiagnostics.log(
+                    diagnosticContext,
+                    "media aspect-ratio-cache event=photo-prefetch pos=${candidate.feedIndex} " +
+                        "id=${MediaDiagnostics.shortId(prefetchedPost.media.key.stableKey)} " +
+                        "ratio=${update.previous?.ratio ?: "none"}->${update.current?.ratio ?: "none"} " +
+                        "source=image-prefetch",
+                )
+            }
+        },
     )
     // The only feed programmatic scroll is an intentional new-session/sort/search reset.
     LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) {
@@ -345,7 +351,6 @@ fun FeedScreen(
                             visibleMedia = visibleMediaState.value,
                             viewportStart = viewportStart,
                             viewportEnd = viewportEnd,
-                            videoPreloadingEnabled = videoPreloadingEnabled,
                         )
                     }
                 },
@@ -392,10 +397,7 @@ fun FeedScreen(
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
-                videoPreloader = videoPreloader,
-                videoPreloadingEnabled = videoPreloadingEnabled,
                 videoPreviewVisible = key in visiblePreviewKeys,
-                preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
                 initialAspectRatio = initialAspectRatio,
                 onAspectRatioObserved = { ratio, source ->
                     val update = aspectRatioCache.record(geometryKey, ratio, source)
@@ -405,7 +407,7 @@ fun FeedScreen(
                             "media aspect-ratio-cache event=${if (update.previous == null) "seed" else "refine"} " +
                                 "pos=$index kind=${document.kind.name.lowercase()} id=${MediaDiagnostics.shortId(key)} " +
                                 "source=$source ratio=${update.previous?.ratio ?: "none"}->${update.current?.ratio ?: "none"} " +
-                                "reservedRatioForCurrent=${reservedMediaAspectRatio(initialAspectRatio)} layoutUpdate=deferred-until-recomposition",
+                                "currentLayout=${if (document.kind == MediaKind.Image) "natural-photo-ratio" else "reserved-frame-stable"}",
                         )
                     }
                 },
@@ -426,11 +428,8 @@ internal fun MediaPostCard(
     onOpenViewer: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
     hideCommunity: Boolean = false,
-    videoPreloader: VideoPreloadSession? = null,
-    videoPreloadingEnabled: Boolean = true,
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
-    preloadingEnabled: Boolean = true,
     initialAspectRatio: Float? = null,
     onAspectRatioObserved: (Float, String) -> Unit = { _, _ -> },
 ) {
@@ -475,11 +474,8 @@ internal fun MediaPostCard(
             onBounds = onPreviewBounds,
             viewer = false,
             onOpenViewer = onOpenViewer,
-            videoPreloader = videoPreloader,
-            videoPreloadingEnabled = videoPreloadingEnabled,
             videoPreviewVisible = videoPreviewVisible,
             feedPosition = feedPosition,
-            preloadingEnabled = preloadingEnabled,
             initialAspectRatio = initialAspectRatio,
             onAspectRatioObserved = onAspectRatioObserved,
         )

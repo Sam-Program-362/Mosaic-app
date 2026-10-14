@@ -39,7 +39,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,7 +51,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
-import dev.mosaic.app.BuildConfig
 import dev.mosaic.app.core.model.MediaKey
 
 internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
@@ -117,26 +115,16 @@ fun MediaViewer(
 
     HideSystemBars()
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val videoPreloadingEnabled = BuildConfig.VIDEO_PRELOADING_ENABLED
-    val diagnosticContext = LocalContext.current.applicationContext
-    val videoPreloader = if (videoPreloadingEnabled) rememberVideoPreloadSession() else null
-    LaunchedEffect(videoPreloadingEnabled) {
-        MediaDiagnostics.log(
-            diagnosticContext,
-            "video preload configuration enabled=$videoPreloadingEnabled viewer=true " +
-                "visibleVideoPosters=retained offscreenVideoPosterPrefetch=$videoPreloadingEnabled",
-        )
-    }
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
     }
-    val preloadCenterPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
-    val preloadWindow = remember(snapshot.posts, preloadCenterPage) {
-        nearbyMediaWindow(snapshot.posts, preloadCenterPage)
+    val prefetchCenterPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
+    val photoWindow = remember(snapshot.posts, prefetchCenterPage) {
+        nearbyPhotoWindow(snapshot.posts, prefetchCenterPage)
     }
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
-    val retainedKeys = remember(preloadWindow, pagerState.currentPage, snapshot.posts) {
-        (preloadWindow.map { it.post.media.key } + listOfNotNull(snapshot.posts.getOrNull(pagerState.currentPage)?.media?.key)).toSet()
+    val retainedKeys = remember(photoWindow, pagerState.currentPage, snapshot.posts) {
+        (photoWindow.map { it.post.media.key } + listOfNotNull(snapshot.posts.getOrNull(pagerState.currentPage)?.media?.key)).toSet()
     }
     LaunchedEffect(retainedKeys) {
         retainedCallback(retainedKeys)
@@ -144,13 +132,12 @@ fun MediaViewer(
     DisposableEffect(Unit) {
         onDispose { retainedCallback(emptySet()) }
     }
-    NearbyMediaPreloader(
-        candidates = preloadWindow,
-        anchorPosition = pagerState.currentPage,
+    NearbyPhotoPrefetcher(
+        candidates = photoWindow,
+        anchorPosition = prefetchCenterPage,
         imageLoader = imageLoader,
-        videoSession = videoPreloader,
-        videoPreloadingEnabled = videoPreloadingEnabled,
         enabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+        onPhotoAspectRatio = { _, _ -> },
     )
     Box(modifier.fillMaxSize().background(Color.Black)) {
         VerticalPager(
@@ -165,11 +152,8 @@ fun MediaViewer(
                 active = page == pagerState.currentPage && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
                 imageLoader = imageLoader,
                 viewer = true,
-                videoPreloader = videoPreloader,
-                videoPreloadingEnabled = videoPreloadingEnabled,
-                videoPreviewVisible = true,
+                videoPreviewVisible = page == pagerState.currentPage,
                 feedPosition = page,
-                preloadingEnabled = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
             )
         }
         val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]

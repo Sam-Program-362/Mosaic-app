@@ -44,6 +44,94 @@ class MediaGeometryTest {
         assertEquals(9f / 16f, reservedMediaAspectRatio(cache.get(key)?.ratio), 0f)
     }
 
+    @Test fun portraitLandscapeAndSquarePhotosUseFullWidthWithoutAspectHeightCaps() {
+        val availableWidthDp = 360f
+        val portraitRatio = intrinsicImageAspectRatio(900, 1_600)
+        val landscapeRatio = intrinsicImageAspectRatio(1_600, 900)
+        val squareRatio = intrinsicImageAspectRatio(1_200, 1_200)
+        val panoramicRatio = intrinsicImageAspectRatio(1_600, 400)
+
+        assertEquals(9f / 16f, portraitRatio ?: 0f, 0.0001f)
+        assertEquals(16f / 9f, landscapeRatio ?: 0f, 0.0001f)
+        assertEquals(1f, squareRatio ?: 0f, 0f)
+        assertEquals(4f, panoramicRatio ?: 0f, 0f)
+        assertEquals(640f, naturalPhotoHeightDp(availableWidthDp, portraitRatio ?: 0f) ?: 0f, 0.01f)
+        assertEquals(202.5f, naturalPhotoHeightDp(availableWidthDp, landscapeRatio ?: 0f) ?: 0f, 0.01f)
+        assertEquals(360f, naturalPhotoHeightDp(availableWidthDp, squareRatio ?: 0f) ?: 0f, 0.01f)
+        assertEquals(90f, naturalPhotoHeightDp(availableWidthDp, panoramicRatio ?: 0f) ?: 0f, 0.01f)
+
+        // A tall valid photo is not clamped to the old video-frame maximum.
+        val tallRatio = intrinsicImageAspectRatio(400, 1_600) ?: error("Expected valid portrait dimensions")
+        assertEquals(1_440f, naturalPhotoHeightDp(availableWidthDp, tallRatio) ?: 0f, 0.01f)
+    }
+
+    @Test fun unavailableInvalidDimensionsFallBackUntilAValidRatioIsCachedThenStayStable() {
+        assertNull(intrinsicImageAspectRatio(0, 0))
+        assertNull(intrinsicImageAspectRatio(-1, 300))
+        assertNull(intrinsicImageAspectRatio(300, -1))
+        assertNull(naturalPhotoHeightDp(Float.NaN, 1f))
+        assertNull(naturalPhotoHeightDp(360f, Float.POSITIVE_INFINITY))
+        assertEquals(DEFAULT_PHOTO_PLACEHOLDER_ASPECT_RATIO, safePhotoAspectRatio(null), 0f)
+
+        val cache = MediaAspectRatioCache()
+        val key = "unknown-dimensions-photo"
+        val decodedRatio = intrinsicImageAspectRatio(900, 1_600) ?: error("Expected valid dimensions")
+        assertTrue(cache.record(key, decodedRatio, "image-prefetch").changed)
+        val establishedRatio = safePhotoAspectRatio(cache.get(key)?.ratio)
+        assertEquals(9f / 16f, establishedRatio, 0.0001f)
+
+        assertFalse(cache.record(key, Float.NaN, "image").changed)
+        assertFalse(cache.record(key, 1f, "image").changed)
+        assertEquals(establishedRatio, safePhotoAspectRatio(cache.get(key)?.ratio), 0f)
+    }
+
+    @Test fun firstValidDecodedPhotoDimensionsEstablishNaturalRatioAndLaterCallbacksCannotChangeIt() {
+        val initial = establishPhotoAspectRatio(
+            currentRatio = DEFAULT_PHOTO_PLACEHOLDER_ASPECT_RATIO,
+            dimensionsEstablished = false,
+            decodedRatio = intrinsicImageAspectRatio(0, 0),
+        )
+        assertEquals(DEFAULT_PHOTO_PLACEHOLDER_ASPECT_RATIO, initial.ratio, 0f)
+        assertFalse(initial.dimensionsEstablished)
+
+        val portrait = establishPhotoAspectRatio(
+            currentRatio = initial.ratio,
+            dimensionsEstablished = initial.dimensionsEstablished,
+            decodedRatio = intrinsicImageAspectRatio(900, 1_600),
+        )
+        assertEquals(9f / 16f, portrait.ratio, 0.0001f)
+        assertTrue(portrait.dimensionsEstablished)
+
+        val laterCallback = establishPhotoAspectRatio(
+            currentRatio = portrait.ratio,
+            dimensionsEstablished = portrait.dimensionsEstablished,
+            decodedRatio = 16f / 9f,
+        )
+        assertEquals(portrait.ratio, laterCallback.ratio, 0f)
+        assertTrue(laterCallback.dimensionsEstablished)
+    }
+
+    @Test fun playerPreparationAndFirstFrameKeepExistingVideoFrameAndFeedPositionStable() {
+        val cache = MediaAspectRatioCache()
+        val key = "video-preparation"
+        assertTrue(cache.record(key, 16f / 9f, "video-thumbnail").changed)
+        val reservedRatioAtComposition = reservedMediaAspectRatio(cache.get(key)?.ratio)
+        val reservedHeightAtComposition = feedPreviewHeightDp(360f, reservedRatioAtComposition)
+        val rows = listOf(FeedRowPlacement(key = "video", index = 3, offsetPx = -90, heightPx = 640))
+        val geometry = mapOf("video" to PreviewItemGeometry(topInItemPx = 70, widthPx = 400, heightPx = 300))
+        val feedIndices = mapOf("video" to 3)
+        val positionBeforePreparation = visibleMediaFromRows(rows, geometry, feedIndices)
+
+        assertTrue(videoFrameFallback(hasRenderedFirstFrame = false, failed = false, loading = true).showLoading)
+        assertTrue(cache.record(key, 9f / 16f, "player-video-size").changed)
+        val afterFirstFrame = videoFrameFallback(hasRenderedFirstFrame = true, failed = false, loading = true)
+
+        assertFalse(afterFirstFrame.showThumbnail)
+        assertFalse(afterFirstFrame.showLoading)
+        assertEquals(reservedHeightAtComposition, feedPreviewHeightDp(360f, reservedRatioAtComposition), 0f)
+        assertEquals(positionBeforePreparation, visibleMediaFromRows(rows, geometry, feedIndices))
+    }
+
     @Test fun actualPlayerDimensionsCanImproveTheCacheWithoutChangingAnExistingRow() {
         val cache = MediaAspectRatioCache()
         val key = "photo-or-video"

@@ -5,13 +5,6 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// Keep the user-confirmed smoother, no-video-preload mode as the conservative default.
-// Opt in explicitly to nearby video preloading for controlled A/B measurements.
-val videoPreloadingEnabled = providers.gradleProperty("mosaicVideoPreloading").orNull?.let { value ->
-    value.toBooleanStrictOrNull()
-        ?: error("-PmosaicVideoPreloading must be either true or false (received '$value').")
-} ?: false
-
 android {
     namespace = "dev.mosaic.app"
     compileSdk = 35
@@ -22,7 +15,6 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "0.2.0"
-        buildConfigField("boolean", "VIDEO_PRELOADING_ENABLED", videoPreloadingEnabled.toString())
     }
 
     buildTypes {

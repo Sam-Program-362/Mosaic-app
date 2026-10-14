@@ -111,7 +111,7 @@ class FeedSessionTest {
             0, 1000, setOf("edge-video")))
     }
 
-    @Test fun ratioDrivenPortraitAndLandscapePreviewsAreMeasuredAtBothViewportEdges() {
+    @Test fun existingVideoFramePolicyIsMeasuredAtBothViewportEdges() {
         val portraitHeight = feedPreviewHeightDp(360f, 9f / 16f).roundToInt()
         val landscapeHeight = feedPreviewHeightDp(360f, 16f / 9f).roundToInt()
         assertEquals(520, portraitHeight)
@@ -203,7 +203,7 @@ class FeedSessionTest {
         assertNull(playbackPreviewForAnchor(anchor, visible, 0, 600, setOf("old-video", "next-gif")))
     }
 
-    @Test fun nearbyMediaWindowPreloadsImagesAndVideosIndependentlyAcrossMixedItems() {
+    @Test fun nearbyPhotoWindowRetainsCurrentAndNearestStaticPhotosOnly() {
         val posts = listOf(
             post("previous-video", MediaKind.Video),
             post("previous-gif", MediaKind.Gif),
@@ -215,53 +215,45 @@ class FeedSessionTest {
             post("far-photo", MediaKind.Image),
         )
 
-        val window = nearbyMediaWindow(posts, centerIndex = 3)
+        val window = nearbyPhotoWindow(posts, centerIndex = 3)
 
-        assertEquals(listOf("previous-video", "previous-photo", "current-photo", "next-photo", "next-video"),
+        assertEquals(listOf("previous-photo", "current-photo", "next-photo"),
             window.map { it.post.media.document.documentId })
-        assertEquals(listOf(-1, -1, 0, 1, 1), window.map { it.direction })
-        assertEquals(listOf(0, 2, 3, 5, 6), window.map { it.feedIndex })
-        assertTrue(window.size <= 5)
+        assertEquals(listOf(-1, 0, 1), window.map { it.direction })
+        assertEquals(listOf(2, 3, 5), window.map { it.feedIndex })
         assertTrue(window.all { kotlin.math.abs(it.feedIndex - 3) <= 3 })
     }
 
-    @Test fun nearbyMediaWindowSearchesThroughGifsAndHandlesBothEdges() {
+    @Test fun nearbyPhotoWindowTraversesVideosAndGifsButNeverRetainsThemAsNeighbors() {
         val posts = listOf(
-            post("current", MediaKind.Image),
-            post("next-gif-one", MediaKind.Gif),
-            post("next-gif-two", MediaKind.Gif),
+            post("left-photo", MediaKind.Image),
+            post("current-video", MediaKind.Video),
+            post("next-gif", MediaKind.Gif),
             post("next-video", MediaKind.Video),
+            post("next-photo", MediaKind.Image),
+            post("far-photo", MediaKind.Image),
         )
-        assertEquals(listOf("current", "next-video"), nearbyMediaWindow(posts, 0)
-            .map { it.post.media.document.documentId })
-        assertEquals(listOf("current", "next-gif-one", "next-video"), nearbyMediaWindow(posts, 1)
-            .map { it.post.media.document.documentId })
-        assertTrue(nearbyMediaWindow(posts, -1).isEmpty())
-        assertTrue(nearbyMediaWindow(emptyList(), 0).isEmpty())
-        assertTrue(nearbyMediaWindow(posts, posts.lastIndex).size <= 5)
+
+        assertEquals(listOf("left-photo", "current-video", "next-photo"),
+            nearbyPhotoWindow(posts, 1).map { it.post.media.document.documentId })
+        assertEquals(listOf("left-photo"),
+            nearbyPhotoWindow(posts, 0).map { it.post.media.document.documentId })
+        assertTrue(nearbyPhotoWindow(posts, -1).isEmpty())
+        assertTrue(nearbyPhotoWindow(emptyList(), 0).isEmpty())
     }
 
-    @Test fun disabledVideoPreloadingLeavesStaticImagePrefetchUntouched() {
+    @Test fun productionPhotoPrefetchTargetsOnlyNeighboringStaticImagesAndPostersRequireVisibility() {
         val candidates = listOf(
             NearbyMediaCandidate(post("anchor-photo", MediaKind.Image), 0, 0),
             NearbyMediaCandidate(post("near-video", MediaKind.Video), 1, 1),
-            NearbyMediaCandidate(post("near-photo", MediaKind.Image), 2, 1),
-            NearbyMediaCandidate(post("far-video", MediaKind.Video), 3, 1),
+            NearbyMediaCandidate(post("near-gif", MediaKind.Gif), 2, 1),
+            NearbyMediaCandidate(post("near-photo", MediaKind.Image), 3, 1),
         )
 
-        assertTrue(videoPreloadRequests(candidates, videoPreloadingEnabled = false).isEmpty())
-        assertEquals(listOf(1, 3),
-            videoPreloadRequests(candidates, videoPreloadingEnabled = true).map { it.feedPosition })
-
-        assertEquals(listOf("near-photo"), imagePrefetchCandidates(
-            candidates, anchorPosition = 0, videoPreloadingEnabled = false,
-        ).map { it.post.media.document.documentId })
-        assertEquals(listOf("near-video", "near-photo", "far-video"), imagePrefetchCandidates(
-            candidates, anchorPosition = 0, videoPreloadingEnabled = true,
-        ).map { it.post.media.document.documentId })
-        assertTrue(shouldLoadVideoPoster(videoPreloadingEnabled = false, previewVisible = true))
-        assertFalse(shouldLoadVideoPoster(videoPreloadingEnabled = false, previewVisible = false))
-        assertTrue(shouldLoadVideoPoster(videoPreloadingEnabled = true, previewVisible = false))
+        assertEquals(listOf("near-photo"), staticPhotoPrefetchCandidates(candidates, anchorPosition = 0)
+            .map { it.post.media.document.documentId })
+        assertTrue(shouldLoadVisibleVideoPoster(previewVisible = true))
+        assertFalse(shouldLoadVisibleVideoPoster(previewVisible = false))
     }
 
     @Test fun videoTimeAndRelativeSeekAreFormattedAndClamped() {

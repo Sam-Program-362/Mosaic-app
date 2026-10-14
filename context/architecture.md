@@ -43,7 +43,7 @@ avoids deleting dependent rows during reselection. No destructive migration fall
 Persist only READ permission from actual result flags; nonpersistent access is clearly
 labelled. Same-tree reselection restores access without duplicate identity. Cold-start,
 warm-resume and explicit refresh scans are serialized; no background service/WorkManager.
-A warm resume retains the current and bounded preloaded media rows and feed epoch/order
+A warm resume retains the current and bounded nearby static-photo rows and feed epoch/order
 while reconciling other entries. A cold process start and explicit refresh fully reconcile.
 Null/missing-required-column/loading/error cursors never authorize deletion.
 
@@ -53,14 +53,17 @@ post UI, local image/GIF/video-frame previews and composition-scoped MP4 players
 Coil 3.1.0 uses Compose/GIF/video-frame modules without a network fetcher; an
 application-context ImageLoader provides bounded shared caching. Static photo/avatar
 requests explicitly select a static decoder; only GIF previews opt into animation.
-Inactive videos decode a local first-frame thumbnail. The feed/viewer window keeps the
-current item plus the nearest photo and nearest video within three feed positions on each
-side (at most five candidates); image/frame prefetch is independent from video buffering.
-Media3 1.6.1 `DefaultPreloadManager` buffers one second for eligible adjacent video sources.
-These sources do not create extra playing players. Media3 creates at most one inline
-player for visible foreground media, muted by default and disposed offscreen/inactive.
-The active player exposes play/pause, mute, a seek slider and elapsed/duration; full-screen
-video supports left/right double-tap ±10-second seeking and tap-to-hide/show controls.
+Feed photos fill the available media width and derive height from the decoded/oriented
+intrinsic image ratio; a temporary safe fallback covers missing/invalid dimensions, and
+the first valid ratio locks the composed photo's height. `ContentScale.Fit` preserves the
+whole image without distortion/crop. The video/GIF reserved-frame policy remains separate.
+Nearby retention/prefetch selects static photos only. There is no production video-preload
+manager, neighboring-video buffering, offscreen video-frame prefetch, or speculative
+offscreen-video poster decoding. A local video poster is requested when its card/page is
+visible; the active visible player prepares on activation. Media3 creates at most one inline
+player, muted by default and disposed offscreen/inactive. The active player retains its
+play/pause, mute, seek/time/duration, viewer double-tap ±10-second seek, and tap-to-hide/show
+controls. Its poster remains over the `TextureView` surface until the first rendered frame.
 Room joined projections filter Available status before UI; no schema version change.
 ViewModel combines available metadata + scope + sort + session epoch off main thread.
 Random rank/count seed depends on epoch + length-prefixed folder/document identity;
@@ -70,6 +73,20 @@ image case-insensitively per folder, never a GIF/video. Viewport geometry uses t
 preview's bounds, not merely card visibility; menus/drawer/background disable playback.
 All functional playback controls are distinct from decorative, noninteractive counts.
 Phase 5 adds an enabled Save copy action in feed cards and viewer chrome.
+
+## 2026-10-15 focused feed-media geometry and preload removal — verification pending
+The former experimental build toggle and video preload manager/lifecycle are deleted, not kept
+as an opt-in. Nearby static-photo prefetch remains active; inactive video posters are visible-
+only and player preparation remains activation-only. Feed photo dimensions are independent of
+video layout: full media width divided by the first valid decoded intrinsic ratio, square safe
+placeholder only until dimensions are known, then a stable established height. Invalid ratios
+are ignored. Stable LazyColumn media keys remain unchanged, and media preparation/first-frame
+callbacks do not call the feed scroll API. The explicit session/sort/search reset remains the
+only feed programmatic scroll. User-reported prior crash/stickiness is not treated as resolved.
+
+Tests cover image ratios/delayed dimensions, unbounded natural photo heights, full-width Compose
+measurement, poster visibility, static-photo-only prefetch, reserved video-frame and first-frame
+fallback behavior, and photo/scroll-position stability. CI and device acceptance are pending.
 
 ## Phase 4 implementation
 `feature/feed/MediaViewer.kt` receives a copied `FeedSnapshot` and tapped item index;
