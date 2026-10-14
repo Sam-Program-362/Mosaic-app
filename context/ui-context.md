@@ -48,7 +48,9 @@ search, plus unit coverage for search and relative-time buckets. Run 38523338581
 compiled main Kotlin but failed compiling the new tests because member assertions were
 incorrectly imported as top-level functions. Run 38523840274 compiled main and tests but
 one relative-time test used a past timestamp before the Unix epoch; the fixed test clock
-was moved forward. A clean rerun is pending. No passing full tests/lint/APK or physical-
+was moved forward. Run 38524387833 ran 67 tests with one Settings UI assertion failure
+because the screen displays uppercase stat labels. The test now checks the displayed
+uppercase labels. A clean rerun is pending. No passing full tests/lint/APK or physical-
 device result exists for this follow-up; do not treat it as verified until CI succeeds.
 Physical-device behavior is separate acceptance.
 
