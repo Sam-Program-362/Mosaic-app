@@ -445,7 +445,7 @@ private fun VideoPreview(
                         "id=${MediaDiagnostics.shortId(stableKey)} " +
                         "from=${previousOverlay?.toString() ?: "initial"} to=$overlayVisible " +
                         "state=${playbackStateName(player.playbackState)} firstFrame=$hasRenderedFirstFrame " +
-                        "failed=$failed activationMs=${SystemClock.elapsedRealtime() - activationStartedAt}",
+                        "failed=$failed elapsedMs=${SystemClock.elapsedRealtime()}",
                 )
                 previousOverlay = overlayVisible
             }
