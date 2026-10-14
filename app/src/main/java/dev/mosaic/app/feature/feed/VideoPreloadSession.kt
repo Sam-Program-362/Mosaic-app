@@ -30,7 +30,7 @@ internal class VideoPreloadSession(context: Context) {
             managed.remove(key)?.let { manager.remove(it.mediaItem) }
         }
 
-        candidates.forEach(::ensureManaged)
+        candidates.forEach { ensureManaged(it) }
         val currentRankingData = currentKey?.let(managed::get)?.rankingData ?: 0
         statusControl.preloadRankingData = candidates.asSequence()
             .filter { it.key != currentKey }

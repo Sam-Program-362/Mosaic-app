@@ -5,6 +5,7 @@ import android.os.Build
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
+import coil3.video.VideoFrameDecoder
 import androidx.room.Room
 import dev.mosaic.app.data.local.LIBRARY_DATABASE_NAME
 import dev.mosaic.app.data.local.LibraryDatabase

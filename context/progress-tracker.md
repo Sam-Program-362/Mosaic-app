@@ -32,9 +32,11 @@ lifecycle deactivation. Warm ON_RESUME keeps the feed epoch and Room rows for cu
 preloaded IDs while refreshing other entries; a new process and explicit refresh remain
 full refreshes. Unit/repository/Room/UI tests were added. No database schema or runtime
 network permission changed. `./gradlew testDebugUnitTest` is blocked locally because
-Java is absent; GitHub CI and physical-device acceptance are still pending. The user
-explicitly authorized the session-branch push for CI/debug-APK verification; no merge
-or release is in scope.
+Java is absent; physical-device acceptance is still pending. Initial GitHub run
+38556461411 failed during Kotlin compilation because `MosaicApplication.kt` lacked the
+`VideoFrameDecoder` import. The import and an explicit preload-session iteration lambda
+are now fixed locally; a CI rerun is pending. The user explicitly authorized the
+session-branch push for CI/debug-APK verification; no merge or release is in scope.
 
 ## Drive-reference UI adaptation follow-up — CI verified, phone check pending
 The current session branch adapts the inspected Drive reference without copying the
