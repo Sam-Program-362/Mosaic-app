@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.mosaic.app.data.preferences.ThemeMode
@@ -158,7 +159,9 @@ private fun ThemeChoice(
 private fun LibraryStat(label: String, value: Int, modifier: Modifier = Modifier) {
     val colors = LocalMosaicColors.current
     Surface(
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = "$label: $value"
+        },
         shape = RoundedCornerShape(12.dp),
         color = colors.surface,
         border = BorderStroke(1.dp, colors.divider),

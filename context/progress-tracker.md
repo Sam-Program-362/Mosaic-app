@@ -32,12 +32,13 @@ methods in this Compose API. Those imports were removed. Run 38523840274 compile
 and test Kotlin but one relative-time test failed: its 36-hour-old timestamp was before
 the Unix epoch, correctly taking the helper's invalid-date path. The test's fixed `now`
 was moved forward. Run 38524387833 compiled main/tests and ran 67 tests, but the new
-Settings UI test expected title-case stat labels while the screen intentionally renders
-uppercase labels; the test now expects `FOLDERS`/`COMMUNITIES`/`SAVED`. A clean rerun is
-pending. No passing full test/lint/APK/privacy check or phone result exists for this slice
-yet. `git diff --check` passes. Local Gradle is blocked because this sandbox has no Java.
-Continue using the authorized GitHub workflow only on `arena/b0f3e3cf-mosaic-app`; this
-remains unverified source, not a passing release.
+Settings UI test still failed at its first library-stat assertion. The stat component now
+exposes an accessible `Label: count` description, and the test targets that description
+instead of visible label text. Another CI run is pending. No passing full test/lint/APK/
+privacy check or phone result exists for this slice yet. `git diff --check`
+passes. Local Gradle is blocked because this sandbox has no Java. Continue using the
+authorized GitHub workflow only on `arena/b0f3e3cf-mosaic-app`; this remains unverified
+source, not a passing release.
 
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.

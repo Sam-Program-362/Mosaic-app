@@ -2,6 +2,7 @@ package dev.mosaic.app.feature.settings
 
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import dev.mosaic.app.data.preferences.ThemeMode
@@ -35,10 +36,9 @@ class SettingsScreenUiTest {
         compose.onNodeWithText("APPEARANCE").assertExists()
         compose.onNodeWithText("YOUR LIBRARY").assertExists()
         compose.onNodeWithText("ABOUT MOSAIC").assertExists()
-        compose.onNodeWithText("FOLDERS").assertExists()
-        compose.onNodeWithText("COMMUNITIES").assertExists()
-        compose.onNodeWithText("SAVED").assertExists()
-        compose.onNodeWithText("5").assertExists()
+        compose.onNodeWithContentDescription("Folders: 2").assertExists()
+        compose.onNodeWithContentDescription("Communities: 2").assertExists()
+        compose.onNodeWithContentDescription("Saved: 5").assertExists()
         compose.onNodeWithText("No accounts, servers, uploads, or network requests for browsing, saving, or viewing. Only the folders you select are indexed.")
             .assertExists()
         compose.onNodeWithText("Dark").assertIsSelected()
