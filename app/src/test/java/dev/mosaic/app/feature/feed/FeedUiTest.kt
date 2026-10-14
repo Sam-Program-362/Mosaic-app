@@ -2,6 +2,7 @@ package dev.mosaic.app.feature.feed
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import coil3.ImageLoader
@@ -62,5 +63,48 @@ class FeedUiTest {
         compose.onNodeWithText("Sort: Random").assertExists()
         compose.onNodeWithText("Add folder").performClick()
         compose.runOnIdle { org.junit.Assert.assertTrue(picked) }
+    }
+
+    @Test fun localFeedSearchShowsMatchingPostsAndAnEmptyResultState() {
+        val posts = listOf(
+            FeedPost(
+                IndexedMedia("travel", "Travel", MediaDocument(
+                    "beach", "content://missing/beach", "Beach day.jpg", "image/jpeg", MediaKind.Image, null, null,
+                )),
+                DecorativeCounts(9, 1),
+                null,
+            ),
+            FeedPost(
+                IndexedMedia("clips", "Clips", MediaDocument(
+                    "launch", "content://missing/launch", "Launch.mp4", "video/mp4", MediaKind.Video, null, null,
+                )),
+                DecorativeCounts(8, 2),
+                null,
+            ),
+        )
+        val query = mutableStateOf("beach")
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                FeedScreen(
+                    state = FeedState(posts = posts, loaded = true),
+                    folders = emptyList(),
+                    busy = false,
+                    listState = rememberLazyListState(),
+                    playbackEnabled = false,
+                    imageLoader = loader,
+                    onSort = {},
+                    onRefresh = {},
+                    onAddFolder = {},
+                    onManageFolders = {},
+                    showFeedControls = false,
+                    searchQuery = query.value,
+                )
+            }
+        }
+
+        compose.onNodeWithText("Beach day").assertExists()
+        compose.onNodeWithText("Launch").assertDoesNotExist()
+        compose.runOnIdle { query.value = "no matching filename" }
+        compose.onNodeWithText("No local media matches").assertExists()
     }
 }

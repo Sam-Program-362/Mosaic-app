@@ -7,6 +7,6 @@ enum class ThemeMode(val storedValue: String) {
 
     companion object {
         fun fromStoredValue(value: String?): ThemeMode =
-            entries.firstOrNull { it.storedValue == value } ?: Light
+            entries.firstOrNull { it.storedValue == value } ?: Dark
     }
 }

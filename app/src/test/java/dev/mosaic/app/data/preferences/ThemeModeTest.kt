@@ -5,13 +5,13 @@ import org.junit.Test
 
 class ThemeModeTest {
     @Test
-    fun missingPreferenceDefaultsToLight() {
-        assertEquals(ThemeMode.Light, ThemeMode.fromStoredValue(null))
+    fun missingPreferenceDefaultsToDarkToMatchTheInterfaceReference() {
+        assertEquals(ThemeMode.Dark, ThemeMode.fromStoredValue(null))
     }
 
     @Test
-    fun unknownPreferenceDefaultsToLight() {
-        assertEquals(ThemeMode.Light, ThemeMode.fromStoredValue("system"))
+    fun unknownPreferenceDefaultsToDark() {
+        assertEquals(ThemeMode.Dark, ThemeMode.fromStoredValue("system"))
     }
 
     @Test

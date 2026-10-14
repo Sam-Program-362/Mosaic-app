@@ -25,10 +25,28 @@ these new viewer-motion edits. The final motion change passed CI run 38511038772
 exposed a test timing issue that was resolved by isolating reverse-close retention.
 Phone verification remains open.
 Drawer/container roles use semantic neutral colors (fixing purple defaults in the
-user's initial screenshot). Settings persists Light/Dark. Folder management retains
-picker/retry/reselection and now has a confirmed **Remove from Mosaic** action. This
-removes local index/community and attempts to release Mosaic's saved read grant; it
-never changes original media. Failed permission release shows a warning.
+user's initial screenshot). Settings persists explicit Light/Dark choices. Folder
+management retains picker/retry/reselection and a confirmed **Remove from Mosaic**
+action. This removes local index/community and attempts to release Mosaic's saved read
+grant; it never changes original media. Failed permission release shows a warning.
+
+## Drive-reference adaptation follow-up — source in progress
+The user-supplied `google_drive/mosaic-media-browsing-reference-app (Claude).zip` was
+inspected rather than copying its web screens wholesale. The reference informed the
+orange/charcoal theme, compact feed post hierarchy, media metadata, Settings sections,
+and folder/community presentation. Its web-only interactions are not permission to add
+accounts, online features, real voting, or comments.
+
+Current unverified source adaptation adds a searchable directory of selected-folder
+communities, local metadata search on Home/community/Saved feeds, relative media time,
+photo/GIF/video labels, revised post cards, visible play/pause and mute/unmute video
+controls, reference-inspired Settings/library stats, and card-style folder management.
+Missing/unknown theme values now fall back to Dark. All main navigation is through the
+top header and drawer; there is deliberately **no bottom navigation or navigation
+rail**. Added Compose tests cover Settings and community-directory behavior, plus unit
+coverage for search and relative-time buckets. This slice has not yet been compiled or
+tested; do not treat the source draft as verified until CI succeeds. Physical-device
+behavior is still separate acceptance.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

@@ -8,6 +8,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +26,7 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -52,13 +57,18 @@ fun FeedScreen(
     showFeedControls: Boolean = true,
     emptyTitle: String? = null,
     emptyDescription: String? = null,
+    searchQuery: String = "",
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
-    val snapshot = remember(state.posts, state.sort, state.folderId, state.epoch) { state.toSnapshot() }
+    val visiblePosts = remember(state.posts, searchQuery) { filterFeedPosts(state.posts, searchQuery) }
+    val visibleState = remember(state, visiblePosts) { state.copy(posts = visiblePosts) }
+    val snapshot = remember(visibleState.posts, visibleState.sort, visibleState.folderId, visibleState.epoch) {
+        visibleState.toSnapshot()
+    }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val animatedKeys = remember(state.posts) {
-        state.posts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
+    val animatedKeys = remember(visiblePosts) {
+        visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
     }
     val previewBounds = remember { mutableStateMapOf<String, Rect>() }
     var viewport by remember { mutableStateOf(Rect.Zero) }
@@ -71,8 +81,13 @@ fun FeedScreen(
     }
     var sorting by remember { mutableStateOf(false) }
     // Intentional session changes scroll to the start; theme/menu changes do not.
-    LaunchedEffect(state.folderId, state.sort, state.epoch) { listState.scrollToItem(0) }
-    LazyColumn(state = listState, modifier = modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInRoot() }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) { listState.scrollToItem(0) }
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize().background(colors.background)
+            .onGloballyPositioned { viewport = it.boundsInRoot() },
+        verticalArrangement = Arrangement.spacedBy(0.dp),
+    ) {
         if (showFeedControls) item(key = "feed-controls") {
             Column(Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -93,6 +108,9 @@ fun FeedScreen(
                 if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
             }
         }
+        if (busy && !showFeedControls) item(key = "refresh-progress") {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        }
         val folder = folders.firstOrNull { it.folder.id == state.folderId }
         val unavailable = if (state.folderId != null) folder?.folder?.status == FolderStatus.Unavailable
             else folders.any { it.folder.status == FolderStatus.Unavailable }
@@ -105,7 +123,12 @@ fun FeedScreen(
         }
         if (!state.loaded) item(key = "loading") {
             Text("Loading media library…", Modifier.padding(16.dp), color = colors.textSecondary)
-        } else if (state.posts.isEmpty() && !unavailable) item(key = "empty") {
+        } else if (state.posts.isNotEmpty() && visiblePosts.isEmpty()) item(key = "search-empty") {
+            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("No local media matches", style = MaterialTheme.typography.titleMedium)
+                Text("Try a different file name, folder, or media type.", color = colors.textSecondary)
+            }
+        } else if (visiblePosts.isEmpty() && !unavailable) item(key = "empty") {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(emptyTitle ?: if (folders.isEmpty()) "Your media, your communities" else "No supported media here",
                     style = MaterialTheme.typography.titleLarge)
@@ -117,7 +140,7 @@ fun FeedScreen(
                 }
             }
         }
-        itemsIndexed(state.posts, key = { _, post -> post.media.key.stableKey }) { index, post ->
+        itemsIndexed(visiblePosts, key = { _, post -> post.media.key.stableKey }) { index, post ->
             val key = post.media.key.stableKey
             DisposableEffect(key) { onDispose { previewBounds.remove(key) } }
             MediaPostCard(post, imageLoader,
@@ -125,6 +148,7 @@ fun FeedScreen(
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == post.media.key.stableKey,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
+                hideCommunity = state.folderId != null,
             )
         }
     }
@@ -138,32 +162,69 @@ fun MediaPostCard(
     onPreviewBounds: (Rect) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
     onSaveCopy: (() -> Unit)? = null,
+    hideCommunity: Boolean = false,
 ) {
     val colors = LocalMosaicColors.current
+    val mediaLabel = when (post.media.document.kind) {
+        MediaKind.Image -> "Local photo"
+        MediaKind.Gif -> "Animated GIF"
+        MediaKind.Video -> "MP4 video"
+    }
+    val modifiedLabel = relativeMediaTime(post.media.document.modifiedAtMillis)
     Column(Modifier.fillMaxWidth().background(colors.surface)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CommunityAvatar(post.media.folderLabel, post.artworkUri, imageLoader)
+        Row(
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (!hideCommunity) CommunityAvatar(post.media.folderLabel, post.artworkUri, imageLoader, size = 28.dp)
             Column(Modifier.weight(1f)) {
-                Text(post.media.folderLabel, style = MaterialTheme.typography.labelLarge)
-                Text(when (post.media.document.kind) {
-                    MediaKind.Image -> "Local photo"
-                    MediaKind.Gif -> "Animated GIF"
-                    MediaKind.Video -> "MP4 video"
-                }, style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+                if (!hideCommunity) {
+                    Text(post.media.folderLabel, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                }
+                Text(
+                    listOfNotNull(mediaLabel, modifiedLabel).joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                )
             }
         }
-        Text(mediaTitle(post.media.document.fullName), Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-            style = MaterialTheme.typography.titleMedium)
+        Text(
+            mediaTitle(post.media.document.fullName),
+            Modifier.fillMaxWidth()
+                .then(onOpenViewer?.let { Modifier.clickable(role = Role.Button, onClickLabel = "Open full-screen viewer", onClick = it) } ?: Modifier)
+                .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 2,
+        )
         LocalMediaPreview(post, active, imageLoader, onPreviewBounds,
             viewer = false, onOpenViewer = onOpenViewer)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("↑ ${post.counts.up}    ↓ ${post.counts.down}",
-                Modifier.clearAndSetSemantics {
-                    contentDescription = "Decorative counts: ${post.counts.up} up, ${post.counts.down} down. Not real votes."
-                }, style = MaterialTheme.typography.labelLarge, color = colors.textSecondary)
+        Row(
+            Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                Modifier.clip(CircleShape)
+                    .background(colors.surfaceRaised)
+                    .clearAndSetSemantics {
+                        contentDescription = "Decorative counts: ${post.counts.up} up, ${post.counts.down} down. Not real votes."
+                    }
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Filled.ArrowUpward, contentDescription = null, tint = colors.textSecondary,
+                    modifier = Modifier.size(16.dp))
+                Text(post.counts.up.toString(), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+                Icon(Icons.Filled.ArrowDownward, contentDescription = null, tint = colors.textSecondary,
+                    modifier = Modifier.size(16.dp))
+                Text(post.counts.down.toString(), style = MaterialTheme.typography.labelSmall, color = colors.textSecondary)
+            }
             TextButton(onClick = { onSaveCopy?.invoke() }, enabled = onSaveCopy != null) {
+                Icon(Icons.Filled.BookmarkBorder, contentDescription = null, modifier = Modifier.size(17.dp))
+                Spacer(Modifier.width(5.dp))
                 Text("Save copy")
             }
         }
@@ -172,7 +233,7 @@ fun MediaPostCard(
 }
 
 @Composable
-fun CommunityAvatar(label: String, uri: String?, imageLoader: ImageLoader) {
+fun CommunityAvatar(label: String, uri: String?, imageLoader: ImageLoader, size: Dp = 32.dp) {
     val colors = LocalMosaicColors.current
     val context = LocalContext.current
     val request = remember(uri, context) {
@@ -180,7 +241,7 @@ fun CommunityAvatar(label: String, uri: String?, imageLoader: ImageLoader) {
             .memoryCacheKey("$it:avatar-static")
             .decoderFactory(BitmapFactoryDecoder.Factory()).build() }
     }
-    Box(Modifier.size(32.dp).clip(CircleShape).background(colors.surfaceRaised), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(size).clip(CircleShape).background(colors.surfaceRaised), contentAlignment = Alignment.Center) {
         Text(label.take(1).uppercase(), style = MaterialTheme.typography.labelLarge)
         if (request != null) AsyncImage(request, contentDescription = null, imageLoader = imageLoader,
             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())

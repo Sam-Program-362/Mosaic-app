@@ -18,7 +18,9 @@ or proprietary assets to copy.
 - Filename-based titles; retain full names, use URI/document identity rather than
   filenames as unique IDs. Hiding recognized extensions is a provisional default.
 - Compact post hierarchy: community, filename title, aspect-preserving media,
-  decorative up/down counts, Save copy. No comments or interactive votes.
+  local-time metadata, decorative up/down counts, Save copy. No comments or interactive votes.
+- Search only indexed filename/title, folder label, MIME type, or media-kind metadata;
+  never inspect media bytes or use a network service.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
   sound toggle. Stop/release inactive and off-screen media.
@@ -28,8 +30,10 @@ or proprietary assets to copy.
 - Refresh at launch, resume, and explicit refresh. Reconcile deletions only after
   successful scans. Failed scans are not empty scans. Keep unavailable folder
   communities/metadata and recover when access returns.
-- Home, community drawer, app menu (Saved, folders, Settings), consistent light/dark
-  themes, accessible touch targets, loading/empty/error/unavailable states.
+- Home, searchable communities directory, and navigation through the header/drawer
+  only (no bottom navigation or navigation rail); drawer/menu expose Saved, folders,
+  communities, and Settings. Consistent Light/Dark themes and loading/empty/error/
+  unavailable states remain required.
 
 ## Safety and scope
 No runtime backend, internet permission, accounts, analytics, crash uploads,

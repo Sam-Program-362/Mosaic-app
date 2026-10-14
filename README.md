@@ -1,8 +1,8 @@
 # Mosaic
 
 An offline Android local-media browser with a Reddit-inspired feed structure and
-its own identity. **Phase 4 adds an immersive vertical viewer and safe folder removal**;
-this is still a development app, not a complete first release.
+its own identity. Phase 5 adds independent Saved copies to the immersive viewer and
+safe folder removal; this is still a development app, not a complete first release.
 
 ## Current implementation
 
@@ -11,25 +11,32 @@ this is still a development app, not a complete first release.
 - Random/Newest local ordering, refresh, and decorative noninteractive counts.
 - Local photo/GIF/MP4 previews, plus a full-screen vertical viewer that opens at
   the tapped post and uses a frozen copy of the originating feed order.
-- Viewer playback is limited to the current foreground page; MP4 starts muted.
-  Back closes the viewer and returns to the originating feed position.
+- Every **Save copy** tap creates another independent app-managed copy; Saved items
+  remain local and use the same viewer. Saved-copy removal is not implemented.
+- Viewer playback is limited to the current foreground page; MP4 starts muted and
+  exposes play/pause and mute/unmute controls. Back returns to the originating feed.
 - Manage folders supports add, refresh, access recovery, and confirmed **Remove
   from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
   saved read grant; it never alters or deletes original media.
 - Room metadata, direct-child SAF scanning, refresh/resume reconciliation, and
   unavailable-folder retention/retry.
-- Persistent light/dark appearance. No runtime network, broad storage permissions,
+- Persistent Light/Dark appearance. No runtime network, broad storage permissions,
   accounts, or telemetry.
 
-**Still not implemented:** independent Saved copies, custom communities, comments,
-real votes, and production release/signing. Save copy remains visibly disabled.
+**Unverified UI follow-up in the current branch:** searchable local-media/community
+  metadata, revised feed/video controls, a searchable community directory, updated
+  Settings and folder-management screens, and header/drawer-only navigation (no bottom
+  bar or rail). Verify this source with CI before treating it as passing.
+
+**Still not implemented:** custom communities, comments, real votes, Saved-copy removal,
+and production release/signing.
 
 ## Verification and phone evidence
 
-[Phase 4 Android CI build and APK artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363)
-passed **53 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
+[Latest verified viewer-motion CI build](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
+passed **60 tests (0 failures/errors/skips), lint, schema consistency, debug APK build,
 and packaged APK privacy checks**. The APK has no network or broad storage/media
-permissions.
+permissions. This predates the unverified UI follow-up above.
 
 The user reports from the Phase 3 phone check that photos appear in Home, selecting
 a folder shows only its media, and videos play. GIF animation, sound/mute behavior,

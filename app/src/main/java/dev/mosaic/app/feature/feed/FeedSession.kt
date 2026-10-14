@@ -4,6 +4,8 @@ import dev.mosaic.app.core.model.IndexedMedia
 import dev.mosaic.app.core.model.MediaKind
 import java.nio.ByteBuffer
 import java.security.MessageDigest
+import java.text.DateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
 
@@ -24,6 +26,22 @@ data class FeedSnapshot(
     val folderId: String?,
     val epoch: Long,
 )
+
+/** Search only the already-indexed names, folder labels, MIME types and media kinds. */
+fun filterFeedPosts(posts: List<FeedPost>, query: String): List<FeedPost> {
+    val needle = query.trim()
+    if (needle.isEmpty()) return posts
+    return posts.filter { post ->
+        val document = post.media.document
+        val kindLabel = when (document.kind) {
+            MediaKind.Image -> "photo image"
+            MediaKind.Gif -> "gif animation"
+            MediaKind.Video -> "video mp4"
+        }
+        listOf(document.fullName, mediaTitle(document.fullName), document.mimeType, kindLabel, post.media.folderLabel)
+            .any { it.contains(needle, ignoreCase = true) }
+    }
+}
 
 /** Copy the exact visible order before any later refresh or sort emission can replace it. */
 fun FeedState.toSnapshot() = FeedSnapshot(posts.toList(), sort, folderId, epoch)
@@ -64,6 +82,18 @@ fun mediaTitle(fullName: String): String {
     val extension = fullName.substringAfterLast('.', "").lowercase(Locale.ROOT)
     val recognized = setOf("jpg", "jpeg", "png", "gif", "webp", "bmp", "heic", "heif", "avif", "mp4", "tif", "tiff", "svg")
     return if (extension in recognized && fullName.lastIndexOf('.') > 0) fullName.substringBeforeLast('.') else fullName
+}
+
+fun relativeMediaTime(timestampMillis: Long?, nowMillis: Long = System.currentTimeMillis()): String? {
+    if (timestampMillis == null || timestampMillis <= 0L) return null
+    val elapsed = (nowMillis - timestampMillis).coerceAtLeast(0L)
+    return when {
+        elapsed < 60_000L -> "just now"
+        elapsed < 60 * 60_000L -> "${elapsed / 60_000L}m ago"
+        elapsed < 24 * 60 * 60_000L -> "${elapsed / (60 * 60_000L)}h ago"
+        elapsed < 7 * 24 * 60 * 60_000L -> "${elapsed / (24 * 60 * 60_000L)}d ago"
+        else -> DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(timestampMillis))
+    }
 }
 
 /** Pick at most one visible animation/player; excludes zero-overlap/precomposed items. */

@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         }
         val library = ViewModelProvider(this, factory)[LibraryViewModel::class.java]
         setContent {
-            val theme = preferences.theme.collectAsStateWithLifecycle(ThemeMode.Light).value
+            val theme = preferences.theme.collectAsStateWithLifecycle(ThemeMode.Dark).value
             SideEffect {
                 val barStyle = if (theme == ThemeMode.Dark) {
                     SystemBarStyle.dark(Color.TRANSPARENT)

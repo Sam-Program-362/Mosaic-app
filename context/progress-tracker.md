@@ -18,6 +18,19 @@ remains pending. User-reported Phase 3 evidence confirms Home photos, folder iso
 and video playback; GIF, mute, offscreen/background playback, viewer motion/paging and
 removal are not yet confirmed on-device. This is not a complete first release.
 
+## Drive-reference UI adaptation follow-up — source in progress
+After the verified viewer commit `b916c31`, the current session branch has a
+UI-adaptation slice awaiting CI: Dark fallback, indexed-metadata search and relative-time helpers,
+feed-card/video-control updates, a searchable local community directory, Settings and
+folder-management redesign, and top-header/drawer routing only. The explicit user
+constraint is honored in source: no bottom navigation and no navigation rail. Added
+Compose tests for Settings/directory and unit tests for search/time buckets. The Drive
+ZIP was inspected; it remains untracked and must not be committed. No Android compile,
+unit/UI test, lint, APK, or phone result exists for this follow-up yet. `git diff --check`
+passes. Local Gradle is blocked because this sandbox has no Java; the authorized next
+verification path is the existing GitHub Actions workflow after committing/pushing only
+to `arena/b0f3e3cf-mosaic-app`. This remains unverified source, not a passing release.
+
 ## Repository inspection and Phase 1
 The initial checkout contained README, ignore rules and a release workflow only.
 Phase 1 added the Android/Compose foundation, Gradle wrapper/version catalog,
@@ -140,8 +153,9 @@ Material 3 baseline, JDK 17, AGP 8.9.2 / Gradle 8.11.1; add Room 2.7.1 + Kotlin-
 KSP 2.1.20-1.0.32, lifecycle ViewModel and test-only Robolectric. Phase 3 adds Coil
 3.1.0 (Compose/GIF only, no network module), Media3 1.6.1 and Compose test tooling. Working Mosaic / `dev.mosaic.app`, min 26,
 compile/target 35 are still development defaults, not final public/release identity.
-Light default, explicit Light/Dark only. Unknown MIME values excluded rather than
-extension-guessed. Missing/nonpositive timestamps remain null for future sorting.
+Dark default (reference-inspired provisional UI choice), explicit Light/Dark only.
+Unknown MIME values excluded rather than extension-guessed. Missing/nonpositive timestamps
+remain null for future sorting.
 Saved-copy bytes live only in Mosaic's private files area; no source writes, recursive
 queries or runtime network permissions. Playback is composition/foreground/visibility
 scoped, never retained in the ViewModel.

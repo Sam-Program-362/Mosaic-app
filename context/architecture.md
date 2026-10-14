@@ -10,11 +10,15 @@ are provisional until product/release approval.
 Implemented layout:
 - `app/src/main/java/dev/mosaic/app/MainActivity.kt`: lifecycle-aware preference
   collection and activity/system-bar setup.
-- `ui/MosaicApp.kt`: small typed screen shell, drawer/menu, empty states, Settings.
+- `ui/MosaicApp.kt`: typed screen shell, top header and drawer/menu navigation only
+  (no bottom bar or navigation rail), searchable communities directory, local search,
+  empty states and Settings.
 - `ui/theme/`: centralized semantic colors and Material theme mapping.
-- `data/preferences/`: application-context Preferences DataStore; light/dark
-  theme preference persists. No system theme mode. Fresh/unknown values default to Light.
-- Version catalog centralizes dependencies. Gradle wrapper checked in.
+- `data/preferences/`: application-context Preferences DataStore; Light/Dark theme
+  preference persists. No system theme mode. Fresh/unknown values now default to Dark
+  to follow the inspected reference; this UI adaptation is awaiting CI verification.
+- Version catalog centralizes dependencies. Gradle wrapper checked in; Material icon
+  extended artifact is included for the new local playback/theme controls.
 
 The shell's destination survives activity recreation through `rememberSaveable`.
 Back closes the drawer or returns non-Home screens to Home; Home delegates to Android.

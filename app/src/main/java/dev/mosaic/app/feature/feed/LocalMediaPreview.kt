@@ -3,11 +3,18 @@ package dev.mosaic.app.feature.feed
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
@@ -150,17 +157,36 @@ private fun VideoPreview(uri: String, viewer: Boolean, onRatio: (Float) -> Unit)
                 color = colors.textPrimary)
         }
         if (!failed) {
-            Row(Modifier.align(if (viewer) Alignment.CenterEnd else Alignment.BottomEnd)
-                .background(colors.surfaceRaised)) {
-                TextButton(onClick = { paused = !paused; player.playWhenReady = !paused }) {
-                    Text(if (paused) "Play" else "Pause")
+            Row(
+                Modifier.align(if (viewer) Alignment.CenterEnd else Alignment.BottomEnd)
+                    .padding(if (viewer) 16.dp else 12.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.62f)),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = { paused = !paused; player.playWhenReady = !paused },
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        imageVector = if (paused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
+                        contentDescription = if (paused) "Play video" else "Pause video",
+                        tint = Color.White,
+                    )
                 }
-                TextButton(onClick = {
-                    muted = !muted
-                    player.volume = if (muted) 0f else 1f
-                    player.setAudioAttributes(audioAttributes, !muted)
-                }) {
-                    Text(if (muted) "Unmute" else "Mute")
+                IconButton(
+                    onClick = {
+                        muted = !muted
+                        player.volume = if (muted) 0f else 1f
+                        player.setAudioAttributes(audioAttributes, !muted)
+                    },
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Icon(
+                        imageVector = if (muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+                        contentDescription = if (muted) "Unmute video" else "Mute video",
+                        tint = Color.White,
+                    )
                 }
             }
         }

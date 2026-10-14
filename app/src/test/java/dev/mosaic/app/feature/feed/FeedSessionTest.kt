@@ -46,6 +46,32 @@ class FeedSessionTest {
         val updated = buildFeed(media + item("a", "extra"), null, FeedSort.Random, 42)
         assertEquals(first, updated.filter { it.media.document.documentId != "extra" })
     }
+    @Test fun localSearchFiltersIndexedNamesFoldersAndMediaKindsCaseInsensitively() {
+        val posts = buildFeed(
+            listOf(
+                item("travel", "photo", "Mountain Lake.jpg"),
+                item("clips", "video", "Launch.mp4", kind = MediaKind.Video),
+            ),
+            null,
+            FeedSort.Newest,
+            42,
+        )
+
+        assertEquals("photo", filterFeedPosts(posts, "mountain").single().media.document.documentId)
+        assertEquals("video", filterFeedPosts(posts, "CLIP").single().media.document.documentId)
+        assertEquals("video", filterFeedPosts(posts, "mp4").single().media.document.documentId)
+        assertEquals(posts, filterFeedPosts(posts, "  "))
+    }
+
+    @Test fun relativeMediaTimeUsesCompactBucketsAndTreatsMissingOrFutureDatesSafely() {
+        val now = 10_000_000L
+        assertNull(relativeMediaTime(null, now))
+        assertEquals("just now", relativeMediaTime(now + 5_000L, now))
+        assertEquals("1m ago", relativeMediaTime(now - 90_000L, now))
+        assertEquals("1h ago", relativeMediaTime(now - 90 * 60_000L, now))
+        assertEquals("1d ago", relativeMediaTime(now - 36 * 60 * 60_000L, now))
+    }
+
     @Test fun folderArtworkUsesFirstCaseInsensitiveStaticImageNotGifOrVideo() {
         val media = listOf(item("a", "gif", "0.gif", kind = MediaKind.Gif),
             item("a", "last", "z.jpg"), item("a", "first", "A.jpg"), item("b", "video", kind = MediaKind.Video))
