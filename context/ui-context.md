@@ -69,7 +69,7 @@ at `a11fde2`: 74 tests, lint, schema consistency, packaged privacy and debug bui
 The source has not yet been checked on the user's phone; the original observation remains
 user-reported, not an agent-run test.
 
-## Video transition correctness/performance correction — source implemented, verification pending
+## Video transition correctness/performance correction — CI verified, device acceptance pending
 The current Home anchor is the greatest viewport overlap across photos/GIFs/videos;
 playback eligibility is separate, requires the anchor itself to be animated, and uses a
 50% visibility threshold. Feed and frozen-viewer candidates now carry true ordered-snapshot
@@ -85,8 +85,11 @@ spinner and show a local file/format error. Debug-only `MosaicMedia` logs record
 submission/I/O start/completion/error, activation, buffering/ready, first-frame latency and
 player errors (no URI/path or per-frame output). New tests cover dominant-photo/partial
 visibility selection, mixed windows, rank/order reconciliation, active-source protection,
-poster/error semantics, manager source handoff and cache keys. GitHub CI/device behavior
-and before/after timing for this latest correction remain unverified.
+poster/error semantics, manager source handoff and cache keys. The latest correction passed
+GitHub CI run [38574662523](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38574662523)
+at `c8dbd55`: 82 tests, lint, schema consistency, packaged privacy and debug APK build;
+artifact `mosaic-debug-and-reports` is ID `11898528123`. Physical-device scroll/playback
+and before/after timing remain unverified; do not infer smoother transitions from CI.
 
 ## User-provided frontend reference and Phase 4 motion
 The 2026-10-14 screenshots are design inspiration, not a pixel-perfect web-to-Android

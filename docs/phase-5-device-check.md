@@ -1,10 +1,11 @@
 # Phase 5 phone check — independent Saved copies
 
-Use the verified debug APK from [CI run 38556928293](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38556928293)
-on `arena/b0f3e3cf-mosaic-app`; it includes Room v2, Saved, viewer motion, the
-reference-inspired UI/search, and the video/preload/warm-resume follow-up. The workflow
-passed 74 tests, lint, schema consistency, packaged privacy checks, and the debug APK
-build. Download the `mosaic-debug-and-reports` artifact (ID `11890760322`).
+Use the latest corrected debug APK from [CI run 38574662523](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38574662523)
+on `arena/b0f3e3cf-mosaic-app` at `c8dbd55`; it includes Room v2, Saved, viewer motion,
+the reference-inspired UI/search, prior playback controls, and the video-transition
+correctness/performance correction. The workflow passed 82 tests, lint, schema consistency,
+packaged privacy checks, and the debug APK build. Download the `mosaic-debug-and-reports`
+artifact (ID `11898528123`). The older APK artifact `11890760322` predates this correction.
 This is a test build, not a release. No physical-device acceptance has been recorded yet.
 Do not uninstall the older build just to install this one; the cached development
 signing key should allow an in-place update and preserve folder selections. If Android reports a signing
@@ -46,9 +47,9 @@ Run these checks on the verified debug APK linked above; CI does not replace the
 
 ## Transition timing and debug diagnostics — new source correction, pending verification
 
-The latest source correction is not covered by the older APK linked at the top. Once its
-branch CI run produces a new debug APK, use that artifact for this section. Debug builds
-emit the `MosaicMedia` tag only; identifiers are hashed and local URIs/paths are omitted.
+The latest source correction is included in the APK linked above; use that artifact for
+this section. CI does not replace device verification. Debug builds emit the `MosaicMedia`
+tag only; identifiers are hashed and local URIs/paths are omitted.
 With USB debugging on a test phone, capture:
 
 ```sh

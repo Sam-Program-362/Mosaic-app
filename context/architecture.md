@@ -134,7 +134,7 @@ service, network access or source writes were introduced. The prior implementati
 CI run 38556928293 at `a11fde2` (74 tests, lint, schema consistency, packaged privacy and
 debug build; artifact `11890760322`). That run predates the correctness/performance pass below.
 
-## Video transition correctness/performance pass — source implemented; verification pending
+## Video transition correctness/performance pass — CI verified; device acceptance pending
 The current source chooses the dominant visible media item by viewport overlap across
 photos, GIFs and videos; playback is a separate rule and only activates the dominant
 animated item after a 50% visibility threshold. Candidate ranking/current indices use
@@ -152,10 +152,11 @@ Debug-only `MosaicMedia` diagnostics log anchor/candidate positions, submission,
 I/O start, preload completion/error, playback handoff, buffering/ready, activation-to-frame
 latency and player errors without local paths or per-frame output. Tests cover viewport and
 mixed-window cases, position/rank updates, protected active entries, thumbnail/error state,
-manager source handoff and cache keys. The new manager test uses a local-style content URI but
+manager source handoff and cache keys. The manager test uses a local-style content URI but
 does not decode/play a representative MP4. No schema, permission, network, source-media,
-copy or player-count scope changed. CI, physical-device scrolling/playback and before/after
-startup measurement have not yet been verified for this pass.
+copy or player-count scope changed. CI run 38574662523 at `c8dbd55` passed 82 tests, lint,
+schema consistency, packaged privacy checks and debug APK build (artifact `11898528123`).
+Physical-device scrolling/playback and before/after startup measurement remain unverified.
 
 ## Remaining planned architecture
 Room already stores folder/access status, source media metadata and Saved-copy
@@ -187,4 +188,4 @@ static image by case-insensitive filename; neutral initials when none exists.
 Offline packaging guard: remove inherited INTERNET/ACCESS_NETWORK_STATE permissions
 with manifest tools:node="remove". CI checks built APK, not just source XML. Muted
 previews don't request audio focus; unmuted video enables Media3-managed focus.
-Detach PlayerView before releasing player on disposal.
+Detach the TextureView from the player before releasing it on disposal.

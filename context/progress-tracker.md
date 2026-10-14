@@ -5,9 +5,10 @@ Phase 5 follow-up — bounded video/image preloading, player controls and warm-r
 retention in progress. Date: 2026-10-14. A new video-transition correctness/performance
 pass now edits viewport anchoring, true-position ranking/reconciliation, active-source
 lifecycle safety, first-frame poster/error UI and debug diagnostics; focused tests have
-been added. This latest pass has not yet been run through CI or on a device. Local Gradle
-and physical-device tooling are unavailable. Prior passing CI is recorded below and does
-not validate the latest code. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
+been added. This latest pass passed GitHub CI run 38574662523 at `c8dbd55` (82 tests,
+lint, schema/privacy checks and debug APK); physical-device behavior remains unverified.
+Local Gradle and physical-device tooling are unavailable. The first CI attempt failed
+compile and was corrected before this green run. Phase 4 baseline CI run 38463132363 passed 53 tests, lint, schema,
 APK privacy and debug build at commit 02085fb. Phase 5 CI iterations 38466413293 and
 38467526012 exposed an unattached Robolectric provider NPE; run 38467045590 caught a
 provider-stub import issue. Those were fixed. Green run 38468360143 passed 59 tests,
@@ -48,12 +49,15 @@ evidence, not an agent-run test. This is not a complete first release.
 - `git diff --check` passed before documentation synchronization. Local
   `./gradlew testDebugUnitTest`, `./gradlew lint` and `./gradlew assembleDebug` each
   exited before Gradle startup: `JAVA_HOME` is unset and no `java` executable exists.
-  GitHub run `38574064275` on `3769266` failed Kotlin compilation: the TextureView adapter
-  needed its aspect ratio passed in, and a `ConcurrentHashMap` membership check needed an
-  explicit `containsKey`. Both source errors were corrected locally; the fix is not yet
-  pushed/reverified. No before/after device startup measurement or playback/scroll evidence
-  is available. Next steps are rerun CI, then device test if hardware becomes available.
-  Do not claim the sticky transition fixed.
+  GitHub run `38574064275` on `3769266` first failed Kotlin compilation (the TextureView
+  adapter aspect-ratio parameter and an explicit `ConcurrentHashMap.containsKey` were fixed).
+  The corrected source at `c8dbd55` passed run
+  [38574662523](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38574662523):
+  82 tests (0 failures/errors/skips), `testDebugUnitTest`, `lint`, `assembleDebug`, packaged
+  privacy checks and Room schema check all passed. Artifact `mosaic-debug-and-reports` is
+  ID `11898528123`. Local Gradle commands still cannot start without Java. No before/after
+  device startup measurement, MP4 decode run, or real scrolling/playback evidence is
+  available. Device acceptance remains pending; do not claim the sticky transition fixed.
 
 ## Earlier video preload, controls and warm-resume follow-up — CI verified, phone pending
 Prior source used a bounded current/neighbor media window, Coil local image/video-frame prefetch,
