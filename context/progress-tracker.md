@@ -18,9 +18,12 @@ remained unverified. The latest portrait/landscape fast-scroll follow-up passed 
 and crash evidence remain unavailable. Earlier phase/test/build history is retained below.
 
 ## New fast-scroll regression report — CI verified, device comparison pending
-- User reports reduced smoothness and unexpected shifts in the photo-only “2D Images” feed,
-  plus multiple “Loading video...” overlays while scrolling “Anime Vid.” No exact offset or
-  device logs were supplied; the mentioned 75-second recording is absent from the workspace.
+- In a new retest, the user reports the issue remains and the feed feels less consistent:
+  photo-only “2D Images” still shifts/feels uneven, while “Anime Vid” still shows multiple
+  “Loading video...” overlays during fast scrolling. The user reviewed a 75-second recording,
+  but no recording file, exact offset, or device logs are available in the workspace. This is
+  user-reported behavior, not an A/B result; it is not clear that the paired diagnostic APKs
+  were used.
 - Source-history comparison: `7a51b28` is the nearest pre-neighbor-preloading feed checkpoint,
   but no source revision is independently confirmed as “last known smooth.” In that checkpoint
   `FeedScreen` only stored preview bounds for animated media. `3c6e694` began storing bounds
@@ -46,8 +49,9 @@ and crash evidence remain unavailable. Earlier phase/test/build history is retai
   photo-only and mixed feeds. Final CI run [38595248869](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38595248869)
   at `742caf3` passed 88 tests in both preload modes, lint, both APK builds, generated schema,
   and privacy checks for both APKs; artifact `mosaic-debug-and-reports` is ID `11909443268`.
-  No physical-device comparison or cause is established yet. Do not implement a
-  layout/preloader fix before comparing enabled and disabled device traces.
+  The user reports the symptom still occurs on-device, but no controlled on/off comparison,
+  raw log or root cause is established. Do not implement a layout/preloader fix before comparing
+  enabled and disabled device traces.
 
 ## Video transition correctness/performance correction — CI verified, device pending
 - Home viewport anchoring uses the largest overlap across all media. Playback requires an

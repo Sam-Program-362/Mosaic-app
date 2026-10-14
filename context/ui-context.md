@@ -129,10 +129,12 @@ and managed-source handoff; they are not device flings or MP4 decoding. CI run
 `11905094822`). Device reproduction and crash evidence remain pending; no crash cause or
 resolution is claimed. See `docs/phase-5-device-check.md` for the targeted sequence.
 
-## New reported photo-feed smoothness and video-loading concern — not yet device-measured
-The user now reports that photo-only “2D Images” scrolling feels less smooth and shifts
-unexpectedly, while “Anime Vid” can show multiple “Loading video...” overlays during a fast
-scroll. No exact offsets or recording are present in the workspace. A build-time A/B disables
+## New reported photo-feed smoothness and video-loading concern — user retest unresolved
+In a new retest of the latest implementation, the user reports that photo-only “2D Images”
+scrolling still feels less smooth and shifts unexpectedly, while “Anime Vid” still shows multiple
+“Loading video...” overlays during fast scrolling. The user reviewed a 75-second recording,
+but the file, exact offsets and device logs were not supplied to the workspace. This is user
+report, not an agent-reviewed recording or a measured preload A/B result. A build-time A/B disables
 nearby video preloading and offscreen composed-card poster decoding while retaining static-photo
 prefetch and the currently displayed video poster/active player. Debug records capture list
 anchor/offset, visible row/media dimensions,
