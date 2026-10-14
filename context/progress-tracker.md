@@ -1,6 +1,6 @@
 # Progress tracker
 
-## Current phase — focused production change, CI verified, device pending
+## Current phase — focused production change, CI verified; limited user phone report, targeted checks open
 The 2026-10-15 user request supersedes the earlier disabled-by-default/diagnostic video-preload
 approach. Production neighboring-video buffering, offscreen video-frame prefetch, speculative
 offscreen-video poster decoding, and the preload manager/toggle have been removed. Bounded static-
@@ -9,26 +9,33 @@ full available width and decoded/oriented intrinsic ratio for natural height, wi
 unknown/invalid-dimension fallback and a first-valid-ratio lock. The dedicated video/GIF frame
 policy, playback controls/interactions, viewer, and first-rendered-frame overlay correction remain.
 
-Verified commit `a4264dd` passed CI run
+Verified code commit `a4264dd9c51181eff91de436fd7d7651cd48acea` passed CI run
 [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests,
 0 failures/errors/skips; unit tests, lint, debug APK build, packaged-permission checks, Room schema
 consistency, and the production video-preload source guard passed. Artifact `mosaic-debug-and-reports`
-(ID `11923577241`) contains `app-debug.apk`, `app-debug.sha256`, and reports. The sandbox cannot
-fetch GitHub's artifact-storage host, so use the run's Artifacts section or [download the artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241). An earlier run found an LRU cache-miss regression; the fix is included in the verified
-commit. No physical-device run has been performed.
+(ID `11923577241`) contains `app-debug.apk`, `app-debug.sha256`, and reports. The artifact remains
+available from the [run's artifact page](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241); the sandbox cannot fetch GitHub's artifact-storage host. An earlier run found an LRU cache-miss regression; the fix is included in this verified
+commit.
 
-Local `./gradlew testDebugUnitTest lint assembleDebug --stacktrace` exits before Gradle startup
-because `JAVA_HOME` is unset and no `java` executable exists; hosted CI supplied the full build
-verification. Physical-device photo/video/position testing remains pending. The user-reported crash
-is not claimed fixed by removing preloading. `google_drive/` is untracked user data and remains
-untouched/unstaged.
+The user reported on 2026-10-15, exactly: `"Scrolling is okay, didn't crash. Basically it's okey."`
+Interpret narrowly: scrolling was acceptable and no crash happened during that user test; the user
+considers it okay enough to proceed. This is user-reported phone evidence, not an agent-run test.
+The report gives no APK/commit, device/Android/refresh details, exact sequence, duration, orientations,
+repeat count, offsets, logcat, or crash trace. It is not full device acceptance, does not prove the
+cause of the earlier crash, and does not establish that the crash is fixed. The right status is
+limited scroll feedback received; photo-geometry, mixed-video position/playback, repeated-scroll and
+other feature checks remain open—not “no phone test occurred” and not “acceptance complete.”
 
-User-reported evidence remains: preload-enabled scrolling felt sticky and the app crashed; with
-preloading disabled, photo scrolling felt smooth and video loading was fast enough. A separate
-video-loading position shift was previously reported. These reports are not log-correlated cause
-or crash-resolution proof. Do not claim the crash is fixed because preloading was removed. The old
-geometry/A-B CI result at `38607618253` tested the previous two-mode source; do not use it as
-verification for this change. Historical implementation and CI records follow.
+Local `./gradlew testDebugUnitTest lint assembleDebug --stacktrace` cannot start because `JAVA_HOME`
+is unset and no `java` executable exists; hosted CI supplied code/build verification. `google_drive/`
+is untracked user data and must remain untouched/unstaged. See [the current-session handoff](../docs/session-handoff.md)
+for repository state, remaining first-release work, a proposed next phase, and exact startup steps.
+
+Earlier user evidence remains: preload-enabled scrolling felt sticky and the app crashed; with
+preloading disabled, photo scrolling felt smoother and video loading was fast enough. A separate
+video-loading position shift was reported. These are not log-correlated cause or crash-resolution
+proof. The old geometry/A-B CI result at `38607618253` tested the previous two-mode source; do not use
+it as verification for this change. Historical implementation and CI records follow.
 
 ## Historical controlled preload A/B build — CI verified
 - Build property `-PmosaicVideoPreloading=false` bypasses the Media3 neighboring-video
@@ -371,17 +378,30 @@ scoped, never retained in the ViewModel.
 - Run 38454957427 was superseded/cancelled by the static-decoder hardening push;
   no failed test/build result is claimed for that cancelled run.
 - Final doc-only commit does not change verified source; no merge/release created.
-  See docs/phase-3-device-check.md for the historic feed check; Phase 4 phone acceptance remains pending.
+  At that historical checkpoint, Phase 4 phone acceptance remained pending. See
+  `docs/phase-3-device-check.md` for the historic feed check; the later limited
+  2026-10-15 scroll report is recorded in the current section above.
 
 ## Still unimplemented and next acceptance
-Custom community membership/header artwork and release-ready branding/SDK/signing
-policy remain. Phase 5 Save-copy code and Room v2 migration passed CI run 38469093930;
-the generated schema is captured locally, and the current viewer-motion follow-up still
-needs verification. Phone acceptance is separate: use `docs/phase-4-device-check.md`
-for viewer expansion/close, paging, return-position, playback-stop and removal, then
-verify Save from feed and viewer, repeated independent copies, app restart, and Saved
-availability after source deletion/access loss using `docs/phase-5-device-check.md`.
-Never equate source/CI success with phone acceptance.
+Custom community membership is the clearest remaining first-release feature; release-ready
+branding/package/SDK/signing policy and custom-community naming/membership/artwork decisions
+also remain unresolved. Saved-copy removal is explicitly out of scope. Phase 5 Save-copy and
+Room v2 migration, viewer, and focused photo-geometry changes are CI-verified, but their
+hardware/provider behavior is not thereby accepted.
+
+The latest user phone report (`"Scrolling is okay, didn't crash. Basically it's okey."`,
+2026-10-15) is limited user evidence of acceptable scrolling/no crash during that test; it
+is not a build-identified or exhaustive acceptance run and does not prove crash resolution.
+Use `docs/phase-5-device-check.md` for current photo geometry, video activation, position and
+crash-evidence procedure; use `docs/phase-4-device-check.md` for the historical viewer/folder
+removal checklist and the Saved-copy flows for repeated copies, restart, source deletion/access
+loss, and failure cleanup. GIF, audio focus/mute, background/offscreen playback, refreshed UI,
+viewer restoration and provider/permission edge cases remain to be exercised on-device.
+
+Recommended next engineering slice is a local custom-communities MVP, after the unresolved
+membership/naming policies are settled. This is a proposal only; see the [fresh-session handoff](../docs/session-handoff.md)
+for scope, dependencies, acceptance criteria, tests and startup instructions. Do not treat CI as
+phone acceptance or claim the earlier crash is fixed.
 
 ## Open decisions
 Final branding/package/release SDK policy; community rename/duplicate-label policy,

@@ -74,7 +74,7 @@ preview's bounds, not merely card visibility; menus/drawer/background disable pl
 All functional playback controls are distinct from decorative, noninteractive counts.
 Phase 5 adds an enabled Save copy action in feed cards and viewer chrome.
 
-## 2026-10-15 focused feed-media geometry and preload removal — CI verified, device pending
+## 2026-10-15 focused feed-media geometry and preload removal — CI verified; limited user phone report, targeted checks open
 The former experimental build toggle and video-preload manager/lifecycle are deleted, not kept
 as an opt-in. Nearby static-photo prefetch remains active; inactive video posters are visible-
 only and player preparation remains activation-only. Feed photo dimensions are independent of
@@ -92,8 +92,12 @@ first-frame fallback behavior, playback controls, and photo/scroll-position stab
 [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
 (0 failures/errors/skips), lint, debug APK build, packaged-permission privacy checks, Room schema
 consistency, and the production source guard. Artifact `mosaic-debug-and-reports` ID `11923577241`
-contains the APK/checksum; physical-device acceptance remains pending. No crash-resolution claim
-is made.
+contains the APK/checksum. The user subsequently reported on 2026-10-15:
+`"Scrolling is okay, didn't crash. Basically it's okey."` This is limited user evidence of acceptable
+scrolling and no crash during that test; the user considers it okay enough to proceed. The
+APK/device/sequence are not identified. Targeted geometry, video-position, repeat-scroll and broader
+feature acceptance remain open. This does not prove the earlier crash's cause or resolution. See
+the [fresh-session handoff](../docs/session-handoff.md) for limits and next steps.
 
 ## Phase 4 implementation
 `feature/feed/MediaViewer.kt` receives a copied `FeedSnapshot` and tapped item index;
@@ -270,8 +274,10 @@ through a portrait-to-landscape handoff. CI run
 [38586848533](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38586848533) at
 `ce78b37` passed 87 tests, lint, schema consistency, packaged privacy and debug APK build
 (artifact `11905094822`). This is pure geometry/manager verification, not a device fling or
-MP4 decode. No physical-device sequence or crash evidence is available; no crash cause or
-resolution is claimed. Exact targeted sweep and capture instructions are in
+MP4 decode. At the time of that historical run, no physical-device sequence or crash evidence
+was available; no crash cause or resolution was claimed. The later 2026-10-15 limited user scroll
+report is recorded in the current section above and does not retroactively validate this run or
+prove crash resolution. Exact targeted sweep and capture instructions are in
 `docs/phase-5-device-check.md`.
 
 ## Remaining planned architecture

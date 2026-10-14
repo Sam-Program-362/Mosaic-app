@@ -79,5 +79,12 @@ The implementation at code commit `a4264dd` passed GitHub CI run `38624705844`: 
 (0 failures/errors/skips), lint, debug APK, packaged privacy and Room schema checks, plus the
 production-preloader source guard. Artifact `mosaic-debug-and-reports` ID `11923577241` contains
 the APK and checksum. The sandbox cannot copy the artifact from GitHub's storage host, so provide
-the user the workflow artifact link. Physical-device acceptance remains pending; do not claim the
-reported crash fixed.
+the user the workflow artifact link.
+
+The user then reported on 2026-10-15: `"Scrolling is okay, didn't crash. Basically it's okey."`
+This is limited user phone evidence: acceptable scrolling and no crash during that test; the user
+considers it okay enough to proceed. It is not agent-run or exhaustive, and the tested APK, device,
+sequence, and logs were not supplied. Targeted geometry/video/position and repeated-scroll checks
+remain open. Do not say no phone feedback has occurred, do not claim full device acceptance, and do
+not claim the historical crash is fixed. See the [fresh-session handoff](../docs/session-handoff.md)
+for current status and the proposed next slice.

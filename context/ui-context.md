@@ -1,6 +1,6 @@
 # UI context
 
-## Current 2026-10-15 focused media change — CI verified, phone pending
+## Current 2026-10-15 focused media change — CI verified; limited user phone report, targeted acceptance open
 Feed photos now use full available media width and their decoded/oriented intrinsic ratio for height;
 portrait, landscape, square, and panoramic ratios are not cropped to the video frame or arbitrarily
 clamped. Unknown/invalid dimensions use a safe temporary placeholder; the first valid ratio is
@@ -10,15 +10,21 @@ offscreen video-frame prefetch, and speculative offscreen-video poster decode ar
 Visible video posters and player preparation on activation remain; controls, viewer, dedicated
 video frame policy, and the first-rendered-frame overlay correction are retained.
 
-The user's prior report (preload-enabled scrolling sticky/crash; preload-disabled photos smooth and
-video loading fast enough) remains user-observed only. The prior video-loading position shift has
-not been rechecked against this focused change. Do not claim crash resolution from preloader removal.
+The user's prior report (preload-enabled scrolling sticky/crash; preload-disabled photos smoother
+and video loading fast enough) remains user-observed only. On 2026-10-15 the user added, exactly:
+`"Scrolling is okay, didn't crash. Basically it's okey."` Treat that only as acceptable scrolling
+and no crash during that user test; the user considers it acceptable enough to proceed. No APK,
+device, sequence, duration, orientation, repetition count, or log evidence was identified. The prior
+video-loading position shift has not been rechecked against this focused change. Do not claim crash
+resolution from preloader removal.
+
 CI run [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at
 code commit `a4264dd` passed 96 tests (0 failures/errors/skips), lint, debug APK build, packaged
 privacy checks, Room schema consistency, and the production source guard. The debug APK and
 checksum are in `mosaic-debug-and-reports` artifact `11923577241` ([download](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241)).
-Phone acceptance remains pending; no crash-resolution claim is made. The single-APK phone
-procedure is in `docs/phase-5-device-check.md`.
+The scroll report is limited user evidence, not an agent-run or exhaustive acceptance test; geometry,
+video/position and repeated-scroll acceptance remain open. See the [fresh-session handoff](../docs/session-handoff.md)
+and the single-APK phone procedure in `docs/phase-5-device-check.md`.
 
 ## Implemented shell and Phase 3 feeds
 Home shows compact full-width media post cards instead of the indexing-only summary.
@@ -186,8 +192,8 @@ tracked-schema consistency, packaged privacy and debug APK build. The exact gene
 Room v2 schema was recovered from four CI annotation chunks (6,024 bytes; hash
 `9c5465636830273745be40f054484124`) and committed to source. CI run 38511038772 passed
 60 tests, lint, schema, packaged privacy and debug build with the final viewer-motion
-change. No pixel-match, physical paging, provider permission-release, hardware-codec or
-Phase 5 device-acceptance claim.
+change. Those CI results did not establish pixel-match, physical paging, provider
+permission-release, hardware-codec or Phase 5 device acceptance.
 
 ## Remaining UI scope and Phase 5 verification
 Phase 5 source implements independent Save requests in feed and viewer, and a Saved feed
@@ -199,7 +205,9 @@ names/selects/reviews folder membership; custom artwork policy remains unresolve
 Local deterministic folder artwork uses first static image by case-insensitive name,
 with neutral initials otherwise. Existing no-folder, unavailable, decode/missing-media,
 and empty states remain. The combined Phase 5/viewer-motion CI run passed schema
-consistency and APK checks. Phase 4/5 phone acceptance remains pending.
+consistency and APK checks. At this historical checkpoint, Phase 4/5 phone acceptance had not
+been reported. The later limited 2026-10-15 scroll report is summarized at the top of this file;
+it does not verify these viewer, removal, or Saved-copy scenarios.
 
 ## Central semantic colors
 Defined in `ui/theme/MosaicTheme.kt`; values are starting points, not pixel-verified

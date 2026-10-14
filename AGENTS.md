@@ -8,6 +8,9 @@ Read these files in order before modifying the app:
 5. `context/ui-context.md`
 6. `context/progress-tracker.md`
 
+After these six files, read the [current session handoff](docs/session-handoff.md) before
+starting work. The handoff supplements, and never replaces or reorders, this required list.
+
 Keep work incremental. Update the progress tracker after meaningful implementation.
 Synchronize affected context files when scope, architecture, or defaults change.
 Never report planned or blocked verification as passing. Keep source media immutable,

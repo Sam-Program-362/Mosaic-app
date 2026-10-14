@@ -1,21 +1,30 @@
-# Phase 4 phone check — viewer and folder removal
+# Phase 4 phone check — viewer and folder removal (historical checklist)
 
-This is a development build, not a Play Store release. The user already confirmed
+This checklist records the Phase 4 device-acceptance focus; the original run cited below is
+not the current APK. For current source use the single development artifact linked from the
+[Phase 5 device check](phase-5-device-check.md), which records code commit `a4264dd`. The user's
+2026-10-15 report that scrolling was okay and did not crash does not verify viewer paging,
+scroll restoration, system bars, or folder removal. No result below should be read as passed
+unless the user separately reports it.
+
+This is a development build, not a Play Store release. The user previously confirmed
 that Phase 3 showed photos on Home, isolated selected-folder feeds correctly, and
-played videos. This check focuses on the full-screen viewer, its new open/close motion,
+played videos. This check focuses on the full-screen viewer, its open/close motion,
 and **Remove from Mosaic**. The user's supplied screenshots are visual inspiration, not
 a pixel-perfect web spec. CI cannot verify physical scrolling, provider permission
 release, hardware codecs, animation smoothness on the phone, or real-device playback/
 lifecycle behavior.
 
-## Install the test build
+## Install the current test build
 
-1. Use the verified current development build from [CI run 38511038772](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
-   on `arena/b0f3e3cf-mosaic-app`. It includes the final viewer motion and Phase 5
-   changes. The original Phase 4 baseline is [run 38463132363](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363);
-   it predates both and must not be used for these checks.
-2. Download the `mosaic-debug-and-reports` artifact from run 38511038772, extract the
-   ZIP, and open `app/build/outputs/apk/debug/app-debug.apk`.
+1. Download the current `mosaic-debug-and-reports` artifact from [CI run 38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844),
+   then open `app/build/outputs/apk/debug/app-debug.apk`. Verify it against the included checksum
+   and retain Mosaic's existing app data. See the [Phase 5 device guide](phase-5-device-check.md)
+   for the current artifact details and focused acceptance sequence.
+2. The older [run 38511038772](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38511038772)
+   was the build cited when this checklist was written; it is historical, not the current source.
+   The original Phase 4 baseline is [run 38463132363](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38463132363).
+   Neither is current acceptance evidence for code commit `a4264dd`.
 3. Ensure the phone has enough free **internal** storage for downloading, extracting,
    and installing. If Android reports a signature/package conflict with an older
    Phase 2 debug app, follow the installer's exact message before deciding whether

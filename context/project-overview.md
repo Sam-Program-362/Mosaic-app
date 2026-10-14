@@ -55,15 +55,21 @@ Saved removal, additional media formats, custom artwork controls, and tablet-spe
 multi-pane design are not required in v1.
 
 ## Status and decisions
+The chronology below preserves earlier implementation and verification history. Its older
+“device pending” wording is historical where superseded; the current, limited 2026-10-15
+phone report and remaining acceptance scope are summarized in the final current-status section
+and [fresh-session handoff](../docs/session-handoff.md).
+
 Phase 1/2 passed CI (30 tests, lint, schema and debug APK); the user confirmed
 folder records/access survived a phone restart. Phase 3 CI passed 45 tests, lint,
 schema, packaged privacy and debug APK checks. The user reports on-phone that photos
 display on Home, folder selection isolates that folder's media, and videos play.
 GIF, mute, offscreen/background playback behavior have not been confirmed on-device.
 Phase 4 implements a frozen-order full-screen viewer and confirmed folder removal;
-its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. Phase 4
-phone acceptance remains pending, and the user has now asked for a smoother grow/fade
-viewer transition based on supplied screenshots. Phase 5 Save copy/Saved-feed, Room v2
+its CI passed 53 tests, lint, schema, packaged privacy and debug APK checks. At that
+historical checkpoint, Phase 4 phone acceptance remained pending; the user then asked
+for a smoother grow/fade viewer transition based on supplied screenshots. Phase 5 Save
+copy/Saved-feed, Room v2
 migration and feed/viewer actions passed CI run 38469093930 (59 tests, lint, tracked
 schema consistency, packaged privacy and debug APK build). The exact KSP-generated v2
 schema is committed. Current viewer motion passed CI run 38511038772 at 1c4cd8d: 60
@@ -77,8 +83,8 @@ Reddit-inspired playback/seek controls and warm-resume media retention. CI run
 38556928293 at `a11fde2` passed 74 tests, lint, schema consistency, packaged privacy
 checks and debug APK build; artifact `mosaic-debug-and-reports` (ID `11890760322`) is
 available. The initial run's missing decoder import was fixed before this green run.
-Physical-device acceptance for this follow-up and the earlier refreshed UI/search remains
-pending. The 2026-10-14 correctness/performance pass changes viewport anchoring, actual
+At that historical checkpoint, physical-device acceptance for the follow-up and refreshed
+UI/search had not yet been reported. The 2026-10-14 correctness/performance pass changes viewport anchoring, actual
 snapshot-position ranking/reconciliation, active-source removal timing, first-frame poster
 fallback, error semantics and debug diagnostics. Final CI run 38575809505 at `50132da` passed
 83 tests, lint, schema consistency, packaged privacy checks and debug APK build (artifact
@@ -114,7 +120,7 @@ Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 r
 provisional. Public naming/trademark review, release SDK policy, folder-community
 renaming/duplicate label policy, and custom-community artwork remain unresolved.
 
-## 2026-10-15 focused production change — CI verified, device pending
+## 2026-10-15 focused production change — CI verified; limited user phone report, targeted checks open
 The user's new scope supersedes the former disabled-by-default/diagnostic video-preload
 approach. Production video-preload manager/lifecycle code, neighboring-video buffering,
 offscreen video-frame prefetch, speculative offscreen-video poster decoding, and the build toggle
@@ -128,12 +134,20 @@ Verified code commit `a4264dd` passed CI run
 [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
 (0 failures/errors/skips), lint, debug APK build, packaged-permission privacy checks, Room schema
 consistency, and the production source guard. The `mosaic-debug-and-reports` artifact (ID
-`11923577241`) includes the development APK and checksum; [download the workflow artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
-The sandbox cannot fetch the artifact-storage host into the workspace. Physical-device photo/video
-and feed-position acceptance remains pending.
+`11923577241`) includes the development APK and checksum; [download the workflow
+artifact](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
+The sandbox cannot fetch the artifact-storage host into the workspace. On 2026-10-15 the user
+reported: `"Scrolling is okay, didn't crash. Basically it's okey."` This is a narrow user phone
+observation: scrolling felt acceptable and no crash occurred during that test; the user considers
+that result okay enough to proceed. The report does not identify the tested APK/commit, device,
+sequence, duration, orientations, or logs. The correct status is limited user-reported scrolling
+feedback with the specific geometry/video/position/crash acceptance checks still open—not “no phone
+test occurred” and not complete device acceptance.
 
-The reported enabled-build stickiness/crash and disabled-build smooth photos/fast-enough video
+The earlier enabled-build stickiness/crash and disabled-build smoother photos/fast-enough video
 remain user-observed evidence, not log-correlated causality or proof that the crash is fixed. The
-previously reported video-loading position shift also remains unverified against this code. Local
-Gradle cannot start in this checkout because Java is unavailable; hosted CI supplied verification.
-`google_drive/` is user data and must not be staged or modified.
+previously reported video-loading position shift also remains unverified against this code. This
+new report does not prove the cause of the earlier crash or establish crash resolution. Local Gradle
+cannot start in this checkout because Java is unavailable; hosted CI supplied verification.
+`google_drive/` is user data and must not be staged or modified. See the [fresh-session handoff](../docs/session-handoff.md)
+for the next-phase recommendation, open device scenarios and startup instructions.

@@ -113,12 +113,17 @@ must not alter photo geometry or trigger unnecessary anchor corrections. Tests s
 position stability, no preloader invocation in production, normal photo/static-prefetch behavior,
 and visible video posters/activation. Keep work focused; no broad feed/player rewrite.
 
-The user-reported preload-enabled stickiness/crash and preload-disabled smooth scrolling/fast-
+The user-reported preload-enabled stickiness/crash and preload-disabled smoother scrolling/fast-
 enough video remain user evidence, not causality or proof of crash resolution. Earlier reported
 position shift at video activation remains separately unverified. Unit tests, lint, privacy/schema
 checks, APK build, CI, and physical-device acceptance are distinct; never claim phone or crash
 acceptance from CI alone. Code commit `a4264dd` passed CI run
 [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
 (0 failures/errors/skips), lint, debug APK, packaged permissions, Room schema, and source guard.
-The APK/checksum are in artifact `mosaic-debug-and-reports` ID `11923577241`. Physical-device and
-crash acceptance remain pending.
+The APK/checksum are in artifact `mosaic-debug-and-reports` ID `11923577241`.
+
+On 2026-10-15 the user reported, exactly: `"Scrolling is okay, didn't crash. Basically it's okey."`
+Record this as a limited user-observed scroll result—acceptable scrolling and no crash during that
+test, which the user considers acceptable enough to proceed. It is not an agent-run/exhaustive test;
+the artifact, device, sequence, and logs were not identified. Targeted device acceptance remains
+open and the prior crash is not resolved by inference. See the [fresh-session handoff](../docs/session-handoff.md).
