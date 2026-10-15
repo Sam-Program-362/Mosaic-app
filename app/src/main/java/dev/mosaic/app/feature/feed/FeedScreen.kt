@@ -244,7 +244,7 @@ fun FeedScreen(
         },
     )
     // The only feed programmatic scroll is an intentional new-session/sort/search reset.
-    LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) {
+    LaunchedEffect(state.folderId, state.customCommunityId, state.sort, state.epoch, searchQuery) {
         val before = listState.layoutInfo.visibleItemsInfo.firstOrNull()
         val trigger = "feed-session-key-change folder=${MediaDiagnostics.shortId(state.folderId ?: "home")} " +
             "sort=${state.sort.name} epoch=${state.epoch} searchActive=${searchQuery.isNotBlank()}"
@@ -294,12 +294,21 @@ fun FeedScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         val folder = folders.firstOrNull { it.folder.id == state.folderId }
-        val unavailable = if (state.folderId != null) folder?.folder?.status == FolderStatus.Unavailable
-            else folders.any { it.folder.status == FolderStatus.Unavailable }
+        val unavailable = when {
+            state.customCommunityId != null -> folders.any {
+                it.folder.id in state.memberFolderIds && it.folder.status == FolderStatus.Unavailable
+            }
+            state.folderId != null -> folder?.folder?.status == FolderStatus.Unavailable
+            else -> folders.any { it.folder.status == FolderStatus.Unavailable }
+        }
         if (unavailable) item(key = "unavailable") {
             Column(Modifier.padding(16.dp)) {
-                Text(if (state.folderId == null) "Some folders are unavailable and excluded from Home."
-                    else "This folder is unavailable. Its community and index have been retained.", color = colors.error)
+                Text(when {
+                    state.customCommunityId != null ->
+                        "Some member folders are unavailable and excluded for now. Their membership and index have been retained."
+                    state.folderId == null -> "Some folders are unavailable and excluded from Home."
+                    else -> "This folder is unavailable. Its community and index have been retained."
+                }, color = colors.error)
                 TextButton(onClick = onManageFolders) { Text("Manage / restore access") }
             }
         }

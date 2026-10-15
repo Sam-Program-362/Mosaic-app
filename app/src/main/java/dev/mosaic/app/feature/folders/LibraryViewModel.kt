@@ -2,6 +2,7 @@ package dev.mosaic.app.feature.folders
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.mosaic.app.core.model.CustomCommunity
 import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.IndexedMedia
@@ -14,6 +15,7 @@ import dev.mosaic.app.data.source.FolderAccessException
 import dev.mosaic.app.feature.feed.FeedSort
 import dev.mosaic.app.feature.feed.FeedState
 import dev.mosaic.app.feature.feed.buildFeed
+import dev.mosaic.app.feature.feed.buildFeedForFolders
 import dev.mosaic.app.feature.feed.folderArtwork
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
@@ -63,11 +65,45 @@ class LibraryViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    private val mutableCustomCommunitiesLoaded = MutableStateFlow(false)
+    val customCommunitiesLoaded = mutableCustomCommunitiesLoaded.asStateFlow()
+    val customCommunities = repository.customCommunities
+        .onEach {
+            mutableCustomCommunitiesLoaded.value = true
+            mutableLoaded.value = true
+            mutableReadFailed.value = false
+        }
+        .catch { error ->
+            if (error is CancellationException) throw error
+            mutableReadFailed.value = true
+            mutableMessage.value = "Could not load the local library. Please reopen Mosaic."
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private val mutableSort = MutableStateFlow(FeedSort.Random)
-    private val mutableFolderId = MutableStateFlow<String?>(null)
+    private data class FeedSelection(val folderId: String? = null, val customCommunityId: String? = null)
+    private val mutableSelection = MutableStateFlow(FeedSelection())
     private val mutableEpoch = MutableStateFlow(Random.nextLong())
-    val feed = combine(repository.availableMedia, mutableSort, mutableFolderId, mutableEpoch) { media, sort, folder, epoch ->
-        FeedState(buildFeed(media, folder, sort, epoch), sort, folder, epoch, loaded = true)
+    val feed = combine(
+        repository.availableMedia, repository.customCommunities, mutableSort, mutableSelection, mutableEpoch,
+    ) { media, communities, sort, selection, epoch ->
+        val customCommunity = selection.customCommunityId?.let { id -> communities.firstOrNull { it.id == id } }
+        when {
+            selection.customCommunityId != null && customCommunity == null ->
+                FeedState(sort = sort, epoch = epoch, loaded = true, customCommunityId = selection.customCommunityId)
+            customCommunity != null -> {
+                val memberIds = customCommunity.memberFolderIds.toSet()
+                FeedState(
+                    posts = buildFeedForFolders(media, memberIds, sort, epoch),
+                    sort = sort,
+                    epoch = epoch,
+                    loaded = true,
+                    customCommunityId = customCommunity.id,
+                    memberFolderIds = memberIds,
+                )
+            }
+            else -> FeedState(buildFeed(media, selection.folderId, sort, epoch), sort, selection.folderId, epoch, loaded = true)
+        }
     }.flowOn(Dispatchers.Default)
         .catch { error ->
             if (error is CancellationException) throw error
@@ -104,8 +140,52 @@ class LibraryViewModel(
         }
     }
 
-    fun selectFolder(folderId: String?) { mutableFolderId.value = folderId }
+    fun selectFolder(folderId: String?) { mutableSelection.value = FeedSelection(folderId = folderId) }
+    fun selectCustomCommunity(communityId: String?) {
+        mutableSelection.value = FeedSelection(customCommunityId = communityId)
+    }
     fun setSort(sort: FeedSort) { mutableSort.value = sort }
+
+    fun createCustomCommunity(name: String, folderIds: Collection<String>) {
+        runOperation {
+            val created = repository.createCustomCommunity(name, folderIds)
+            mutableMessage.value = if (created != null) {
+                "Custom community created. Original media was not moved or copied."
+            } else {
+                "Choose a name and at least one selected folder for the custom community."
+            }
+        }
+    }
+
+    fun renameCustomCommunity(communityId: String, name: String) {
+        runOperation {
+            mutableMessage.value = if (repository.renameCustomCommunity(communityId, name)) {
+                "Custom community renamed."
+            } else {
+                "That custom community could not be renamed."
+            }
+        }
+    }
+
+    fun setCustomCommunityMembers(communityId: String, folderIds: Collection<String>) {
+        runOperation {
+            mutableMessage.value = if (repository.setCustomCommunityMembers(communityId, folderIds)) {
+                "Custom community membership updated."
+            } else {
+                "Custom community membership could not be updated."
+            }
+        }
+    }
+
+    fun deleteCustomCommunity(communityId: String) {
+        runOperation {
+            mutableMessage.value = if (repository.deleteCustomCommunity(communityId)) {
+                "Custom community deleted. Its folders, media, and Saved copies were not changed."
+            } else {
+                "That custom community could not be deleted."
+            }
+        }
+    }
 
     fun refresh(folderId: String? = null) {
         if (mutableBusy.value) return
