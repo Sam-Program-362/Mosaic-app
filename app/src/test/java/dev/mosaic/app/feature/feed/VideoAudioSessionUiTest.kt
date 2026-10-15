@@ -63,7 +63,7 @@ class VideoAudioSessionUiTest {
 
     @Test fun newlyComposedSurfaceInheritsUnmutedSessionWithoutAnotherTap() {
         val session = VideoAudioSession()
-        session.setMuted(false)
+        session.updateMuted(false)
 
         // Simulates a newly created player surface (scroll, navigation, viewer
         // open, or recomposition) composed after the choice was made.
