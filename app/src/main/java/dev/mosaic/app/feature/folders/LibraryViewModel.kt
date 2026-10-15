@@ -2,7 +2,6 @@ package dev.mosaic.app.feature.folders
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.mosaic.app.core.model.CustomCommunity
 import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.IndexedMedia

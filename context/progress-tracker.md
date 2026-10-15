@@ -1,5 +1,28 @@
 # Progress tracker
 
+## Current phase — Phase 6 custom communities MVP, CI verified; device acceptance pending
+Phase 6 implements local custom communities under the user's approved decisions: duplicate display
+names allowed (stable community IDs are the only identity), at least one member folder required at
+creation but empty membership allowed later, one folder may join multiple communities, unavailable
+member memberships are retained and labelled, and folder removal cascades only its membership rows.
+Room v3 adds `custom_communities` and `custom_community_members` through explicit `MIGRATION_2_3`
+chained after `MIGRATION_1_2`; no destructive fallback. The CI-generated schema
+`app/schemas/dev.mosaic.app.data.local.LibraryDatabase/3.json` (identity hash
+`c9b1d0ba420ba8cf63969ce269c6c164`) was recovered from the green run's annotations, not hand-authored.
+Feeds scope by member folder-ID set (`buildFeedForFolders`), preserving Random/Newest, metadata-only
+search, viewer snapshots, photo geometry, and playback. Creation/management live in the searchable
+community directory and drawer; no new picker, permission, network, or source-media operation exists.
+
+Verified code commit `63d6a27` passed CI run
+[38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965): 103 tests
+(0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema consistency and
+the video-preloader source guard; artifact `mosaic-debug-and-reports` ID `11946751459`. Two earlier
+Phase 6 runs were red and are not verification: `38677570560` (one name-ordering test assertion) and
+`38677881453` (two Robolectric dialog/directory interaction tests, since made deterministic).
+Physical-device acceptance is pending; follow `docs/phase-6-device-check.md`. Local Gradle still
+cannot start in this sandbox (no Java); hosted CI supplied verification. `main` baseline before this
+phase was merge commit `42ae102` (PR #3), whose own CI run `38676173414` succeeded.
+
 ## Current phase — focused production change, CI verified; limited user phone report, targeted checks open
 The 2026-10-15 user request supersedes the earlier disabled-by-default/diagnostic video-preload
 approach. Production neighboring-video buffering, offscreen video-frame prefetch, speculative
@@ -383,9 +406,9 @@ scoped, never retained in the ViewModel.
   2026-10-15 scroll report is recorded in the current section above.
 
 ## Still unimplemented and next acceptance
-Custom community membership is the clearest remaining first-release feature; release-ready
-branding/package/SDK/signing policy and custom-community naming/membership/artwork decisions
-also remain unresolved. Saved-copy removal is explicitly out of scope. Phase 5 Save-copy and
+Custom community membership is implemented in Phase 6 (see the current section above). Release-ready
+branding/package/SDK/signing policy remains unresolved; custom-community artwork stays a provisional
+default with no editor. Saved-copy removal is explicitly out of scope. Phase 5 Save-copy and
 Room v2 migration, viewer, and focused photo-geometry changes are CI-verified, but their
 hardware/provider behavior is not thereby accepted.
 
@@ -398,13 +421,13 @@ removal checklist and the Saved-copy flows for repeated copies, restart, source 
 loss, and failure cleanup. GIF, audio focus/mute, background/offscreen playback, refreshed UI,
 viewer restoration and provider/permission edge cases remain to be exercised on-device.
 
-Recommended next engineering slice is a local custom-communities MVP, after the unresolved
-membership/naming policies are settled. This is a proposal only; see the [fresh-session handoff](../docs/session-handoff.md)
-for scope, dependencies, acceptance criteria, tests and startup instructions. Do not treat CI as
-phone acceptance or claim the earlier crash is fixed.
+Phase 6 has since implemented the local custom-communities MVP under the approved policies in the
+current section above; device acceptance remains open. Do not treat CI as phone acceptance or claim
+the earlier crash is fixed.
 
 ## Open decisions
-Final branding/package/release SDK policy; community rename/duplicate-label policy,
-custom artwork. Missing timestamp fallback is now implemented: unknown dates last,
+Final branding/package/release SDK policy and custom artwork. Custom-community naming/membership
+policies were approved for Phase 6: duplicate names allowed (IDs are identity), at least one member
+at creation, empty later allowed, multiple memberships per folder, unavailable memberships retained. Missing timestamp fallback is now implemented: unknown dates last,
 then case-insensitive filename and stable identity. Shuffle-per-refresh and extension
 hiding remain documented defaults rather than separately finalized UX decisions.

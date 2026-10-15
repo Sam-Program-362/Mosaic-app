@@ -280,10 +280,27 @@ report is recorded in the current section above and does not retroactively valid
 prove crash resolution. Exact targeted sweep and capture instructions are in
 `docs/phase-5-device-check.md`.
 
+## Phase 6 implemented — custom communities
+Room v3 adds `custom_communities(id, name, createdAtMillis)` and
+`custom_community_members(communityId, folderId)` with a composite primary key and CASCADE foreign
+keys to both communities and folders. Explicit `MIGRATION_2_3` is chained after `MIGRATION_1_2`; the
+KSP-generated `3.json` schema is tracked. `LibraryStore`/`RoomLibraryStore` expose communities with
+their sorted member folder IDs; `LibraryRepository` (under its existing mutex) validates trimmed
+non-blank names, requires at least one already-selected folder at creation, de-duplicates member
+IDs, allows one folder in many communities, permits empty membership on later edits, and deletes
+only the community row (FK cascade removes memberships). Folder removal relies on the same folder
+FK cascade, so member media/Saved copies are untouched. `LibraryViewModel` resolves a selected
+custom community to its member-ID set and builds the union with `buildFeedForFolders`, which filters
+the available-only projection and de-duplicates by stable media key; unavailable members therefore
+contribute nothing while retained. `CommunityDirectoryScreen` provides create/edit/delete dialogs
+and custom rows alongside folder communities; the drawer lists custom communities by stable ID.
+Artwork is provisional: first available member folder artwork, else initials. CI run `38678154965`
+at `63d6a27` passed 103 tests, lint, APK privacy, schema consistency and debug build; physical-device
+acceptance remains open (`docs/phase-6-device-check.md`).
+
 ## Remaining planned architecture
-Room already stores folder/access status, source media metadata and Saved-copy
-metadata; custom-community membership remains for a later slice. Media bytes remain
-outside Room.
+Room stores folder/access status, source media metadata, Saved-copy metadata and custom-community
+membership. Media bytes remain outside Room.
 SAF operations belong in `data/source/`; reconciliation/copy orchestration in
 `data/repository/`, never composables. Coroutines/Flow offload provider/file I/O.
 Room, Coil and Media3 are now installed for implemented slices. Room exports schemas under `app/schemas`; retain generated versions and add
@@ -304,7 +321,8 @@ explicit migrations when changing the database. No WorkManager or background sca
 - Visible/foreground-only playback with lifecycle-scoped player/decoder ownership.
 - Do not retain activities, open streams, or player instances in inappropriate scopes.
 
-Unresolved: final identity/SDK policy, community renaming and custom artwork. Static folder artwork default: first supported
+Unresolved: final identity/SDK policy and custom artwork. Custom-community naming/membership policy
+was approved for Phase 6 (see above). Static folder artwork default: first supported
 static image by case-insensitive filename; neutral initials when none exists.
 
 Offline packaging guard: remove inherited INTERNET/ACCESS_NETWORK_STATE permissions

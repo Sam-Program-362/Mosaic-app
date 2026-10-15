@@ -117,8 +117,10 @@ communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
-provisional. Public naming/trademark review, release SDK policy, folder-community
-renaming/duplicate label policy, and custom-community artwork remain unresolved.
+provisional. Public naming/trademark review, release SDK policy, and custom-community artwork remain unresolved.
+Custom-community naming/membership policies are approved and implemented in Phase 6: duplicate
+names allowed with stable-ID identity, at least one member at creation (empty allowed later),
+multiple memberships per folder, unavailable memberships retained.
 
 ## 2026-10-15 focused production change — CI verified; limited user phone report, targeted checks open
 The user's new scope supersedes the former disabled-by-default/diagnostic video-preload
@@ -151,3 +153,13 @@ new report does not prove the cause of the earlier crash or establish crash reso
 cannot start in this checkout because Java is unavailable; hosted CI supplied verification.
 `google_drive/` is user data and must not be staged or modified. See the [fresh-session handoff](../docs/session-handoff.md)
 for the next-phase recommendation, open device scenarios and startup instructions.
+
+## Phase 6 — custom communities (CI verified; device acceptance pending)
+Phase 6 implements local custom communities combining explicitly assigned, already-selected folders
+without moving/copying source media: create, rename, browse, edit membership, and delete in the
+searchable directory and drawer, with union feeds preserving existing ordering/search/viewer rules.
+Room v3 (`MIGRATION_2_3`, tracked generated schema) stores stable community/folder membership IDs.
+CI run [38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at
+`63d6a27` passed 103 tests, lint, debug APK, privacy and schema checks (artifact `11946751459`).
+Physical-device acceptance follows `docs/phase-6-device-check.md` and remains open, as do the earlier
+Phase 4/5 device checks.

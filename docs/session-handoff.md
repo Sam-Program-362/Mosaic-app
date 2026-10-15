@@ -1,26 +1,35 @@
-# Fresh-session handoff — 2026-10-15
+# Fresh-session handoff — 2026-10-15 (updated for Phase 6)
 
-This is the current-state handoff, not authorization to implement the next phase. The work in this
-handoff is documentation-only; no application code, build behavior, merge, or release is in scope.
+This is the current-state handoff. Phase 6 (custom communities) was approved by the user and is
+implemented and CI-verified on the session branch below; physical-device acceptance is still open.
+No merge or release is authorized by this document.
 
 ## One-minute status
 
-- **Current development branch:** `arena/b0f3e3cf-mosaic-app`. Before this documentation update,
-  local and remote branch head was `e8e2ad5` (`Keep verification README environment-neutral`). The
-  latest application-source commit is `a4264dd9c51181eff91de436fd7d7651cd48acea`; later commits
-  on the branch are documentation-only.
+- **Merged baseline:** the previous session branch `arena/b0f3e3cf-mosaic-app` was merged into
+  `main` by PR #3 at `42ae102f89892b6986bcc209331e1b9299c42cf3` ("Merge pull request #3"); that
+  commit's own CI run [38676173414](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38676173414)
+  succeeded. `main` therefore contains all pre-Phase-6 work including this handoff's earlier form.
+  (Historical reference: before that merge the development branch head was `e8e2ad5`, and the latest
+  application-source commit was `a4264dd9c51181eff91de436fd7d7651cd48acea`.)
+- **Current session branch:** `arena/a0a1b100-mosaic-app`, branched from `42ae102`. Phase 6 code is
+  at `63d6a27`, followed by the CI-generated Room v3 schema commit; see CI status below. Work only
+  on this branch; do not switch branches or merge without user permission.
 
 - **Latest source verification:** GitHub Actions run
-  [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) completed
-  successfully against `a4264dd`: 96 tests, 0 failures/errors/skips; unit tests, lint, debug APK
-  build, packaged-permission privacy checks, Room schema consistency, and the production
-  video-preloader source guard all passed.
+  [38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) completed
+  successfully against Phase 6 code commit `63d6a27`: 103 tests, 0 failures/errors/skips; unit tests,
+  lint, debug APK build, packaged-permission privacy checks, Room schema consistency, and the
+  production video-preloader source guard all passed. The preceding focused-change run
+  [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at `a4264dd`
+  (96 tests) remains the verification record for the preload-removal/photo-geometry change.
 
 - **APK artifact:** [mosaic-debug-and-reports, artifact
-  11923577241](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241),
-  containing the debug APK, `app-debug.sha256`, and reports. GitHub reports it unexpired; its
-  recorded expiration is 2027-01-12. The checksum value has not been independently retrieved or
-  compared here.
+  11946751459](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965/artifacts/11946751459)
+  for the Phase 6 build at `63d6a27`, containing the debug APK, `app-debug.sha256`, and reports
+  (expires 2027-01-13). The earlier focused-change artifact remains
+  [11923577241](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
+  Checksums have not been independently retrieved or compared here.
 
 - **Latest phone evidence:** user-reported on 2026-10-15:
   `"Scrolling is okay, didn't crash. Basically it's okey."` Treat this only as acceptable scrolling
@@ -31,7 +40,8 @@ handoff is documentation-only; no application code, build behavior, merge, or re
   not report local Gradle verification as run; the hosted CI result above is the available build
   evidence.
 
-- **Untracked user data:** `google_drive/` is present in the working tree. Do not modify or stage it.
+- **Untracked user data:** `google_drive/` was present in the earlier checkout. In the current
+  checkout it is absent; regardless, if it appears, do not modify or stage it.
 
 ## Product, architecture, safety, and provisional decisions
 
@@ -74,8 +84,14 @@ public identity or release decisions.
 - `data/local/`: Room database version 2 for selected folders, indexed source-media metadata and
   app-managed Saved-copy metadata. The explicit v1→v2 migration and generated schemas are retained.
 - `feature/folders/`: selected-folder management, automatic one-folder communities, searchable
-  community directory, availability/retry states. There are **no custom-community entities or
-  membership rows** today; the directory maps selected folders to automatic communities.
+  community directory, availability/retry states. Phase 6 adds custom communities: Room v3
+  `custom_communities`/`custom_community_members` tables (explicit `MIGRATION_2_3`, tracked generated
+  schema `3.json`), repository validation under the existing mutex, member-ID-set feed scoping, and
+  create/rename/edit-membership/delete in the directory and drawer alongside automatic communities.
+  Approved policies: duplicate names allowed (stable IDs are identity), at least one member at
+  creation (empty allowed later), multiple memberships per folder, unavailable memberships retained,
+  folder removal cascades only membership rows. Artwork is provisional (first member artwork, else
+  initials); no editor.
 - `feature/feed/FeedSession.kt` and `FeedScreen.kt`: Home/community/Saved feed ordering,
   metadata-only search, feed cards and stable feed sessions. Random order is stable within its epoch;
   Newest puts unknown timestamps last with deterministic ties. Viewer receives a frozen feed snapshot.
@@ -132,8 +148,10 @@ device testing.
 
 ## Repository, commits, CI, and artifact
 
-At the start of this handoff the local branch had been aligned with the existing remote session
-branch at `e8e2ad5`; the worktree was otherwise clean except `?? google_drive/`. Recent history
+Historical (pre-merge): at the start of the original handoff the local branch had been aligned with
+the then-remote session branch at `e8e2ad5`; the worktree was otherwise clean except
+`?? google_drive/`. That branch was later merged to `main` as `42ae102` (PR #3, CI run
+`38676173414` succeeded). Phase 6 was then developed on `arena/a0a1b100-mosaic-app`. Recent history
 relevant to current source:
 
 - `680c54c` — removed the video-preload production path and implemented natural intrinsic photo
@@ -144,7 +162,7 @@ relevant to current source:
 - `e8e2ad5` — made README verification wording environment-neutral.
 
 CI run [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) is a
-completed successful push workflow for branch `arena/b0f3e3cf-mosaic-app`, head SHA
+completed successful push workflow for the historical branch `arena/b0f3e3cf-mosaic-app`, head SHA
 `a4264dd9c51181eff91de436fd7d7651cd48acea`. Its one verification job passed 96 tests
 (0 failures/errors/skips), `testDebugUnitTest`, lint, `assembleDebug`, APK permission privacy, Room
 schema consistency, and the source guard. The artifact page lists artifact `11923577241` as
@@ -154,13 +172,14 @@ earlier commits as the current acceptance build.
 
 The local Gradle commands were blocked before Gradle startup because Java is unavailable (`java`
 not found; `JAVA_HOME` unset). No agent-run emulator/physical-device test, crash reproduction,
-device log, or crash-resolution evidence exists. No merge to `main` or release was made or
-authorized.
+device log, or crash-resolution evidence exists. Since that was written, the pre-Phase-6 work was
+merged to `main` via PR #3 (`42ae102`); Phase 6 itself is on `arena/a0a1b100-mosaic-app` only, and
+no merge of Phase 6 or any release is authorized.
 
 ## Remaining first-release work, limitations, and tests
 
-**Feature gap:** custom communities are listed in the overview requirements but not implemented.
-They should combine only explicitly assigned, already-selected folders and remain local/offline.
+**Feature status:** custom communities (the last explicit first-release feature gap) are implemented
+in Phase 6 and CI-verified; physical-device acceptance is open (`docs/phase-6-device-check.md`).
 Saved-copy removal is explicitly out of scope for v1. Comments, votes, online/community services,
 additional media formats, and custom artwork controls are not approved scope. Branding/package/SDK/
 release choices still need product approval before production release.
@@ -194,59 +213,33 @@ sequence if available. If the crash recurs, capture full logcat and PID/ANR/tomb
 evidence before attributing cause. If it does not recur, report only that the tested sequence did
 not reproduce it.
 
-## Recommended next engineering phase (proposal only)
+## Phase 6 outcome and next steps
 
-The single user report is enough to proceed with planning; it is not enough to declare all media
-acceptance complete. The highest-value remaining explicit first-release feature is **Phase 6: local
-custom communities**, rather than another speculative player/preload rewrite. This is a
-recommendation, not user approval or implementation. Keep the device follow-up above as a separate
-acceptance task.
+The user approved Phase 6 with these decisions, now implemented: duplicate display names allowed
+(stable IDs are identity); at least one member folder required at creation, empty membership allowed
+later with a clear empty state; a folder may belong to multiple custom communities; unavailable
+member memberships are retained and labelled, while explicit folder removal cascades only its
+membership rows; create/rename/browse/edit-membership/delete are all in scope; artwork is a
+provisional first-member-artwork/initials default with no editor.
 
-**Proposed scope:** create, list, and browse a custom community whose members are chosen from
-folders already selected in Mosaic; show the union of media belonging to those explicit folder IDs
-while preserving the existing feed, search, sort, snapshot, availability, and safety rules. Keep the
-automatic per-folder communities. No new storage permission or picker flow, cloud/backend,
-original-media operation, real votes/comments, or speculative artwork controls.
+**Implemented:** Room v3 tables + explicit `MIGRATION_2_3` (tracked CI-generated `3.json`), store and
+repository operations (validation, de-duplication, transactions), `buildFeedForFolders` union scoping
+preserving Random/Newest, metadata-only search, viewer snapshots and playback, and directory/drawer
+create-edit-delete UI. Verified by CI run
+[38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at `63d6a27`:
+103 tests (0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema
+consistency, video-preloader source guard; artifact `11946751459`. Two earlier Phase 6 runs were red
+for test-only reasons (`38677570560` name-ordering assertion; `38677881453` Robolectric dialog
+interactions) and are not verification.
 
-**Dependencies and policy decisions to settle first:**
-
-- Decide community naming, duplicate labels, rename behavior, whether a selected folder may belong
-  to multiple custom communities, whether an empty membership is allowed, and what happens when a
-  member folder becomes unavailable or is removed. Keep artwork policy provisional unless approved.
-- Add stable custom-community and membership data to the current Room v2 model, with an explicit
-  v2→v3 migration chained after v1→v2, generated/committed KSP schema, and no destructive fallback.
-  Represent membership by stable selected-folder IDs, never copied paths or filenames.
-- Extend the repository/DAO with available-member feed queries and transactional membership
-  maintenance. Removing a folder must not leave unsafe stale media exposure or alter the source;
-  unavailable membership semantics should follow the decision above.
-- Integrate creation/management and navigation into the current searchable directory/header/drawer
-  without introducing a second navigation system. Preserve the current frozen feed snapshot and
-  stable identity semantics.
-
-**Proposed acceptance criteria:**
-
-1. Create a custom community from two explicitly selected folders; it persists across process
-   restart and displays only those folders' eligible indexed media. Existing Home and automatic
-   folder communities remain unchanged and isolated.
-2. Search, Random/Newest ordering, viewer snapshot/back restoration and unavailable/empty states work
-   within the custom community. Membership edits update predictably without accidental reorder or
-   cross-community leakage.
-3. Removing a selected folder updates memberships according to the approved policy; original files
-   remain present and untouched. No unselected folder or media becomes visible.
-4. Works offline and adds no runtime network/broad-storage permission. Names, empty states, dialog
-   cancellation and controls remain accessible at large font/touch-target sizes.
-
-**Proposed tests:** pure model/query tests for stable membership, duplicate IDs, search/order and
-empty states; DAO/repository tests for union/isolation, unavailable members, membership add/remove,
-folder cleanup and transactions; v2→v3 migration test proving existing folder/media/Saved rows
-survive and exact KSP schema consistency; Compose tests for create/cancel/manage/directory/drawer/feed
-flows; then the full CI suite, lint, debug build and packaged-permission/schema guards. On-device
-acceptance should include create/select/restart, folder unavailable/removal, offline browsing and
-source-file integrity.
+**Still open:** physical-device acceptance for Phase 6 (`docs/phase-6-device-check.md`) and the
+earlier Phase 4/5 checks; final branding/package/SDK/release policy. Do not declare device
+acceptance from CI.
 
 ## Exact startup instructions for a new agent
 
-1. Work in `/home/user/Mosaic-app` on the fixed branch `arena/b0f3e3cf-mosaic-app`. Start with:
+1. Work in `/home/user/Mosaic-app` on this session's fixed branch `arena/a0a1b100-mosaic-app`
+   (branched from the merged `main` baseline `42ae102`). Start with:
    ```sh
    cd /home/user/Mosaic-app
    git status --short
@@ -269,6 +262,5 @@ source-file integrity.
    Debug output is `app/build/outputs/apk/debug/app-debug.apk`. In this checkout Java is currently
    unavailable, so those commands cannot start; use CI when authorized rather than claiming local
    success.
-5. Do not implement the proposed custom-community phase as part of this handoff. Wait for a task
-   explicitly authorizing implementation and resolve the policy decisions above before silently
-   choosing them. No merge or release is authorized.
+5. Phase 6 is implemented and CI-verified (see above); do not re-implement it. Remaining work is
+   physical-device acceptance and any user-approved follow-up. No merge or release is authorized.
