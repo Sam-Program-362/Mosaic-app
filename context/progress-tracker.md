@@ -1,6 +1,20 @@
 # Progress tracker
 
-## Session-wide MP4 audio control — implemented; CI verification and signed candidate pending (this task)
+## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
+
+**User-reported device verification (not agent-run):** after the signed
+device-test candidate below was delivered, the user tested it on a physical
+device and reports that the test **passed perfectly** for the session-wide MP4
+audio behaviour (fresh-launch muting, session-wide unmute/mute across videos
+and surfaces, and reset after a fresh launch, per
+`docs/session-audio-device-check.md`). Record this as user evidence; the
+agent did not run a physical device, and it does not complete unrelated
+device-acceptance work (the Phase 7 checklist remains scheduled). On the
+strength of that report the user has authorized publishing this change as
+release **v0.2.1** (versionName 0.2.1, versionCode 3 — an in-place update over
+v0.2.0 with the same permanent release certificate). Release verification and
+publication results are appended to this section when they complete; the
+v0.2.0 release remains unchanged.
 
 Implements the user's final core adjustment on top of the published v0.2.0
 release (which remains unchanged): MP4 audio is now a single session-wide
