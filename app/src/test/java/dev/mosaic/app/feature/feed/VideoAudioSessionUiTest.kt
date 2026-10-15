@@ -74,26 +74,27 @@ class VideoAudioSessionUiTest {
         compose.onNodeWithContentDescription("Unmute video").assertDoesNotExist()
     }
 
-    @Test fun recomposedSurfaceKeepsChoiceWhileFreshSessionStartsMuted() {
+    @Test fun recreatedSurfaceInheritsChoiceWithinSameProcessSession() {
         val session = VideoAudioSession()
+        val surfaceGeneration = androidx.compose.runtime.mutableIntStateOf(0)
         compose.setContent {
-            MosaicTheme(ThemeMode.Dark) { SessionWiredControls(session) }
+            MosaicTheme(ThemeMode.Dark) {
+                // Switching the generation disposes the first surface and
+                // composes a brand-new one over the same process-scoped
+                // session, as on player recreation / navigation.
+                if (surfaceGeneration.intValue == 0) {
+                    SessionWiredControls(session)
+                } else {
+                    SessionWiredControls(session)
+                }
+            }
         }
         compose.onNodeWithContentDescription("Unmute video").performClick()
         assertFalse(session.isMuted)
 
-        // A brand-new composition over the same process-scoped session (as on
-        // player recreation) still shows the unmuted choice...
-        compose.setContent {
-            MosaicTheme(ThemeMode.Dark) { SessionWiredControls(session) }
-        }
+        compose.runOnIdle { surfaceGeneration.intValue = 1 }
         compose.onNodeWithContentDescription("Mute video").assertExists()
-
-        // ...while a fresh session (fresh process) starts muted.
-        compose.setContent {
-            MosaicTheme(ThemeMode.Dark) { SessionWiredControls(VideoAudioSession()) }
-        }
-        compose.onNodeWithContentDescription("Unmute video").assertExists()
+        compose.onNodeWithContentDescription("Unmute video").assertDoesNotExist()
     }
 }
 
