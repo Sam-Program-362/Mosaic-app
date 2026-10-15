@@ -1,0 +1,197 @@
+name: Publish v0.2.1 signed APK as GitHub Release (one-time)
+
+# One-time: publishes the verified signed v0.2.1 APK from the established
+# signed-build run 38733379486 (artifact mosaic-phase6-signed-apk, commit
+# e5ee42d) as GitHub Release v0.2.1. It does not rebuild or re-sign anything.
+# The APK is re-verified in-runner (SHA-256, apksigner certificate, and
+# version badging: dev.mosaic.app, versionCode 3, versionName 0.2.1) before
+# publishing. The release is created with GITHUB_TOKEN so the new tag does
+# not re-trigger the tag-based build workflow (build.yml) with a rebuild.
+
+on:
+  push:
+    branches: ['arena/a0a1b100-mosaic-app']
+    paths: ['.github/workflows/publish-v021-release.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Verify v0.2.1 APK and publish release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Android 35 build tools (apksigner, aapt2)
+        shell: bash
+        run: |
+          set -o pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if "$SDKMANAGER" 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
+            echo "Android build tools ready"
+          else
+            echo "::error title=Android SDK setup::sdkmanager failed"
+            exit 1
+          fi
+
+      - name: Download the verified signed APK artifact (run 38733379486)
+        uses: actions/download-artifact@v4
+        with:
+          name: mosaic-phase6-signed-apk
+          run-id: 38733379486
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: release-apk
+
+      - name: Verify APK checksum, signing certificate, and version
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la release-apk
+          APK="release-apk/Mosaic-release.apk"
+          test -f "$APK"
+          test -f release-apk/Mosaic-release.apk.sha256
+          (cd release-apk && sha256sum -c Mosaic-release.apk.sha256)
+          SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
+          SIZE="$(stat -c%s "$APK")"
+          EXPECTED_SHA="ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb"
+          if [ "$SHA" != "$EXPECTED_SHA" ]; then
+            echo "::error title=APK checksum mismatch::computed $SHA, expected verified v0.2.1 build $EXPECTED_SHA"
+            exit 1
+          fi
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify "$APK"
+          FP="$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr -d ' \r')"
+          EXPECTED_FP="9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a"
+          if [ "$FP" != "$EXPECTED_FP" ]; then
+            echo "::error title=Certificate mismatch::APK certificate $FP does not match the expected permanent release certificate"
+            exit 1
+          fi
+          AAPT2="$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          BADGING="$("$AAPT2" dump badging "$APK" | head -1)"
+          echo "APK badging: $BADGING"
+          echo "$BADGING" | grep -q "name='dev.mosaic.app' versionCode='3' versionName='0.2.1'" || {
+            echo "::error title=Version mismatch::expected dev.mosaic.app versionCode 3 versionName 0.2.1, got: $BADGING"
+            exit 1
+          }
+          echo "apk_sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "apk_size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "cert_fp=$FP" >> "$GITHUB_OUTPUT"
+          echo "::notice title=v0.2.1 APK verified::dev.mosaic.app versionCode 3 versionName 0.2.1, $SIZE bytes, SHA-256 $SHA, certificate SHA-256 $FP (matches expected permanent release certificate)"
+
+      - name: Refuse to overwrite an existing release or tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.2.1 --repo Sam-Program-362/Mosaic-app > /dev/null 2>&1; then
+            echo "::error title=Release exists::v0.2.1 already exists; refusing to overwrite"
+            exit 1
+          fi
+          if gh api repos/Sam-Program-362/Mosaic-app/git/ref/tags/v0.2.1 > /dev/null 2>&1; then
+            echo "::error title=Tag exists::v0.2.1 tag already exists; refusing to reuse"
+            exit 1
+          fi
+          echo "No existing v0.2.1 release or tag."
+
+      - name: Write release notes
+        shell: bash
+        env:
+          APK_SHA: ${{ steps.verify.outputs.apk_sha256 }}
+          APK_SIZE: ${{ steps.verify.outputs.apk_size }}
+          CERT_FP: ${{ steps.verify.outputs.cert_fp }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Mosaic v0.2.1
+
+          A focused audio fix on top of v0.2.0. No new features; the only
+          functional change is how MP4 sound behaves across the app.
+
+          ### The fix — session-wide MP4 audio
+
+          Previously every video card kept its own mute flag, so unmuting one
+          MP4 left the next one silent and the viewer started its own muted
+          state. Now there is a single, session-wide audio preference:
+
+          - **Every fresh app launch starts muted.** The preference is created
+            with the application process and is never persisted — nothing is
+            written to DataStore, SharedPreferences, or the database — so a new
+            process always begins muted, no matter how the last session ended.
+          - **Unmute once, everywhere.** Tapping the sound control on any MP4
+            updates the one shared state used by the Home feed, folder
+            communities, custom communities, Saved, and the immersive viewer.
+            Newly created players inherit the current choice before they can
+            produce sound; switching feeds, scrolling to another video, or
+            returning from the viewer no longer resets it.
+          - **Mute once, everywhere.** Explicitly muting updates the same
+            shared state, so no player keeps an outdated setting.
+          - Backgrounding/foregrounding and Activity recreation preserve the
+            choice while the process lives; existing visibility/lifecycle
+            rules are unchanged, so off-screen or inactive videos still never
+            continue playing or sounding.
+          - The sound control is unchanged in appearance; its icon and
+            accessibility label now always reflect the shared state ("Unmute
+            video" while muted, "Mute video" while unmuted).
+
+          ### Verification
+
+          - **Physical device (user-reported):** the user installed the signed
+            audio-fix candidate and reports the device test **passed
+            perfectly** for this session-wide audio behaviour. This is
+            user-reported evidence, not an agent-run device test.
+          EOF
+          {
+            echo "- **Automated:** Verify Android runs [38733046620](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733046620) and [38733379491](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733379491): **116 tests, 0 failures/errors/skips** (including 13 new audio-session unit/UI tests), lint, debug APK build, and packaged-permission privacy checks passed."
+            echo "- **Signed build:** run [38733379486](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733379486), artifact \`mosaic-phase6-signed-apk\` (ID \`11971138920\`). In-runner \`apksigner verify\` passed and this publishing workflow re-verified the APK before attaching it."
+            echo ""
+            echo "### Build and signing"
+            echo ""
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| Asset | \`Mosaic-v0.2.1-release.apk\` |"
+            echo "| App | \`dev.mosaic.app\`, versionName 0.2.1, **versionCode 3** (higher than v0.2.0's 2, so it updates in place with the same signing certificate) |"
+            echo "| APK file size | $APK_SIZE bytes |"
+            echo "| APK SHA-256 | \`$APK_SHA\` |"
+            echo "| Signing certificate SHA-256 | \`$CERT_FP\` |"
+            echo "| Certificate check | Matches the expected permanent release certificate \`9D:E4:BE:CD:70:5F:EE:F3:EF:53:60:32:FF:3F:62:45:A9:E2:BF:7F:C7:38:0B:E9:56:2A:A5:FC:70:4C:9D:6A\`; version badging re-verified in-runner as \`dev.mosaic.app\` versionCode 3 / versionName 0.2.1 |"
+          } >> release-notes.md
+          cat >> release-notes.md <<'EOF'
+          | Source commit | `e5ee42d15211b1da13321dfdf9bc977528060531` (tag `v0.2.1` points here; contains the version bump and the tested audio implementation at `e8b017a`) |
+
+          ### Known limitations
+
+          - The separate Phase 7 itemized device-acceptance checklist
+            (custom communities, media geometry/scrolling, Saved copies,
+            folder access) remains **deferred/scheduled**, as archived in
+            Google Drive `Projects/Mosaic/Scheduled/`; it is not claimed
+            passed by this release. The only device result behind v0.2.1 is
+            the user's successful session-audio test above.
+          - Saved-copy removal is not implemented (out of v1 scope). No
+            comments, votes, accounts, cloud sync, or analytics. Branding /
+            package naming remains provisional (`Mosaic` / `dev.mosaic.app`).
+          - Installing requires allowing installs from your browser/file
+            manager (sideloading). Updating from v0.2.0 keeps your folders,
+            settings, and Saved copies; no uninstall is needed.
+
+          Full project context is archived in Google Drive under
+          `Projects/Mosaic/` (see `ARCHIVE-INDEX.md` there).
+          EOF
+          cat release-notes.md
+
+      - name: Create GitHub Release v0.2.1 with the verified APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cp release-apk/Mosaic-release.apk Mosaic-v0.2.1-release.apk
+          sha256sum Mosaic-v0.2.1-release.apk
+          gh release create v0.2.1 Mosaic-v0.2.1-release.apk \
+            --repo Sam-Program-362/Mosaic-app \
+            --target e5ee42d15211b1da13321dfdf9bc977528060531 \
+            --title "Mosaic v0.2.1" \
+            --notes-file release-notes.md
+          gh release view v0.2.1 --repo Sam-Program-362/Mosaic-app \
+            --json tagName,name,url,isDraft,isPrerelease,targetCommitish,assets
+          echo "::notice title=GitHub Release published::https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1"
