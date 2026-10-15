@@ -40,7 +40,7 @@ class VideoAudioSessionTest {
         // without another tap; this is the same read for feed, viewer,
         // community switches, and scrolled-to videos.
         val session = VideoAudioSession()
-        session.setMuted(false)
+        session.updateMuted(false)
         assertEquals(1f, initialVideoAudioPreference(session).volume)
         assertTrue(initialVideoAudioPreference(session).handleAudioFocus)
     }
@@ -48,8 +48,8 @@ class VideoAudioSessionTest {
     @Test fun mutingAgainUpdatesTheSharedState() {
         // Scenario 7.
         val session = VideoAudioSession()
-        session.setMuted(false)
-        session.setMuted(true)
+        session.updateMuted(false)
+        session.updateMuted(true)
         assertTrue(session.isMuted)
         assertEquals(videoAudioPreference(muted = true), initialVideoAudioPreference(session))
     }
@@ -70,7 +70,7 @@ class VideoAudioSessionTest {
         // Scenario 10: process termination discards the session; the next
         // process constructs a new one and must not restore the old choice.
         val previousProcessSession = VideoAudioSession()
-        previousProcessSession.setMuted(false)
+        previousProcessSession.updateMuted(false)
 
         val freshProcessSession = VideoAudioSession()
         assertTrue(freshProcessSession.isMuted)
