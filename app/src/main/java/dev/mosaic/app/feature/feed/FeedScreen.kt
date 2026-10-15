@@ -39,6 +39,7 @@ import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.MediaKind
+import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 
 @Composable
@@ -61,7 +62,11 @@ fun FeedScreen(
     searchQuery: String = "",
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    // Production passes the process-scoped session owned by MosaicApplication.
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     val colors = LocalMosaicColors.current
     val diagnosticContext = LocalContext.current.applicationContext
     val visiblePosts = remember(state.posts, searchQuery) { filterFeedPosts(state.posts, searchQuery) }
@@ -403,6 +408,7 @@ fun FeedScreen(
                     }
                 },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == key,
+                videoAudioSession = sharedVideoAudioSession,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
@@ -432,6 +438,7 @@ internal fun MediaPostCard(
     post: FeedPost,
     imageLoader: ImageLoader,
     active: Boolean,
+    videoAudioSession: VideoAudioSession? = null,
     onCardSizeChanged: (IntSize) -> Unit = {},
     onPreviewBounds: (PreviewItemGeometry) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
@@ -480,6 +487,7 @@ internal fun MediaPostCard(
             post = post,
             active = active,
             imageLoader = imageLoader,
+            videoAudioSession = videoAudioSession,
             onBounds = onPreviewBounds,
             viewer = false,
             onOpenViewer = onOpenViewer,
