@@ -1,0 +1,60 @@
+package dev.mosaic.app.data.repository
+
+import dev.mosaic.app.core.model.FolderRecord
+import dev.mosaic.app.core.model.FolderSelection
+import dev.mosaic.app.core.model.MediaKey
+import dev.mosaic.app.core.model.ScanResult
+import dev.mosaic.app.data.source.FolderSource
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+/** Serializes selection/refresh; a failed scan never reconciles media deletions. */
+class LibraryRepository(private val store: LibraryStore, private val source: FolderSource) {
+    val folders = store.folders
+    val availableMedia = store.availableMedia
+    private val operations = Mutex()
+
+    suspend fun addFolder(selection: FolderSelection): Boolean = operations.withLock {
+        val registration = source.register(selection)
+        val existing = store.getFolders().firstOrNull { it.id == selection.treeUri }
+        store.putFolder(
+            (existing ?: FolderRecord(selection.treeUri, "Selected folder", registration.persistedRead))
+                .copy(
+                    label = registration.label ?: existing?.label ?: "Selected folder",
+                    persistedRead = registration.persistedRead,
+                ),
+        )
+        scan(selection.treeUri)
+        registration.persistedRead
+    }
+
+    suspend fun refresh(
+        folderId: String? = null,
+        preserveMedia: Set<MediaKey> = emptySet(),
+    ) = operations.withLock {
+        store.getFolders().filter { folderId == null || it.id == folderId }.forEach { folder ->
+            val preserveDocumentIds = preserveMedia.asSequence()
+                .filter { it.folderId == folder.id }
+                .map { it.documentId }
+                .toSet()
+            scan(folder.id, preserveDocumentIds)
+        }
+    }
+
+    /** Remove the local selection and its index; originals stay in their provider. */
+    suspend fun removeFolder(folderId: String): Boolean = operations.withLock {
+        if (store.getFolders().none { it.id == folderId }) return@withLock true
+        // Release first so a crash cannot leave an unselected, orphaned persisted grant.
+        // If revocation is unsupported, still remove the index and report that limitation to the user.
+        val grantReleased = source.releaseReadPermission(folderId)
+        store.removeFolder(folderId)
+        grantReleased
+    }
+
+    private suspend fun scan(folderId: String, preserveDocumentIds: Set<String> = emptySet()) {
+        when (val result = source.scan(folderId)) {
+            is ScanResult.Success -> store.commitScan(folderId, result.media, preserveDocumentIds)
+            is ScanResult.Failed -> store.markUnavailable(folderId, result.reason)
+        }
+    }
+}

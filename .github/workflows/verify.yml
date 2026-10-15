@@ -1,0 +1,156 @@
+name: Verify Android
+
+on:
+  push:
+    branches: ['main', 'arena/**']
+    paths-ignore: ['context/**', 'docs/**', 'README.md', 'AGENTS.md']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android 35 platform and build tools
+        shell: bash
+        run: |
+          set -o pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
+            echo "Android SDK ready"
+          else
+            python3 - <<'PYERROR'
+          from pathlib import Path
+          message = Path('sdk-setup.log').read_text()[-12000:]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Android SDK setup::{message}')
+          PYERROR
+            exit 1
+          fi
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Retain development APK signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: mosaic-debug-signing-${{ github.ref_name }}-v1
+      - name: Guard against video-preload manager reintroduction
+        shell: bash
+        run: |
+          if grep -R -n -E 'DefaultPreloadManager|BasePreloadManager|NearbyMediaPreloader|VideoPreloadSession|mosaicVideoPreloading|VIDEO_PRELOADING_ENABLED' app/src/main app/build.gradle.kts; then
+            echo '::error::Video-preloading code or build toggles must not be included in the production app.'
+            exit 1
+          fi
+          echo 'Production app contains no video-preload manager or diagnostic toggle.'
+      - name: Unit tests, lint, and debug APK build
+        shell: bash
+        run: |
+          set -o pipefail
+          if ./gradlew testDebugUnitTest lint assembleDebug --stacktrace 2>&1 | tee verification.log; then
+            echo "Android verification passed"
+          else
+            python3 - <<'PYERROR'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          reports = list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          failures = []
+          totals = {'tests': 0, 'failures': 0, 'errors': 0, 'skipped': 0}
+          for report in reports:
+              root = ET.parse(report).getroot()
+              for key in totals:
+                  totals[key] += int(root.get(key, '0'))
+              for case in root.iter('testcase'):
+                  for result in list(case):
+                      if result.tag in ('failure', 'error'):
+                          detail = (result.get('message') or result.tag).splitlines()[0][:180]
+                          failures.append(f"{case.get('classname')}.{case.get('name')}: {detail}")
+          summary = ''
+          if reports:
+              summary = 'Unit tests: ' + ', '.join(f'{key}={value}' for key, value in totals.items())
+              if failures:
+                  summary += '\nFailed cases: ' + '; '.join(failures[:8])
+          summary = summary[:1800]
+          log = Path('verification.log').read_text(errors='replace').splitlines()
+          separator = '\nGradle log tail:\n' if summary else ''
+          tail = '\n'.join(log[-35:])
+          message = summary + separator + tail[-(3500 - len(summary) - len(separator)):]
+          message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print(f'::error title=Android verification::{message}')
+          PYERROR
+            exit 1
+          fi
+      - name: Check packaged privacy permissions
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions app/build/outputs/apk/debug/app-debug.apk > apk-permissions.txt
+          python3 - <<'PYPERMISSIONS'
+          from pathlib import Path
+          import re
+          forbidden = {'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
+                       'android.permission.MANAGE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE',
+                       'android.permission.WRITE_EXTERNAL_STORAGE'}
+          text = Path('apk-permissions.txt').read_text()
+          permissions = re.findall(r"uses-permission: name='([^']+)'", text)
+          assert not any(p in forbidden or p.startswith('android.permission.READ_MEDIA_') for p in permissions), text
+          print('::notice title=APK privacy::Debug APK has no network or broad storage/media permissions.')
+          PYPERMISSIONS
+      - name: Report tests and check generated schema
+        run: |
+          python3 - <<'PYREPORT'
+          from pathlib import Path
+          import base64, json, subprocess, xml.etree.ElementTree as ET
+          reports = list(Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml'))
+          assert reports, 'No unit test result files found'
+          totals = {key: 0 for key in ('tests', 'failures', 'errors', 'skipped')}
+          for path in reports:
+              root = ET.parse(path).getroot()
+              for key in totals:
+                  totals[key] += int(root.get(key, '0'))
+          assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0, totals
+          print(f"::notice title=Verification summary::{totals['tests']} tests; "
+                f"{totals['failures']} failures; {totals['errors']} errors; {totals['skipped']} skipped. "
+                "Unit tests, lint, debug APK build, privacy checks passed.")
+          tracked_paths = set(subprocess.check_output(['git', 'ls-files', 'app/schemas'], text=True).splitlines())
+          pending_schemas = []
+          for path in Path('app/schemas').rglob('*.json'):
+              if path.as_posix() not in tracked_paths:
+                  pending_schemas.append(path)
+                  continue
+              tracked = subprocess.check_output(['git', 'show', f'HEAD:{path.as_posix()}'], text=True)
+              assert json.loads(path.read_text()) == json.loads(tracked), f'Room schema changed: {path}'
+          for path in pending_schemas:
+              encoded = base64.b64encode(path.read_bytes()).decode('ascii')
+              chunk_size = 2500  # GitHub truncates individual check annotations at 4 KiB.
+              total = (len(encoded) + chunk_size - 1) // chunk_size
+              for index in range(total):
+                  chunk = encoded[index * chunk_size:(index + 1) * chunk_size]
+                  print(f'::notice title=Generated Room schema::{path.as_posix()}|{index + 1}/{total}|{chunk}')
+          PYREPORT
+      - name: Record debug APK checksum
+        run: sha256sum app/build/outputs/apk/debug/app-debug.apk > app-debug.sha256
+      - name: Upload debug APK and reports
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: mosaic-debug-and-reports
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app-debug.sha256
+            app/build/reports/
+            app/schemas/
+            verification.log
+            sdk-setup.log
+            apk-permissions.txt
+          if-no-files-found: warn
