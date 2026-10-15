@@ -1,5 +1,75 @@
 # Progress tracker
 
+## Session-wide MP4 audio control — implemented; CI verification and signed candidate pending (this task)
+
+Implements the user's final core adjustment on top of the published v0.2.0
+release (which remains unchanged): MP4 audio is now a single session-wide
+preference instead of an independent mute flag per video card. A new
+process-scoped, in-memory `VideoAudioSession`
+(`core/playback/VideoAudioSession.kt`, default muted, never persisted to
+DataStore/SharedPreferences/Room) is owned by `MosaicApplication` and threaded
+through `MainActivity` → `MosaicApp` → `FeedScreen`/`MediaViewer` →
+`LocalMediaPreview`/`VideoPreview`. Each player applies the current session
+preference at creation and again in its setup effect *before* `prepare()`
+(volume + Media3 audio-focus handling via `applyVideoAudioPreference`), a
+session effect propagates later mute/unmute changes to existing players, and
+the existing sound control now toggles the shared state (label/icon read the
+shared state: "Unmute video" while muted, "Mute video" while unmuted). A fresh
+process therefore starts muted; unmute/mute persists across feeds,
+communities, scrolling, viewer open/return, recomposition, Activity
+recreation, and background/foreground within the same process. Player
+ownership, visibility/lifecycle gating, and cleanup are unchanged; no
+dependencies, permissions, or persistence were added.
+
+New tests: `VideoAudioSessionTest` (9 unit tests: fresh-process muted, silent
+pre-`prepare` preference, shared toggle, new-player inheritance, re-mute,
+consumer-recreation and fresh-process semantics) and
+`VideoAudioSessionUiTest` (4 Robolectric Compose tests: accurate control
+state, cross-surface update, inheritance by a newly composed surface,
+recreated-surface inheritance).
+
+**Verification (hosted CI; no Java in this sandbox):** code commit `e8b017a`
+passed Verify Android run
+[38729454211](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38729454211):
+**116 tests, 0 failures/errors/skips** (103 pre-existing + 13 new), lint,
+debug APK build, and packaged-permission privacy checks; the follow-up Verify
+run at final branch HEAD `9e1e572` (docs/workflow-only commits after
+`e8b017a`, run `38729816539`) also succeeded. Two earlier red runs were fixed
+during development (`38728789426`: a `setMuted` property/function JVM
+signature clash, renamed to `updateMuted`; `38729174291`: one UI test calling
+`setContent` twice, rewritten). **Signed device-test candidate:** the existing
+established-signing workflow (`.github/workflows/phase6-signed-build.yml`,
+comment-only reuse note added) ran at HEAD `9e1e572` as run
+[38729816541](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38729816541)
+— all steps succeeded, including `assembleRelease`, signing with the permanent
+release configuration, and in-runner `apksigner verify`. Artifact
+`mosaic-phase6-signed-apk` ID `11969238543` (artifact ZIP 14,151,433 bytes,
+expires 2027-01-13) contains `Mosaic-release.apk` with SHA-256
+`19db3acda94688864dffa8ae3ff5530cba0c6acf775c0263204a715205918590`, signed with
+certificate SHA-256
+`9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a` — the same
+permanent release certificate as v0.2.0, so the candidate should install over
+the v0.2.0 release in place (same versionName 0.2.0 / versionCode 2; identity
+deliberately unchanged for a test candidate). **Physical-device audio
+verification is still required** via `docs/session-audio-device-check.md` and
+must not be inferred from unit/UI tests: real audio output, audio focus,
+background/foreground and force-stop behaviour can only be confirmed on the
+phone. No new release or tag was created by this task; v0.2.0 stays exactly
+as published, and publication of a next version awaits the user's device
+confirmation and separate authorization.
+
+## Phase 7 — device acceptance and stabilization (in progress; no items passed yet)
+The user reports they have installed and opened the signed release APK and that it behaves as
+expected. Record this narrowly as limited user-reported evidence: install/open/general behavior
+only. It is not an agent-run test, does not identify itemized Phase 6 results, and does not prove
+the Room v2→v3 migration ran over prior debug-build data (the release certificate differs from the
+debug certificates, so an in-place data-preserving update from a debug install was not possible).
+Status of the ordered Phase 7 device checklist (custom communities first, then media/scrolling,
+viewer, Saved copies, and folder access — see `docs/phase-6-device-check.md` sections A–F plus the
+Phase 4/5 device documents): **all items pending user results**. No failing result has been
+supplied and no code-level follow-up is justified yet; do not mark items passed from CI green or
+from the app launching.
+
 ## Current phase — Phase 6 custom communities MVP, CI verified; device acceptance pending
 Phase 6 implements local custom communities under the user's approved decisions: duplicate display
 names allowed (stable community IDs are the only identity), at least one member folder required at
