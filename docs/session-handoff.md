@@ -1,301 +1,213 @@
-# Fresh-session handoff — 2026-10-15 (updated for Phase 6)
+# Fresh-session handoff — Mosaic (refreshed 2026-10-15, after v0.2.1)
 
-This is the current-state handoff. Phase 6 (custom communities) was approved by the user and is
-implemented and CI-verified on the session branch below; physical-device acceptance is still open.
-No merge or release is authorized by this document.
+This is the current-state handoff for a new agent session. It contains only
+verified facts, clearly labelled user-reported results, and unresolved items.
+**No new feature, refactor, merge, tag, or release is authorized by this
+document.** The next agent reads this, summarizes its understanding, and
+waits for the user's next development instructions (see
+`docs/next-session-prompt.md` for the ready-to-paste startup prompt).
 
-## One-minute status
+## Read first (required order)
 
-- **Merged baseline:** the previous session branch `arena/b0f3e3cf-mosaic-app` was merged into
-  `main` by PR #3 at `42ae102f89892b6986bcc209331e1b9299c42cf3` ("Merge pull request #3"); that
-  commit's own CI run [38676173414](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38676173414)
-  succeeded. `main` therefore contains all pre-Phase-6 work including this handoff's earlier form.
-  (Historical reference: before that merge the development branch head was `e8e2ad5`, and the latest
-  application-source commit was `a4264dd9c51181eff91de436fd7d7651cd48acea`.)
-- **Current session branch:** `arena/a0a1b100-mosaic-app`, branched from `42ae102`. Phase 6 code is
-  at `63d6a27`, followed by the CI-generated Room v3 schema commit and documentation sync; the
-  final Phase 6 commit is `69d34df`. See CI status below. Work only
-  on this branch; do not switch branches or merge without user permission.
+1. `AGENTS.md`
+2. `context/project-overview.md`
+3. `context/architecture.md`
+4. `context/code-standards.md`
+5. `context/ai-workflow-rules.md`
+6. `context/ui-context.md`
+7. `context/progress-tracker.md`
+8. This handoff (`docs/session-handoff.md`) — it supplements, never replaces
+   or reorders, the list above.
 
-- **Latest source verification:** GitHub Actions run
-  [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) completed
-  successfully against final Phase 6 commit `69d34df`: 103 tests, 0 failures/errors/skips; unit tests,
-  lint, debug APK build, packaged-permission privacy checks, Room schema consistency, and the
-  production video-preloader source guard all passed. (The first green Phase 6 run was
-  `38678154965` at `63d6a27`; it is now a historical record.) The preceding focused-change run
-  [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at `a4264dd`
-  (96 tests) remains the verification record for the preload-removal/photo-geometry change.
+## Current stable release (verify before quoting)
 
-- **APK artifact:** [mosaic-debug-and-reports, artifact
-  11947392238](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913/artifacts/11947392238)
-  for the final Phase 6 acceptance build at `69d34df`, containing the debug APK, `app-debug.sha256`,
-  and reports (expires 2027-01-13). Artifact `11946751459` from run `38678154965` at `63d6a27` is
-  historical. The earlier focused-change artifact remains
-  [11923577241](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
-  Checksums have not been independently retrieved or compared here.
+- **Mosaic v0.2.1** — https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1
+  - Tag `v0.2.1` → source commit `e5ee42d15211b1da13321dfdf9bc977528060531`
+  - Asset: `Mosaic-v0.2.1-release.apk`, 14,941,999 bytes
+    (https://github.com/Sam-Program-362/Mosaic-app/releases/download/v0.2.1/Mosaic-v0.2.1-release.apk)
+  - APK SHA-256: `ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`
+  - Signing certificate SHA-256:
+    `9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a`
+    (the permanent release certificate; only this public fingerprint is ever
+    recorded — never keys, passwords, or encoded keystores)
+  - App: `dev.mosaic.app`, versionName 0.2.1, versionCode 3, minSdk 26,
+    target/compile SDK 35. versionCode 3 > v0.2.0's 2 with the same
+    certificate, so v0.2.1 updates v0.2.0 in place.
+- **Previous stable release v0.2.0** — tag `v0.2.0` → commit
+  `af58727f7d34b882e29b6e336041c4cc963f4c16`, asset `Mosaic-release.apk`.
+  Published and unchanged; do not modify either release or its assets.
 
-- **Latest phone evidence:** user-reported on 2026-10-15:
-  `"Scrolling is okay, didn't crash. Basically it's okey."` Treat this only as acceptable scrolling
-  and no crash during that user test. The user considers that result okay enough to proceed. It
-  neither identifies the exact APK/test sequence nor proves the earlier crash was fixed.
+## Repository state (verify live; do not assume)
 
-- **Local build limitation:** this checkout has no `java` executable and `JAVA_HOME` is unset. Do
-  not report local Gradle verification as run; the hosted CI result above is the available build
-  evidence.
+- Repository: `Sam-Program-362/Mosaic-app`. Development branch:
+  `arena/a0a1b100-mosaic-app`, branched from `main` baseline `42ae102`
+  (PR #3). **`main` does not contain Phase 6, the audio fix, or either
+  release tag target** — Phase 6 and everything after it lives on the
+  session branch; merging needs separate user approval.
+- At this refresh, the branch HEAD was `93e2d87` (documentation record of
+  the v0.2.1 publication). The commits made for this context refresh follow
+  it and are documentation-only. **Distinguish three things: the live branch
+  HEAD (check `git ls-remote`), the `v0.2.1` tag target `e5ee42d` (the
+  released source), and documentation commits after the tag (they do not
+  change the released app).**
+- Relevant commits on the branch: `a4264dd` (preload removal + photo
+  geometry), `69d34df` (final Phase 6 custom communities), `af58727`
+  (v0.2.0 released source), `e8b017a` (session-wide MP4 audio), `cd6836d0`
+  (version bump to 0.2.1/3), `e5ee42d` (v0.2.1 signed-build source = tag
+  target).
+- This sandbox may hold a stale local checkout with unrelated uncommitted
+  changes matching older branch states. Preserve any uncommitted work; do
+  not reset or overwrite it. The remote branch is authoritative for pushed
+  state. The sandbox has no Java/Android SDK, so Gradle cannot run locally;
+  hosted GitHub Actions is the build/test evidence.
+- If a `google_drive/` directory ever appears in the checkout, it is user
+  data: never stage, modify, or delete it.
 
-- **Untracked user data:** `google_drive/` was present in the earlier checkout. In the current
-  checkout it is absent; regardless, if it appears, do not modify or stage it.
+## What the app is (shipped)
 
-## Mosaic v0.2.1 — audio-fix release (current)
+Mosaic (working name) is a private, offline-first Android app for browsing
+user-selected local photos, GIFs, and MP4 videos in a compact
+Reddit-inspired feed (layout reference only — no Reddit branding, accounts,
+comments, or real votes). Shipped core:
 
-The user reports the signed audio-fix candidate (run `38729816541`, artifact
-`11969238543`) **passed physical-device testing perfectly** for the
-session-wide MP4 audio behaviour — user-reported evidence, not an agent-run
-device test, and not completion of the separate scheduled Phase 7 checklist.
-The user has authorized release **v0.2.1**: Gradle is bumped to versionName
-0.2.1 / versionCode 3 (in-place update over v0.2.0, same permanent signing
-certificate), and the verified signed 0.2.1 APK is to be published as GitHub
-Release "Mosaic v0.2.1" with tag `v0.2.1` on the version-bump source commit,
-leaving v0.2.0 untouched. Exact run/artifact/checksum/certificate results are
-recorded in `context/progress-tracker.md` when the release is published.
+- Native SAF folder picker, persisted read-only grants, **direct-child
+  indexing only**; nested folders need separate selection.
+- Home feed combining all selected folders; one automatic community per
+  folder; **custom communities** (create/rename/browse/edit membership/
+  delete; duplicate names allowed with stable-ID identity; a folder may join
+  several communities; ≥1 folder at creation, empty allowed later;
+  unavailable members retained; folder removal cascades only membership
+  rows; deleting a community never touches folders, media, or Saved copies).
+- Random/Newest ordering (stable within a session epoch), refresh,
+  **metadata-only search** (filenames, folder labels, MIME/media kind; media
+  bytes are never inspected).
+- Feed photos at full width with decoded intrinsic aspect ratio (safe
+  fallback until known, then locked); the immersive viewer pages vertically
+  through a frozen snapshot of the originating feed and returns to the same
+  scroll position.
+- **MP4:** starts muted on every fresh process (see audio below); visible
+  inactive videos show a local poster; players prepare only on activation;
+  no production video preloading exists and must not be reintroduced;
+  bounded static-photo prefetch only. Controls: play/pause, mute/unmute
+  (session-wide), seek with elapsed/duration, double-tap ±10 s, tap to
+  show/hide controls; poster until first rendered frame.
+- **Save copy:** every tap creates another independent app-managed copy that
+  keeps rendering after its source folder is removed; copies never point at
+  the source URI. Saved-copy *removal* is not implemented (out of v1 scope).
+- Confirmed **Remove from Mosaic** (drops index/community, attempts to
+  release the saved read grant, never alters originals), searchable
+  community directory, header/drawer navigation only (no bottom bar/rail),
+  Settings with Light/Dark (default Dark), unavailable-folder retention and
+  recovery. Room v3 (`folders`, `media`, `saved_copies`,
+  `custom_communities`, `custom_community_members`) with explicit chained
+  migrations `MIGRATION_1_2` + `MIGRATION_2_3`, no destructive fallback;
+  generated schemas `1.json`–`3.json` are tracked and must come from
+  builds, never be hand-authored.
 
-## Session-wide MP4 audio — post-v0.2.0 core adjustment
+## Session-wide MP4 audio (shipped in v0.2.1) — completed
 
-After the v0.2.0 GitHub Release was published (tag `v0.2.0` at `af58727`,
-unchanged by this task), the user authorized one final core adjustment: a
-session-wide MP4 audio preference. Implemented as a process-scoped in-memory
-`VideoAudioSession` (default muted, never persisted) owned by
-`MosaicApplication` and threaded through `MosaicApp`/`FeedScreen`/
-`MediaViewer` into `VideoPreview`, which applies the shared preference before
-`prepare()` and follows later changes; the existing sound control toggles the
-shared state. New unit/UI tests cover fresh-process muting, pre-`prepare`
-silence, cross-surface inheritance, re-mute, and recreation semantics; device
-verification steps are in `docs/session-audio-device-check.md`. Deliverable for
-this task is a signed device-test candidate from the existing signing
-workflow — **no new release or tag** until the user verifies on-device and
-separately authorizes publication. Exact CI run, artifact, checksum, and
-certificate results are recorded in `context/progress-tracker.md` when
-complete.
+- `core/playback/VideoAudioSession.kt` is the single in-memory mute
+  preference for the application process: default muted, **never persisted**
+  (no DataStore/SharedPreferences/Room/saved state), owned by
+  `MosaicApplication` and threaded `MainActivity → MosaicApp →
+  FeedScreen/MediaViewer → LocalMediaPreview/VideoPreview`.
+- Every player applies the current preference (volume + Media3 audio-focus
+  handling; muted players never request focus) at creation and again before
+  `prepare()`; a session effect propagates later changes to existing
+  players; the existing sound control toggles the shared state and shows
+  "Unmute video"/"Mute video" accurately. Unmute/mute therefore applies
+  across Home, folder and custom communities, Saved, and the viewer until
+  the user changes it or the process ends; Activity recreation,
+  recomposition, navigation, and background/foreground within the process
+  preserve it. Visibility/lifecycle gating and player cleanup are unchanged.
 
-## Product, architecture, safety, and provisional decisions
+## Verification evidence (keep these categories separate)
 
-Mosaic is the working name of a private, offline-first Android app for browsing photos, animated
-GIFs, and MP4s from folders the user explicitly selects. The compact Reddit-inspired feed is a
-layout reference only, not permission to copy Reddit branding or add social behavior.
+- **Automated (CI):** release-source Verify Android runs
+  [38733046620](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733046620)
+  and [38733379491](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733379491)
+  — **116 tests, 0 failures/errors/skips** (103 pre-audio + 9
+  `VideoAudioSessionTest` + 4 `VideoAudioSessionUiTest`), lint, debug APK,
+  packaged-permission privacy checks. Phase 6 was verified by run
+  `38678674913` at `69d34df` (103 tests). The v0.2.1 signed build (run
+  `38733379486`) and publish verification (run `38733884128`) confirmed
+  `apksigner verify`, the certificate above, SHA-256 above, and `aapt2`
+  badging (versionCode 3 / versionName 0.2.1).
+- **User-reported device results (not agent-run):** (a) the signed audio-fix
+  candidate **passed physical-device testing perfectly** for the
+  session-wide audio behaviour — the basis for authorizing v0.2.1;
+  (b) earlier, on a debug build: "Scrolling is okay, didn't crash.
+  Basically it's okey." — limited to acceptable scrolling and no crash in
+  that unspecified test; (c) still earlier: folders survived restart, Home
+  photos display, folder feeds isolate, videos play.
+- **Not established by any evidence:** the historical crash's cause or
+  resolution (no logcat/tombstone exists), itemized Phase 4/5/6 acceptance,
+  on-device Room v2→v3 migration over prior debug data (impossible in place:
+  debug and release certificates differ), provider-specific edge cases, or
+  hardware codec behaviour beyond the user's reports. Never present CI or
+  app-launch success as device acceptance.
 
-**Non-negotiable safety boundaries:**
+## Build, CI, and signing workflows (no credentials here)
 
-- Access media only through explicit, read-only Storage Access Framework folder grants. Index direct
-  children only; a nested folder must be separately selected.
-- Never write, delete, move, rename, or alter source media. Folder removal affects Mosaic's grant/index
-  only. Save creates a new private app-managed copy.
-- No runtime network/backend, internet permission, accounts, cloud sync, analytics, crash uploads,
-  ads, comments, interactive votes, or unrestricted storage scanning. Decorative counts are not
-  actions. No permanent background scanner.
-- Do not log local paths or content URIs. Keep players and provider/file I/O in appropriate
-  lifecycle/background scopes.
+- `.github/workflows/verify.yml` — push/PR verification
+  (`testDebugUnitTest lint assembleDebug` + privacy/schema/source guards);
+  ignores `context/**`, `docs/**`, `README.md`, `AGENTS.md` changes.
+- `.github/workflows/phase6-signed-build.yml` — the established signed
+  build: `assembleRelease` signed with `r0adkll/sign-android-release@v1`
+  from the four repository secrets (`KEYSTORE_BASE64`, `KEY_ALIAS`,
+  `KEYSTORE_PASSWORD`, `KEY_PASSWORD` — names only; values live in GitHub
+  and with the user's private keystore backup), artifact-only, verifies
+  with `apksigner` in-runner. Used for the v0.2.0 build, the audio
+  candidate, and the v0.2.1 build.
+- `.github/workflows/build.yml` — tag-triggered (`v*`) rebuild-and-release
+  workflow. **Warning:** it rebuilds from the tag; both published releases
+  instead attached the pre-verified signed artifact via one-time publish
+  workflows using `GITHUB_TOKEN` (whose tag does not re-trigger it):
+  `publish-tested-release.yml` (v0.2.0) and `publish-v021-release.yml`
+  (v0.2.1). Do not improvise a different release sequence without user
+  approval.
+- `.github/workflows/signing-investigation.yml` — completed one-time
+  diagnosis (proved branch-scoped debug-key caches caused an install
+  conflict); historical.
+- Versioning convention: Gradle `versionName` in `app/build.gradle.kts`,
+  tags `v<versionName>` (e.g. `v0.2.1`), release title `Mosaic v<version>`.
+  Never reuse a tag; never publish without explicit user authorization.
 
-**Technical baseline:** single-module native Android app, Kotlin 2.1.20, Jetpack Compose/Material 3,
-AGP 8.9.2, Gradle 8.11.1, JDK 17, Room 2.7.1/KSP, Coil 3.1.0, and Media3 1.6.1. The
-package/namespace/application ID is `dev.mosaic.app`, `minSdk` is 26, and compile/target SDK are 35.
-These are pinned development choices, not claims that versions are latest.
+## Archive
 
-**Still provisional or unresolved:** public product name/trademark and package identity; final
-release target/minimum SDK policy; production release/signing policy; custom-community naming,
-duplicate-label, rename and membership rules; and custom-community artwork. Dark is the current
-reference-inspired default with explicit Light/Dark settings (no system-theme mode); treat final
-visual identity as provisional. Routine technical choices were delegated, but that did not finalize
-public identity or release decisions.
+Project context is archived in Google Drive at `Projects/Mosaic/`
+(https://drive.google.com/drive/folders/1kCMVh3-BKXxAHL0cNMs8V2XRRG_z7hfC),
+indexed by `ARCHIVE-INDEX.md` there. The Phase 7 checklist is preserved at
+`Scheduled/SCHEDULED - Phase 7 Device Acceptance Testing.md` in that
+archive. The repository remains the live source of truth; the archive is a
+dated snapshot. Never upload keystores, encoded signing material,
+passwords, or tokens to Drive or anywhere else.
 
-## Current implementation and source map
+## Scheduled tests, limitations, and open decisions
 
-- `MainActivity.kt`, `ui/MosaicApp.kt`, and `ui/theme/MosaicTheme.kt`: Compose app shell, persisted
-  theme, Home/Saved/folder/community-directory/Settings navigation through the header and drawer
-  (no bottom navigation or rail).
-- `data/source/`: native folder picker, retained read grant, direct-child scanner and provider/MIME
-  classification. `data/repository/` serializes folder registration, scan/reconciliation and removal.
-  Successful scans reconcile; failed/incomplete scans do not become empty-folder deletions.
-- `data/local/`: Room database version 2 for selected folders, indexed source-media metadata and
-  app-managed Saved-copy metadata. The explicit v1→v2 migration and generated schemas are retained.
-- `feature/folders/`: selected-folder management, automatic one-folder communities, searchable
-  community directory, availability/retry states. Phase 6 adds custom communities: Room v3
-  `custom_communities`/`custom_community_members` tables (explicit `MIGRATION_2_3`, tracked generated
-  schema `3.json`), repository validation under the existing mutex, member-ID-set feed scoping, and
-  create/rename/edit-membership/delete in the directory and drawer alongside automatic communities.
-  Approved policies: duplicate names allowed (stable IDs are identity), at least one member at
-  creation (empty allowed later), multiple memberships per folder, unavailable memberships retained,
-  folder removal cascades only membership rows. Artwork is provisional (first member artwork, else
-  initials); no editor.
-- `feature/feed/FeedSession.kt` and `FeedScreen.kt`: Home/community/Saved feed ordering,
-  metadata-only search, feed cards and stable feed sessions. Random order is stable within its epoch;
-  Newest puts unknown timestamps last with deterministic ties. Viewer receives a frozen feed snapshot.
-- `MediaGeometry.kt`, `LocalMediaPreview.kt`, `MediaImageRequests.kt`, and
-  `NearbyPhotoPrefetcher.kt`: photos use available media width and decoded/oriented intrinsic ratio
-  for natural height. Unknown/invalid dimensions use a temporary safe fallback; the first valid ratio
-  locks the composed photo's height. Nearby prefetch is local and static-photo-only (current item
-  plus nearest static photos within the bounded window). Video/GIF retain their separate reserved-
-  frame policy.
-- The production video-preload manager, neighboring-video buffering, offscreen video-frame
-  prefetch, speculative offscreen-video poster decoding, and the diagnostic Gradle toggle are
-  removed. A visible inactive video may show its local poster; a Media3 player prepares only on
-  activation. At most one inline video player is active; playback is muted by default and
-  composition/lifecycle/visibility scoped. Existing controls, viewer behavior, TextureView/poster
-  overlay through the first rendered frame, and failure UI remain.
-- `feature/feed/MediaViewer.kt`: vertical pager over the exact opening feed snapshot, with viewer-only
-  system-bar hiding/restoration and the feed kept underneath without playback.
-  `SavedCopyRepository.kt` reads the selected source on I/O into a unique `.partial` file in
-  app-private storage, completes/renames before inserting Room metadata, cleans ordinary failures,
-  and stores no original source URI. Every Save action is a separate copy.
-- `feature/settings/SettingsScreen.kt`: local theme and library settings. Search is restricted to
-  already-indexed metadata; it does not scan file content.
+- **Phase 7 device acceptance: Scheduled / Deferred (user, 2026-10-15).**
+  Full test cases are in the Drive `Scheduled/` document and its sources
+  (`docs/phase-6-device-check.md`, `docs/phase-4-device-check.md`,
+  `docs/phase-5-device-check.md`); the audio-specific sequence is in
+  `docs/session-audio-device-check.md` (device-verified per user report
+  above). No Phase 7 item is passed; do not resume the checklist
+  automatically.
+- Open decisions: final branding/trademark and package identity; release
+  SDK policy; merging the session branch to `main`; provisional
+  custom-community artwork (first-member artwork else initials, no editor);
+  Dark as reference-inspired default theme.
+- Explicitly out of scope unless the user approves otherwise: Saved-copy
+  removal, comments/real votes, accounts, cloud sync, analytics, runtime
+  networking, broad storage access, additional media formats, video
+  preloading, source-media writes of any kind.
 
-No code changes are part of this handoff.
+## Approval boundary and next step
 
-## User decisions and phone evidence
-
-1. The user superseded the earlier disabled-by-default/optional-diagnostic video-preload proposal.
-   Keep production video preloading removed; do not replace it with another speculative video
-   mechanism. Static-photo prefetch, visible video posters, and player preparation on activation
-   remain.
-2. Feed photos must use their decoded/oriented intrinsic dimensions at full available width: no
-   distortion, crop-to-video-frame, shared fixed photo height, or arbitrary photo ratio/height clamp.
-   Handle invalid/late dimensions safely and keep established height stable. Preserve the separate
-   video/GIF frame policy and viewer/playback behavior.
-3. Earlier user-reported comparison: preloading enabled felt sticky and the app crashed; with it
-   disabled, photos felt smoother and video loaded fast enough; a separate shift on video load was
-   reported. This is user evidence, not log-correlated causality or proof that removing preloads
-   fixed the crash.
-4. Latest report, dated 2026-10-15, exactly:
-   `"Scrolling is okay, didn't crash. Basically it's okey."` This is a **user observation**, not an
-   agent-run test. It supports only that scrolling was acceptable and no crash occurred during that
-   test, and that the user is comfortable proceeding. No exact artifact/commit, device/Android/
-   refresh details, orientation/content sequence, duration/repetition count, offsets, logcat,
-   PID/ANR evidence, or crash trace accompanied the report. Do not infer those details, a test of
-   every acceptance item, the cause of the historical crash, or crash resolution.
-5. Historical phone reports also say selected folders survived restart, Home displayed photos,
-   folder feeds isolated content, and videos played. Those reports do not establish GIF,
-   audio-focus/mute, background/offscreen, viewer/removal, Saved-copy, or provider-edge behavior.
-
-The right status is **limited user-reported scroll feedback received; broad device acceptance
-remains open**, not “no phone testing ever happened” and not “device acceptance complete.” CI is not
-device testing.
-
-## Repository, commits, CI, and artifact
-
-Historical (pre-merge): at the start of the original handoff the local branch had been aligned with
-the then-remote session branch at `e8e2ad5`; the worktree was otherwise clean except
-`?? google_drive/`. That branch was later merged to `main` as `42ae102` (PR #3, CI run
-`38676173414` succeeded). Phase 6 was then developed on `arena/a0a1b100-mosaic-app`. Recent history
-relevant to current source:
-
-- `680c54c` — removed the video-preload production path and implemented natural intrinsic photo
-  geometry.
-- `a4264dd` — fixed aspect-ratio cache misses so unresolved lookups do not evict useful dimensions;
-  this is the latest app-source commit.
-- `0f5fd78` — documented the verified geometry change and APK.
-- `e8e2ad5` — made README verification wording environment-neutral.
-
-CI run [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) is a
-completed successful push workflow for the historical branch `arena/b0f3e3cf-mosaic-app`, head SHA
-`a4264dd9c51181eff91de436fd7d7651cd48acea`. Its one verification job passed 96 tests
-(0 failures/errors/skips), `testDebugUnitTest`, lint, `assembleDebug`, APK permission privacy, Room
-schema consistency, and the source guard. The artifact page lists artifact `11923577241` as
-unexpired, about 21.2 MB, expiring 2027-01-12. Use the artifact page to retrieve it; the sandbox
-could not fetch GitHub's artifact-storage host. Do not treat older paired preload-mode APKs or
-earlier commits as the current acceptance build.
-
-The local Gradle commands were blocked before Gradle startup because Java is unavailable (`java`
-not found; `JAVA_HOME` unset). No agent-run emulator/physical-device test, crash reproduction,
-device log, or crash-resolution evidence exists. Since that was written, the pre-Phase-6 work was
-merged to `main` via PR #3 (`42ae102`); Phase 6 itself is on `arena/a0a1b100-mosaic-app` only, and
-no merge of Phase 6 or any release is authorized.
-
-## Remaining first-release work, limitations, and tests
-
-**Feature status:** custom communities (the last explicit first-release feature gap) are implemented
-in Phase 6 and CI-verified; physical-device acceptance is open (`docs/phase-6-device-check.md`).
-Saved-copy removal is explicitly out of scope for v1. Comments, votes, online/community services,
-additional media formats, and custom artwork controls are not approved scope. Branding/package/SDK/
-release choices still need product approval before production release.
-
-**Known limitations/evidence gaps:**
-
-- The latest user report does not name the APK or describe its exact scroll sequence.
-  Portrait/landscape/square/panoramic fit, delayed-dimension locking, and height stability have no
-  itemized device results.
-- No same-item before/after offsets or repeatable device measurements exist for a feed jump during
-  video activation/loading/size/first-frame events. The historically reported shift remains
-  unverified against the latest code.
-- The older crash has no supplied logcat, native tombstone, bugreport, PID/ANR trace, or identified
-  cause. No crash-resolution claim is justified.
-- Hardware decoding/playback, actual rendered first frames, visible/offscreen poster behavior, fast
-  mixed-orientation flings and repeated-scroll stress remain distinct from CI unit/Compose/
-  Robolectric checks. CI had no representative hardware MP4/device run.
-- Device checks remain open for GIF animation, mute/audio-focus and background/offscreen stop
-  behavior; viewer open/page/back/system-bar/scroll restoration; exact folder removal grant release
-  and source immutability; repeated Save requests, restart, source deletion/lost access, and
-  copy-failure cleanup; and refreshed theme/search/Settings/community-directory behavior.
-- CI covers code-level scanner/repository/Room and migration cases, feed ordering/search/visibility/
-  geometry, photo and video fallback semantics, playback state/control helpers, viewer/navigation,
-  Saved-copy logic and Compose/Robolectric UI. It does not establish provider-specific picker/grant
-  behavior, codecs, physical gestures, or all accessibility/display-size behavior.
-
-Keep a short, scoped device follow-up available while proceeding: test the current artifact on a
-named device/build, record APK checksum and device/Android/refresh details, inspect photo dimensions
-and position stability around video activation, and repeat the prior mixed portrait/landscape scroll
-sequence if available. If the crash recurs, capture full logcat and PID/ANR/tombstone/bugreport
-evidence before attributing cause. If it does not recur, report only that the tested sequence did
-not reproduce it.
-
-## Phase 6 outcome and next steps
-
-The user approved Phase 6 with these decisions, now implemented: duplicate display names allowed
-(stable IDs are identity); at least one member folder required at creation, empty membership allowed
-later with a clear empty state; a folder may belong to multiple custom communities; unavailable
-member memberships are retained and labelled, while explicit folder removal cascades only its
-membership rows; create/rename/browse/edit-membership/delete are all in scope; artwork is a
-provisional first-member-artwork/initials default with no editor.
-
-**Implemented:** Room v3 tables + explicit `MIGRATION_2_3` (tracked CI-generated `3.json`), store and
-repository operations (validation, de-duplication, transactions), `buildFeedForFolders` union scoping
-preserving Random/Newest, metadata-only search, viewer snapshots and playback, and directory/drawer
-create-edit-delete UI. Verified by final CI run
-[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at `69d34df`:
-103 tests (0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema
-consistency, video-preloader source guard; artifact `11947392238`. The first green Phase 6 run was
-`38678154965` at `63d6a27` (historical). Two earlier Phase 6 runs were red
-for test-only reasons (`38677570560` name-ordering assertion; `38677881453` Robolectric dialog
-interactions) and are not verification.
-
-**Still open:** physical-device acceptance for Phase 6 (`docs/phase-6-device-check.md`) and the
-earlier Phase 4/5 checks; final branding/package/SDK/release policy. Do not declare device
-acceptance from CI.
-
-## Exact startup instructions for a new agent
-
-1. Work in `/home/user/Mosaic-app` on this session's fixed branch `arena/a0a1b100-mosaic-app`
-   (branched from the merged `main` baseline `42ae102`). Start with:
-   ```sh
-   cd /home/user/Mosaic-app
-   git status --short
-   git branch --show-current
-   git log -6 --oneline --decorate
-   ```
-   Do not stage or modify `google_drive/`; it is user data.
-2. Read `AGENTS.md`, then the six context files **in exactly the order listed there**: project
-   overview, architecture, code standards, AI workflow rules, UI context, progress tracker. After
-   that ordered read, read this handoff. The handoff supplements but does not replace those
-   requirements.
-3. Recheck the live branch/CI state before changing anything; distinguish source commits from
-   documentation commits, CI from user reports, and current results from historical records. Do not
-   assume the phone report identifies a build or resolves the older crash.
-4. For Android verification, use JDK 17 and Android SDK platform/build tools 35. Set `ANDROID_HOME`
-   (or an untracked `local.properties` with `sdk.dir=...`) and run:
-   ```sh
-   ./gradlew testDebugUnitTest lint assembleDebug
-   ```
-   Debug output is `app/build/outputs/apk/debug/app-debug.apk`. In this checkout Java is currently
-   unavailable, so those commands cannot start; use CI when authorized rather than claiming local
-   success.
-5. Phase 6 is implemented and CI-verified (see above); do not re-implement it. Remaining work is
-   physical-device acceptance and any user-approved follow-up. No merge or release is authorized.
+The v0.2.1 release completes the last authorized task. **Next immediate
+action: none.** The next agent should (1) read the files in the order
+above, (2) inspect the live repository/GitHub state, (3) briefly summarize
+the shipped app, current release, evidence status, and open items, and
+(4) wait for the user to describe the next development idea, evaluating it
+with the user before proposing any implementation. Do not treat any
+historical phase, the deferred checklist, or this handoff as approval to
+start work.
