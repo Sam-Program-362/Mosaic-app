@@ -330,3 +330,23 @@ Offline packaging guard: remove inherited INTERNET/ACCESS_NETWORK_STATE permissi
 with manifest tools:node="remove". CI checks built APK, not just source XML. Muted
 previews don't request audio focus; unmuted video enables Media3-managed focus.
 Detach the TextureView from the player before releasing it on disposal.
+
+## Session-wide MP4 audio (post-v0.2.0 core adjustment)
+`core/playback/VideoAudioSession.kt` holds the one in-memory MP4 mute preference
+for the application process: it defaults to muted, exposes Compose snapshot
+state, and is never persisted (no DataStore/SharedPreferences/Room), so a fresh
+process starts muted while Activity recreation, recomposition, navigation, and
+background/foreground cycles within the process preserve the user's choice.
+`MosaicApplication` owns the single instance; `MainActivity` passes it through
+`MosaicApp` into `FeedScreen` and the viewer overlay, down to `VideoPreview`
+(composables without an application-provided instance fall back to a local
+remembered session, used only by previews/tests). A player applies the current
+preference at creation and again in its setup effect before `prepare()` —
+`applyVideoAudioPreference` sets volume (0f/1f) and Media3 audio-focus handling
+(muted previews never request focus) — and a session-keyed effect propagates
+later changes to the existing player. The sound control toggles the shared
+session and applies it to its player immediately; its icon/label read the
+shared state. Player creation, ownership, visibility gating, and disposal are
+otherwise unchanged. Tests: `VideoAudioSessionTest` (unit) and
+`VideoAudioSessionUiTest` (Robolectric Compose wiring); device audio checks
+are in `docs/session-audio-device-check.md`.
