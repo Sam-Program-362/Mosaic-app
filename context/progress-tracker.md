@@ -72,6 +72,29 @@ phone. No new release or tag was created by this task; v0.2.0 stays exactly
 as published, and publication of a next version awaits the user's device
 confirmation and separate authorization.
 
+**Release v0.2.1 published (2026-10-15):**
+[Mosaic v0.2.1](https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1),
+tag `v0.2.1` on source commit `e5ee42d15211b1da13321dfdf9bc977528060531`
+(version bump `cd6836d0` + the tested audio implementation at `e8b017a`).
+Release-source Verify runs `38733046620` and `38733379491` both passed:
+**116 tests, 0 failures/errors/skips**, lint, debug APK, privacy checks. The
+signed APK was built fresh from that source by the established-signing
+workflow, run
+[38733379486](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733379486)
+(artifact `mosaic-phase6-signed-apk` ID `11971138920`), then re-verified
+in-runner by publish run
+[38733884128](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733884128)
+before attaching: asset `Mosaic-v0.2.1-release.apk`, 14,941,999 bytes,
+SHA-256 `ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`,
+`apksigner verify` passed, certificate SHA-256
+`9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a` (matches
+the expected permanent release certificate), and `aapt2` badging confirmed
+`dev.mosaic.app` versionCode 3 / versionName 0.2.1 — so it updates v0.2.0 in
+place. The release was created with `GITHUB_TOKEN`, so the tag did not
+re-trigger `build.yml`; exactly one asset, built from the tagged source, is
+attached. The v0.2.0 release and its asset remain unchanged. Direct APK:
+https://github.com/Sam-Program-362/Mosaic-app/releases/download/v0.2.1/Mosaic-v0.2.1-release.apk
+
 ## Phase 7 — device acceptance and stabilization (in progress; no items passed yet)
 The user reports they have installed and opened the signed release APK and that it behaves as
 expected. Record this narrowly as limited user-reported evidence: install/open/general behavior
