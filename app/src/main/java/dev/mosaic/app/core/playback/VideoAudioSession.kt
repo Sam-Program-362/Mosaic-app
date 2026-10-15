@@ -21,7 +21,7 @@ class VideoAudioSession(initialMuted: Boolean = true) {
     var isMuted: Boolean by mutableStateOf(initialMuted)
         private set
 
-    fun setMuted(muted: Boolean) {
+    fun updateMuted(muted: Boolean) {
         isMuted = muted
     }
 
