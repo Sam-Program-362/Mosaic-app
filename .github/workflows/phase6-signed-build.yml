@@ -1,5 +1,7 @@
 name: Phase 6 signed build (established release signing)
 
+# Reused for post-v0.2.0 device-test candidates: builds and signs the current
+# branch HEAD with the same established signing; artifact-only, never a release.
 # Builds Phase 6 and signs it with the repository's established release-signing
 # configuration (GitHub Secrets + r0adkll/sign-android-release), exactly as in
 # .github/workflows/build.yml. Artifact-only: no tag, no GitHub Release.
