@@ -1,5 +1,31 @@
 # Progress tracker
 
+## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
+**Current published stable release: Mosaic v0.2.1**
+(https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1) —
+versionName 0.2.1 / versionCode 3, tag `v0.2.1` on source commit
+`e5ee42d15211b1da13321dfdf9bc977528060531`, asset
+`Mosaic-v0.2.1-release.apk`, SHA-256
+`ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`, permanent
+release certificate `9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a`
+(full record in the session-audio section below). Previous stable release
+v0.2.0 (tag `af58727`) remains published and unchanged. Working branch:
+`arena/a0a1b100-mosaic-app` (branched from `main` baseline `42ae102`; `main`
+does not yet contain Phase 6, the audio fix, or either release tag target).
+Documentation commits after the `v0.2.1` tag target are context-only and do
+not change the released source — always verify the live branch HEAD
+separately from the tag target. The session-wide MP4 audio fix is implemented
+and, per the user's report, passed physical-device testing; automated release
+verification was 116 tests, 0 failures/errors/skips, plus lint and privacy
+checks (sources below). The Phase 7 device-acceptance checklist is
+**Scheduled / Deferred — not passed**. Remaining open decisions: final
+branding/package identity, release SDK policy, whether/when to merge the
+session branch to `main`, and provisional custom-community artwork. **Next
+immediate action: none in progress. Wait for the user's next development
+instructions and evaluate their ideas before selecting the next
+implementation task; no next phase is approved or started.**
+
+
 ## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
 
 **User-reported device verification (not agent-run):** after the signed
@@ -95,15 +121,18 @@ re-trigger `build.yml`; exactly one asset, built from the tagged source, is
 attached. The v0.2.0 release and its asset remain unchanged. Direct APK:
 https://github.com/Sam-Program-362/Mosaic-app/releases/download/v0.2.1/Mosaic-v0.2.1-release.apk
 
-## Phase 7 — device acceptance and stabilization (in progress; no items passed yet)
+## Phase 7 — device acceptance and stabilization (Scheduled / Deferred; no items passed)
 The user reports they have installed and opened the signed release APK and that it behaves as
 expected. Record this narrowly as limited user-reported evidence: install/open/general behavior
 only. It is not an agent-run test, does not identify itemized Phase 6 results, and does not prove
 the Room v2→v3 migration ran over prior debug-build data (the release certificate differs from the
 debug certificates, so an in-place data-preserving update from a debug install was not possible).
-Status of the ordered Phase 7 device checklist (custom communities first, then media/scrolling,
-viewer, Saved copies, and folder access — see `docs/phase-6-device-check.md` sections A–F plus the
-Phase 4/5 device documents): **all items pending user results**. No failing result has been
+The user deferred this checklist on 2026-10-15 and considers the app satisfactory for
+proceeding; it is preserved with full test cases in the Google Drive archive
+(`Projects/Mosaic/Scheduled/SCHEDULED - Phase 7 Device Acceptance Testing.md`) and its
+sources remain in `docs/phase-6-device-check.md` sections A–F plus the Phase 4/5 device
+documents. Status of every item: **Scheduled / Deferred — pending user results if the
+user chooses to resume it; do not resume it automatically**. No failing result has been
 supplied and no code-level follow-up is justified yet; do not mark items passed from CI green or
 from the app launching.
 
