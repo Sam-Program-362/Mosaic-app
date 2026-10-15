@@ -159,7 +159,8 @@ Phase 6 implements local custom communities combining explicitly assigned, alrea
 without moving/copying source media: create, rename, browse, edit membership, and delete in the
 searchable directory and drawer, with union feeds preserving existing ordering/search/viewer rules.
 Room v3 (`MIGRATION_2_3`, tracked generated schema) stores stable community/folder membership IDs.
-CI run [38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at
-`63d6a27` passed 103 tests, lint, debug APK, privacy and schema checks (artifact `11946751459`).
+Final CI run [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913)
+at `69d34df` passed 103 tests, lint, debug APK, privacy and schema checks (artifact `11947392238`;
+earlier green run `38678154965` at `63d6a27` is historical).
 Physical-device acceptance follows `docs/phase-6-device-check.md` and remains open, as do the earlier
 Phase 4/5 device checks.

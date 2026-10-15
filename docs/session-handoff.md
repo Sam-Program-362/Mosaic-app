@@ -13,21 +13,24 @@ No merge or release is authorized by this document.
   (Historical reference: before that merge the development branch head was `e8e2ad5`, and the latest
   application-source commit was `a4264dd9c51181eff91de436fd7d7651cd48acea`.)
 - **Current session branch:** `arena/a0a1b100-mosaic-app`, branched from `42ae102`. Phase 6 code is
-  at `63d6a27`, followed by the CI-generated Room v3 schema commit; see CI status below. Work only
+  at `63d6a27`, followed by the CI-generated Room v3 schema commit and documentation sync; the
+  final Phase 6 commit is `69d34df`. See CI status below. Work only
   on this branch; do not switch branches or merge without user permission.
 
 - **Latest source verification:** GitHub Actions run
-  [38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) completed
-  successfully against Phase 6 code commit `63d6a27`: 103 tests, 0 failures/errors/skips; unit tests,
+  [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) completed
+  successfully against final Phase 6 commit `69d34df`: 103 tests, 0 failures/errors/skips; unit tests,
   lint, debug APK build, packaged-permission privacy checks, Room schema consistency, and the
-  production video-preloader source guard all passed. The preceding focused-change run
+  production video-preloader source guard all passed. (The first green Phase 6 run was
+  `38678154965` at `63d6a27`; it is now a historical record.) The preceding focused-change run
   [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844) at `a4264dd`
   (96 tests) remains the verification record for the preload-removal/photo-geometry change.
 
 - **APK artifact:** [mosaic-debug-and-reports, artifact
-  11946751459](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965/artifacts/11946751459)
-  for the Phase 6 build at `63d6a27`, containing the debug APK, `app-debug.sha256`, and reports
-  (expires 2027-01-13). The earlier focused-change artifact remains
+  11947392238](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913/artifacts/11947392238)
+  for the final Phase 6 acceptance build at `69d34df`, containing the debug APK, `app-debug.sha256`,
+  and reports (expires 2027-01-13). Artifact `11946751459` from run `38678154965` at `63d6a27` is
+  historical. The earlier focused-change artifact remains
   [11923577241](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
   Checksums have not been independently retrieved or compared here.
 
@@ -225,10 +228,11 @@ provisional first-member-artwork/initials default with no editor.
 **Implemented:** Room v3 tables + explicit `MIGRATION_2_3` (tracked CI-generated `3.json`), store and
 repository operations (validation, de-duplication, transactions), `buildFeedForFolders` union scoping
 preserving Random/Newest, metadata-only search, viewer snapshots and playback, and directory/drawer
-create-edit-delete UI. Verified by CI run
-[38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at `63d6a27`:
+create-edit-delete UI. Verified by final CI run
+[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at `69d34df`:
 103 tests (0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema
-consistency, video-preloader source guard; artifact `11946751459`. Two earlier Phase 6 runs were red
+consistency, video-preloader source guard; artifact `11947392238`. The first green Phase 6 run was
+`38678154965` at `63d6a27` (historical). Two earlier Phase 6 runs were red
 for test-only reasons (`38677570560` name-ordering assertion; `38677881453` Robolectric dialog
 interactions) and are not verification.
 

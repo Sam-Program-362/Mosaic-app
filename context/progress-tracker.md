@@ -13,12 +13,15 @@ Feeds scope by member folder-ID set (`buildFeedForFolders`), preserving Random/N
 search, viewer snapshots, photo geometry, and playback. Creation/management live in the searchable
 community directory and drawer; no new picker, permission, network, or source-media operation exists.
 
-Verified code commit `63d6a27` passed CI run
-[38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965): 103 tests
+Final verified commit `69d34df` passed CI run
+[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913): 103 tests
 (0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema consistency and
-the video-preloader source guard; artifact `mosaic-debug-and-reports` ID `11946751459`. Two earlier
-Phase 6 runs were red and are not verification: `38677570560` (one name-ordering test assertion) and
-`38677881453` (two Robolectric dialog/directory interaction tests, since made deterministic).
+the video-preloader source guard; artifact `mosaic-debug-and-reports` ID `11947392238` is the
+acceptance build. Historical Phase 6 runs: `38678154965` at `63d6a27` (artifact `11946751459`) was
+the first green run for the Phase 6 code, before the generated-schema (`617dabd`, run `38678435518`)
+and documentation commits; two still earlier runs were red and are not verification: `38677570560`
+(one name-ordering test assertion) and `38677881453` (two Robolectric dialog/directory interaction
+tests, since made deterministic).
 Physical-device acceptance is pending; follow `docs/phase-6-device-check.md`. Local Gradle still
 cannot start in this sandbox (no Java); hosted CI supplied verification. `main` baseline before this
 phase was merge commit `42ae102` (PR #3), whose own CI run `38676173414` succeeded.

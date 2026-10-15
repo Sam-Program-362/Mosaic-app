@@ -9,8 +9,8 @@ and a delete confirmation stating folders/media/Saved copies are unaffected. The
 custom communities by stable ID under their own heading; duplicate display names are allowed.
 Opening one reuses the existing feed/viewer with an empty state explaining membership, and a banner
 when member folders are unavailable. Artwork is provisional: first member artwork, else initials.
-CI run [38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at
-`63d6a27` passed 103 tests including Compose flows; physical-device acceptance follows
+CI run [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at
+`69d34df` (earlier green run `38678154965` at `63d6a27` is historical) passed 103 tests including Compose flows; physical-device acceptance follows
 `docs/phase-6-device-check.md` and remains open.
 
 

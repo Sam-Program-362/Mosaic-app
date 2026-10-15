@@ -1,15 +1,19 @@
 # Phase 6 device check — custom communities
 
-This is a physical-device acceptance procedure, not a CI result. CI run
-[38678154965](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678154965) at code
-commit `63d6a27` passed 103 tests (0 failures/errors/skips), lint, debug APK build,
+This is a physical-device acceptance procedure, not a CI result. Use the final Phase 6
+acceptance build: CI run
+[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at commit
+`69d34df` passed 103 tests (0 failures/errors/skips), lint, debug APK build,
 packaged-permission privacy checks, Room schema consistency, and the production
 video-preloader source guard. The debug APK is in artifact `mosaic-debug-and-reports`
-(ID `11946751459`). CI does not establish physical-device behavior.
+(ID `11947392238`). The earlier green run `38678154965` at `63d6a27` (artifact `11946751459`)
+verified the Phase 6 code before the generated-schema and documentation commits; it is a
+historical record, not the acceptance build. CI does not establish physical-device behavior.
 
 ## Install and record
 
-1. Download `app-debug.apk` from the artifact above and verify it against `app-debug.sha256`.
+1. Download `app-debug.apk` from artifact `11947392238` (run `38678674913`, commit `69d34df`)
+   and verify it against `app-debug.sha256`.
 2. Install/update in place. Do not clear app data: existing folders, indexed media, custom data,
    and Saved copies should survive the Room v2→v3 migration.
 3. Record device model, Android version, refresh rate, APK commit/checksum, and the names of two

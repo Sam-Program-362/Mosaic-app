@@ -294,9 +294,10 @@ custom community to its member-ID set and builds the union with `buildFeedForFol
 the available-only projection and de-duplicates by stable media key; unavailable members therefore
 contribute nothing while retained. `CommunityDirectoryScreen` provides create/edit/delete dialogs
 and custom rows alongside folder communities; the drawer lists custom communities by stable ID.
-Artwork is provisional: first available member folder artwork, else initials. CI run `38678154965`
-at `63d6a27` passed 103 tests, lint, APK privacy, schema consistency and debug build; physical-device
-acceptance remains open (`docs/phase-6-device-check.md`).
+Artwork is provisional: first available member folder artwork, else initials. Final CI run
+`38678674913` at `69d34df` passed 103 tests, lint, APK privacy, schema consistency and debug build
+(earlier green run `38678154965` at `63d6a27` is historical); physical-device acceptance remains
+open (`docs/phase-6-device-check.md`).
 
 ## Remaining planned architecture
 Room stores folder/access status, source media metadata, Saved-copy metadata and custom-community
