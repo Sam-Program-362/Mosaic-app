@@ -331,7 +331,7 @@ with manifest tools:node="remove". CI checks built APK, not just source XML. Mut
 previews don't request audio focus; unmuted video enables Media3-managed focus.
 Detach the TextureView from the player before releasing it on disposal.
 
-## Session-wide MP4 audio (post-v0.2.0 core adjustment)
+## Session-wide MP4 audio (shipped in v0.2.1)
 `core/playback/VideoAudioSession.kt` holds the one in-memory MP4 mute preference
 for the application process: it defaults to muted, exposes Compose snapshot
 state, and is never persisted (no DataStore/SharedPreferences/Room), so a fresh
