@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.MediaKey
+import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.data.source.FolderPickerContract
 import dev.mosaic.app.feature.feed.AnimatedMediaViewerOverlay
@@ -94,7 +95,12 @@ fun MosaicApp(
     onThemeSelected: suspend (ThemeMode) -> Unit,
     library: LibraryViewModel,
     imageLoader: ImageLoader,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    // Production passes the process-scoped session owned by MosaicApplication.
+    // The fallback only serves previews/tests without an application instance.
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var selectedCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedCustomCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -532,6 +538,7 @@ fun MosaicApp(
                             },
                             searchQuery = searchQuery,
                             onRetainedMediaChanged = { feedRetainedMedia = it },
+                            videoAudioSession = sharedVideoAudioSession,
                             modifier = Modifier.padding(padding).then(
                                 if (viewerVisible) Modifier.clearAndSetSemantics {} else Modifier
                             ),
@@ -544,6 +551,7 @@ fun MosaicApp(
                             onClose = closeViewer,
                             onSaveCopy = { post -> library.saveCopy(post.media) },
                             onRetainedMediaChanged = { viewerRetainedMedia = it },
+                            videoAudioSession = sharedVideoAudioSession,
                         )
                     }
                 }
@@ -599,6 +607,7 @@ fun MosaicApp(
                         onClose = closeViewer,
                         onSaveCopy = { post -> library.saveCopy(post.media) },
                         onRetainedMediaChanged = { viewerRetainedMedia = it },
+                        videoAudioSession = sharedVideoAudioSession,
                     )
                 }
                 else -> when {
