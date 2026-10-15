@@ -46,6 +46,24 @@ No merge or release is authorized by this document.
 - **Untracked user data:** `google_drive/` was present in the earlier checkout. In the current
   checkout it is absent; regardless, if it appears, do not modify or stage it.
 
+## Session-wide MP4 audio — post-v0.2.0 core adjustment (current task)
+
+After the v0.2.0 GitHub Release was published (tag `v0.2.0` at `af58727`,
+unchanged by this task), the user authorized one final core adjustment: a
+session-wide MP4 audio preference. Implemented as a process-scoped in-memory
+`VideoAudioSession` (default muted, never persisted) owned by
+`MosaicApplication` and threaded through `MosaicApp`/`FeedScreen`/
+`MediaViewer` into `VideoPreview`, which applies the shared preference before
+`prepare()` and follows later changes; the existing sound control toggles the
+shared state. New unit/UI tests cover fresh-process muting, pre-`prepare`
+silence, cross-surface inheritance, re-mute, and recreation semantics; device
+verification steps are in `docs/session-audio-device-check.md`. Deliverable for
+this task is a signed device-test candidate from the existing signing
+workflow — **no new release or tag** until the user verifies on-device and
+separately authorizes publication. Exact CI run, artifact, checksum, and
+certificate results are recorded in `context/progress-tracker.md` when
+complete.
+
 ## Product, architecture, safety, and provisional decisions
 
 Mosaic is the working name of a private, offline-first Android app for browsing photos, animated
