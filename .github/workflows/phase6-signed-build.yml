@@ -46,6 +46,28 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 
+      - name: Check signing configuration presence (no values logged)
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KS_STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          check() { if [ -n "$1" ]; then echo "::notice title=Secret $2::configured"; else echo "::warning title=Secret $2::MISSING OR EMPTY"; fi; }
+          check "$KS_B64" KEYSTORE_BASE64
+          check "$KS_ALIAS" KEY_ALIAS
+          check "$KS_STORE_PASS" KEYSTORE_PASSWORD
+          check "$KS_KEY_PASS" KEY_PASSWORD
+          if [ -n "$KS_B64" ]; then
+            if echo "$KS_B64" | base64 -d > /tmp/ks.bin 2>/dev/null && [ -s /tmp/ks.bin ]; then
+              echo "::notice title=Keystore decode::base64 decoded, $(stat -c%s /tmp/ks.bin) bytes, type $(file -b /tmp/ks.bin | cut -c1-60)"
+              keytool -list -keystore /tmp/ks.bin -storepass "$KS_STORE_PASS" 2>/tmp/ks.err | sed -n '1,12p' || { echo "::warning title=Keystore list::keytool could not list keystore with provided store password"; sed -n '1,3p' /tmp/ks.err; }
+            else
+              echo "::warning title=Keystore decode::KEYSTORE_BASE64 did not base64-decode to a non-empty file"
+            fi
+            rm -f /tmp/ks.bin
+          fi
+
       - name: Sign Release APK
         uses: r0adkll/sign-android-release@v1
         id: sign_app
