@@ -303,7 +303,7 @@ fun CommunityDirectoryScreen(
 }
 
 @Composable
-private fun CustomCommunityEditorDialog(
+internal fun CustomCommunityEditorDialog(
     title: String,
     initialName: String,
     initialMemberFolderIds: Set<String>,
