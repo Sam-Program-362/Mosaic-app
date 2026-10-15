@@ -46,7 +46,20 @@ No merge or release is authorized by this document.
 - **Untracked user data:** `google_drive/` was present in the earlier checkout. In the current
   checkout it is absent; regardless, if it appears, do not modify or stage it.
 
-## Session-wide MP4 audio — post-v0.2.0 core adjustment (current task)
+## Mosaic v0.2.1 — audio-fix release (current)
+
+The user reports the signed audio-fix candidate (run `38729816541`, artifact
+`11969238543`) **passed physical-device testing perfectly** for the
+session-wide MP4 audio behaviour — user-reported evidence, not an agent-run
+device test, and not completion of the separate scheduled Phase 7 checklist.
+The user has authorized release **v0.2.1**: Gradle is bumped to versionName
+0.2.1 / versionCode 3 (in-place update over v0.2.0, same permanent signing
+certificate), and the verified signed 0.2.1 APK is to be published as GitHub
+Release "Mosaic v0.2.1" with tag `v0.2.1` on the version-bump source commit,
+leaving v0.2.0 untouched. Exact run/artifact/checksum/certificate results are
+recorded in `context/progress-tracker.md` when the release is published.
+
+## Session-wide MP4 audio — post-v0.2.0 core adjustment
 
 After the v0.2.0 GitHub Release was published (tag `v0.2.0` at `af58727`,
 unchanged by this task), the user authorized one final core adjustment: a
