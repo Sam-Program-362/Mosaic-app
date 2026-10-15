@@ -22,9 +22,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val preferences = ThemePreferences(applicationContext)
+        val app = application as MosaicApplication
         val factory = viewModelFactory {
             initializer {
-                val app = application as MosaicApplication
                 LibraryViewModel(app.libraryRepository, app.savedCopyRepository)
             }
         }
@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
             }
             MosaicTheme(theme) {
                 MosaicApp(theme = theme, onThemeSelected = preferences::setTheme, library = library,
-                    imageLoader = (application as MosaicApplication).localImageLoader)
+                    imageLoader = app.localImageLoader, videoAudioSession = app.videoAudioSession)
             }
         }
     }
