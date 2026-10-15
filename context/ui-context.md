@@ -1,5 +1,16 @@
 # UI context
 
+## Session-wide MP4 audio (post-v0.2.0 core adjustment)
+The existing video sound control is unchanged in appearance and position, but
+it now reads and toggles the single process-scoped `VideoAudioSession` shared
+by the Home feed, folder/custom communities, Saved, and the immersive viewer:
+while muted it shows the VolumeOff icon with content description "Unmute
+video"; while unmuted it shows VolumeUp with "Mute video". Unmuting or muting
+on any one surface updates the control state (and playback) on every other
+surface, including newly opened MP4s, until the user changes it again or the
+process ends (a fresh launch starts muted). Device verification:
+`docs/session-audio-device-check.md`.
+
 ## Phase 6 custom communities — CI verified, phone acceptance pending
 The searchable community directory now lists custom communities (name, available-media count,
 unavailable-member notice) above folder communities, with **Create custom community** (disabled
