@@ -27,7 +27,9 @@ or proprietary assets to copy.
   never inspect media bytes or use a network service.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
-  sound toggle. Stop/release inactive and off-screen media. Bounded nearby retention and
+  a sound toggle whose mute/unmute choice is shared by every MP4 surface for
+  the rest of the app session (in-memory only; a fresh process starts muted).
+  Stop/release inactive and off-screen media. Bounded nearby retention and
   prefetch target static photos only; the current viewer/feed item remains retained. There is
   no production video-preload manager, neighboring-video buffer, offscreen video-frame prefetch,
   or speculative offscreen-video poster decode. A visible inactive MP4 keeps its local poster;
