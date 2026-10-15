@@ -1,6 +1,6 @@
 # UI context
 
-## Session-wide MP4 audio (post-v0.2.0 core adjustment)
+## Session-wide MP4 audio (shipped in v0.2.1)
 The existing video sound control is unchanged in appearance and position, but
 it now reads and toggles the single process-scoped `VideoAudioSession` shared
 by the Home feed, folder/custom communities, Saved, and the immersive viewer:
