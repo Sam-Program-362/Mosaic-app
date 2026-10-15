@@ -43,4 +43,28 @@ interface LibraryDao {
 
     @Query("UPDATE folders SET status = :status, failure = :failure WHERE id = :folderId")
     suspend fun setStatus(folderId: String, status: FolderStatus, failure: ScanFailure?)
+
+    @Query("SELECT * FROM custom_communities ORDER BY name COLLATE NOCASE, id")
+    fun observeCustomCommunities(): Flow<List<CustomCommunityEntity>>
+
+    @Query("SELECT * FROM custom_community_members ORDER BY communityId, folderId")
+    fun observeCustomCommunityMembers(): Flow<List<CustomCommunityMemberEntity>>
+
+    @Query("SELECT * FROM custom_communities ORDER BY name COLLATE NOCASE, id")
+    suspend fun getCustomCommunities(): List<CustomCommunityEntity>
+
+    @Insert
+    suspend fun insertCustomCommunity(community: CustomCommunityEntity)
+
+    @Insert
+    suspend fun insertCustomCommunityMembers(members: List<CustomCommunityMemberEntity>)
+
+    @Query("UPDATE custom_communities SET name = :name WHERE id = :communityId")
+    suspend fun renameCustomCommunity(communityId: String, name: String)
+
+    @Query("DELETE FROM custom_community_members WHERE communityId = :communityId")
+    suspend fun clearCustomCommunityMembers(communityId: String)
+
+    @Query("DELETE FROM custom_communities WHERE id = :communityId")
+    suspend fun deleteCustomCommunity(communityId: String)
 }

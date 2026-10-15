@@ -7,7 +7,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 const val LIBRARY_DATABASE_NAME = "library.db"
 
-@Database(entities = [FolderEntity::class, MediaEntity::class, SavedCopyEntity::class], version = 2, exportSchema = true)
+@Database(
+    entities = [
+        FolderEntity::class, MediaEntity::class, SavedCopyEntity::class,
+        CustomCommunityEntity::class, CustomCommunityMemberEntity::class,
+    ],
+    version = 3,
+    exportSchema = true,
+)
 abstract class LibraryDatabase : RoomDatabase() {
     abstract fun libraryDao(): LibraryDao
     abstract fun savedCopyDao(): SavedCopyDao
@@ -22,5 +29,23 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
                 `savedAtMillis` INTEGER NOT NULL, `sizeBytes` INTEGER NOT NULL, PRIMARY KEY(`id`))""",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_copies_savedAtMillis` ON `saved_copies` (`savedAtMillis`)")
+    }
+}
+
+/** Adds custom communities and their stable folder memberships without touching existing library or Saved data. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `custom_communities` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                "`createdAtMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `custom_community_members` (`communityId` TEXT NOT NULL, `folderId` TEXT NOT NULL, " +
+                "PRIMARY KEY(`communityId`, `folderId`), " +
+                "FOREIGN KEY(`communityId`) REFERENCES `custom_communities`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE, " +
+                "FOREIGN KEY(`folderId`) REFERENCES `folders`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_custom_community_members_communityId` ON `custom_community_members` (`communityId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_custom_community_members_folderId` ON `custom_community_members` (`folderId`)")
     }
 }

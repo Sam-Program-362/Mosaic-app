@@ -1,6 +1,7 @@
 package dev.mosaic.app.data.local
 
 import androidx.room.withTransaction
+import dev.mosaic.app.core.model.CustomCommunity
 import dev.mosaic.app.core.model.IndexedMedia
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderStatus
@@ -8,6 +9,8 @@ import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaDocument
 import dev.mosaic.app.core.model.ScanFailure
 import dev.mosaic.app.data.repository.LibraryStore
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
@@ -63,6 +66,51 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
 
     override suspend fun markUnavailable(folderId: String, failure: ScanFailure) {
         dao.setStatus(folderId, FolderStatus.Unavailable, failure)
+    }
+
+    override val customCommunities = combine(
+        dao.observeCustomCommunities(),
+        dao.observeCustomCommunityMembers(),
+    ) { communities, members ->
+        val memberIdsByCommunity = members.groupBy({ it.communityId }, { it.folderId })
+        communities.map { entity ->
+            CustomCommunity(
+                id = entity.id,
+                name = entity.name,
+                memberFolderIds = memberIdsByCommunity[entity.id].orEmpty().sorted(),
+                createdAtMillis = entity.createdAtMillis,
+            )
+        }
+    }
+
+    override suspend fun getCustomCommunities(): List<CustomCommunity> = customCommunities.first()
+
+    override suspend fun createCustomCommunity(community: CustomCommunity) {
+        database.withTransaction {
+            dao.insertCustomCommunity(
+                CustomCommunityEntity(community.id, community.name, community.createdAtMillis),
+            )
+            dao.insertCustomCommunityMembers(
+                community.memberFolderIds.distinct().map { CustomCommunityMemberEntity(community.id, it) },
+            )
+        }
+    }
+
+    override suspend fun renameCustomCommunity(communityId: String, name: String) {
+        dao.renameCustomCommunity(communityId, name)
+    }
+
+    override suspend fun setCustomCommunityMembers(communityId: String, folderIds: List<String>) {
+        database.withTransaction {
+            dao.clearCustomCommunityMembers(communityId)
+            dao.insertCustomCommunityMembers(
+                folderIds.distinct().map { CustomCommunityMemberEntity(communityId, it) },
+            )
+        }
+    }
+
+    override suspend fun deleteCustomCommunity(communityId: String) {
+        dao.deleteCustomCommunity(communityId)
     }
 }
 

@@ -41,6 +41,38 @@ data class MediaEntity(
     val sizeBytes: Long?,
 )
 
+@Entity(tableName = "custom_communities")
+data class CustomCommunityEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val createdAtMillis: Long,
+)
+
+/** Membership references stable folder/community IDs only; it never stores paths or copied media metadata. */
+@Entity(
+    tableName = "custom_community_members",
+    primaryKeys = ["communityId", "folderId"],
+    foreignKeys = [
+        ForeignKey(
+            entity = CustomCommunityEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["communityId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+        ForeignKey(
+            entity = FolderEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["folderId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("communityId"), Index("folderId")],
+)
+data class CustomCommunityMemberEntity(
+    val communityId: String,
+    val folderId: String,
+)
+
 @Entity(tableName = "saved_copies", indices = [Index(value = ["savedAtMillis"])])
 data class SavedCopyEntity(
     @PrimaryKey val id: String,

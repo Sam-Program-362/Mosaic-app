@@ -9,6 +9,7 @@ import androidx.room.Room
 import dev.mosaic.app.data.local.LIBRARY_DATABASE_NAME
 import dev.mosaic.app.data.local.LibraryDatabase
 import dev.mosaic.app.data.local.MIGRATION_1_2
+import dev.mosaic.app.data.local.MIGRATION_2_3
 import dev.mosaic.app.data.local.RoomLibraryStore
 import dev.mosaic.app.data.repository.LibraryRepository
 import dev.mosaic.app.data.repository.SavedCopyRepository
@@ -25,7 +26,7 @@ class MosaicApplication : Application() {
 
     val libraryDatabase: LibraryDatabase by lazy {
         Room.databaseBuilder(applicationContext, LibraryDatabase::class.java, LIBRARY_DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 
