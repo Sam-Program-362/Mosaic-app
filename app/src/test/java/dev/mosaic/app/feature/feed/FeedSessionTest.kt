@@ -11,6 +11,17 @@ class FeedSessionTest {
         assertEquals(2, buildFeed(media, null, FeedSort.Random, 42).size)
         assertEquals(listOf("a"), buildFeed(media, "a", FeedSort.Random, 42).map { it.media.folderId })
     }
+    @Test fun customCommunityFeedIsUnionOfOnlyMemberFoldersWithoutDuplicates() {
+        val media = listOf(item("a", "1"), item("b", "1"), item("c", "1"), item("a", "2"))
+        val feed = buildFeedForFolders(media + media.first(), setOf("a", "c"), FeedSort.Newest, 42)
+        assertEquals(setOf("a", "c"), feed.map { it.media.folderId }.toSet())
+        assertEquals(3, feed.size)
+        assertEquals(feed.map { it.media.key }.distinct().size, feed.size)
+        assertTrue(buildFeedForFolders(media, emptySet(), FeedSort.Random, 42).isEmpty())
+        // Search remains limited to indexed metadata within the scoped union.
+        assertEquals(listOf("1"), filterFeedPosts(feed, "Folder c").map { it.media.document.documentId })
+    }
+
     @Test fun newestOrdersKnownTimesThenUnknownWithDeterministicTies() {
         val media = listOf(item("a", "unknown"), item("a", "old", time = 10),
             item("a", "new", time = 20), item("b", "new", time = 20))

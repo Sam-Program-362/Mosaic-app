@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.MediaKey
+import dev.mosaic.app.core.playback.VideoAudioSession
 
 internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
 
@@ -67,7 +68,10 @@ internal fun AnimatedMediaViewerOverlay(
     onSaveCopy: (FeedPost) -> Unit,
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     AnimatedVisibility(
         visibleState = visibleState,
         modifier = modifier,
@@ -89,6 +93,7 @@ internal fun AnimatedMediaViewerOverlay(
                 onSaveCopy = onSaveCopy,
                 onRetainedMediaChanged = onRetainedMediaChanged,
                 modifier = Modifier.fillMaxSize(),
+                videoAudioSession = sharedVideoAudioSession,
             )
         }
     }
@@ -105,7 +110,10 @@ fun MediaViewer(
     onSaveCopy: ((FeedPost) -> Unit)? = null,
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     if (snapshot.posts.isEmpty()) {
         Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
             Text("No media is available in this feed.", color = Color.White)
@@ -154,6 +162,7 @@ fun MediaViewer(
                 viewer = true,
                 videoPreviewVisible = page == pagerState.currentPage,
                 feedPosition = page,
+                videoAudioSession = sharedVideoAudioSession,
             )
         }
         val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]

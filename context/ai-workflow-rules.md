@@ -88,3 +88,15 @@ sequence, and logs were not supplied. Targeted geometry/video/position and repea
 remain open. Do not say no phone feedback has occurred, do not claim full device acceptance, and do
 not claim the historical crash is fixed. See the [fresh-session handoff](../docs/session-handoff.md)
 for current status and the proposed next slice.
+
+## Current approval boundary (after v0.2.1, 2026-10-15)
+The dated authorizations above were one-off approvals for their stated tasks
+and are complete; they do not carry forward. The audio implementation, its
+signed candidate, the Drive context archive, and the v0.2.0 / v0.2.1 GitHub
+Releases were each separately authorized and are finished. As of the current
+stable release **v0.2.1**, no new feature, refactor, merge to `main`, tag, or
+release is authorized. The next agent waits for the user's next development
+instructions, evaluates the ideas with them, and only then proposes an
+implementation task for approval. Continue to distinguish automated CI
+evidence, user-reported device results, and unperformed scheduled checks in
+every report.

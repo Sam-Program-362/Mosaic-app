@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.MediaKey
+import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.data.source.FolderPickerContract
 import dev.mosaic.app.feature.feed.AnimatedMediaViewerOverlay
@@ -94,9 +95,15 @@ fun MosaicApp(
     onThemeSelected: suspend (ThemeMode) -> Unit,
     library: LibraryViewModel,
     imageLoader: ImageLoader,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    // Production passes the process-scoped session owned by MosaicApplication.
+    // The fallback only serves previews/tests without an application instance.
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     var destination by rememberSaveable { mutableStateOf(Destination.Home) }
     var selectedCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedCustomCommunityId by rememberSaveable { mutableStateOf<String?>(null) }
     var viewerSession by remember { mutableStateOf<ViewerSession?>(null) }
     var retainedViewerSession by remember { mutableStateOf<ViewerSession?>(null) }
     val viewerVisibility = remember { MutableTransitionState(false) }
@@ -137,6 +144,8 @@ fun MosaicApp(
     val savedFeed by library.savedFeed.collectAsStateWithLifecycle()
     val artwork by library.artwork.collectAsStateWithLifecycle()
     val folders by library.folders.collectAsStateWithLifecycle()
+    val customCommunities by library.customCommunities.collectAsStateWithLifecycle()
+    val customCommunitiesLoaded by library.customCommunitiesLoaded.collectAsStateWithLifecycle()
     val busy by library.busy.collectAsStateWithLifecycle()
     val loaded by library.loaded.collectAsStateWithLifecycle()
     val libraryReadFailed by library.readFailed.collectAsStateWithLifecycle()
@@ -145,26 +154,36 @@ fun MosaicApp(
 
     val isFeed = destination == Destination.Home || destination == Destination.Community
     val isSaved = destination == Destination.Saved
-    val expectedFolderId = if (destination == Destination.Community) selectedCommunityId else null
+    val expectedFolderId = if (destination == Destination.Community && selectedCustomCommunityId == null) {
+        selectedCommunityId
+    } else null
     val canSearch = destination == Destination.Home || destination == Destination.Community ||
         destination == Destination.Communities || destination == Destination.Saved
     val selectedFolder = folders.firstOrNull { it.folder.id == selectedCommunityId }
+    val selectedCustomCommunity = customCommunities.firstOrNull { it.id == selectedCustomCommunityId }
     val title = when (destination) {
         Destination.Home -> "Home"
         Destination.Communities -> "Communities"
-        Destination.Community -> selectedFolder?.folder?.label ?: "Community"
+        Destination.Community -> selectedCustomCommunity?.name ?: selectedFolder?.folder?.label ?: "Community"
         Destination.Saved -> "Saved"
         Destination.Folders -> "Manage folders"
         Destination.Settings -> "Settings"
     }
 
-    LaunchedEffect(destination, selectedCommunityId) {
-        if (isFeed) library.selectFolder(expectedFolderId)
+    LaunchedEffect(destination, selectedCommunityId, selectedCustomCommunityId) {
+        if (isFeed) {
+            if (selectedCustomCommunityId != null) library.selectCustomCommunity(selectedCustomCommunityId)
+            else library.selectFolder(expectedFolderId)
+        }
     }
-    LaunchedEffect(folders, loaded, libraryReadFailed, selectedCommunityId) {
-        val selectedStillExists = selectedCommunityId?.let { id -> folders.any { it.folder.id == id } } ?: true
-        if (loaded && !libraryReadFailed && !selectedStillExists) {
+    LaunchedEffect(folders, customCommunities, loaded, libraryReadFailed, selectedCommunityId, selectedCustomCommunityId) {
+        val folderStillExists = selectedCustomCommunityId != null || selectedCommunityId == null ||
+            folders.any { it.folder.id == selectedCommunityId }
+        val customStillExists = selectedCustomCommunityId == null ||
+            customCommunities.any { it.id == selectedCustomCommunityId }
+        if (loaded && customCommunitiesLoaded && !libraryReadFailed && (!folderStillExists || !customStillExists)) {
             selectedCommunityId = null
+            selectedCustomCommunityId = null
             if (destination == Destination.Community) destination = Destination.Home
         }
     }
@@ -214,7 +233,10 @@ fun MosaicApp(
 
     val chooseDestination: (Destination) -> Unit = { next ->
         destination = next
-        if (next == Destination.Home) selectedCommunityId = null
+        if (next == Destination.Home) {
+            selectedCommunityId = null
+            selectedCustomCommunityId = null
+        }
         menuExpanded = false
         sortMenuExpanded = false
         searchExpanded = false
@@ -238,6 +260,7 @@ fun MosaicApp(
             else -> {
                 destination = Destination.Home
                 selectedCommunityId = null
+                selectedCustomCommunityId = null
             }
         }
     }
@@ -277,9 +300,11 @@ fun MosaicApp(
                             NavigationDrawerItem(
                                 label = { Text(summary.folder.label + if (unavailable) " · Unavailable" else "", maxLines = 1) },
                                 icon = { CommunityAvatar(summary.folder.label, artwork[summary.folder.id], imageLoader) },
-                                selected = destination == Destination.Community && selectedCommunityId == summary.folder.id,
+                                selected = destination == Destination.Community && selectedCustomCommunityId == null &&
+                                    selectedCommunityId == summary.folder.id,
                                 colors = drawerColors,
                                 onClick = {
+                                    selectedCustomCommunityId = null
                                     selectedCommunityId = summary.folder.id
                                         destination = Destination.Community
                                         sortMenuExpanded = false
@@ -289,6 +314,40 @@ fun MosaicApp(
                                 },
                                 modifier = Modifier.padding(horizontal = 12.dp),
                             )
+                        }
+                    }
+                    if (customCommunities.isNotEmpty()) {
+                        Text("Custom communities", Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.titleSmall, color = colors.textSecondary)
+                        customCommunities.sortedBy { it.name.lowercase() }.forEach { community ->
+                            key("custom:${community.id}") {
+                                val memberArtwork = community.memberFolderIds.firstNotNullOfOrNull { artwork[it] }
+                                val unavailableMembers = community.memberFolderIds.count { memberId ->
+                                    folders.firstOrNull { it.folder.id == memberId }?.folder?.status == FolderStatus.Unavailable
+                                }
+                                NavigationDrawerItem(
+                                    label = {
+                                        Text(
+                                            community.name + if (unavailableMembers > 0) " · Unavailable member" else "",
+                                            maxLines = 1,
+                                        )
+                                    },
+                                    icon = { CommunityAvatar(community.name, memberArtwork, imageLoader) },
+                                    selected = destination == Destination.Community &&
+                                        selectedCustomCommunityId == community.id,
+                                    colors = drawerColors,
+                                    onClick = {
+                                        selectedCommunityId = null
+                                        selectedCustomCommunityId = community.id
+                                        destination = Destination.Community
+                                        sortMenuExpanded = false
+                                        searchExpanded = false
+                                        searchQuery = ""
+                                        scope.launch { drawerState.close() }
+                                    },
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                )
+                            }
                         }
                     }
                     Spacer(Modifier.size(8.dp))
@@ -328,7 +387,14 @@ fun MosaicApp(
                             title = {
                                 Row(verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (destination == Destination.Community && selectedFolder != null) {
+                                    if (destination == Destination.Community && selectedCustomCommunity != null) {
+                                        CommunityAvatar(
+                                            selectedCustomCommunity.name,
+                                            selectedCustomCommunity.memberFolderIds.firstNotNullOfOrNull { artwork[it] },
+                                            imageLoader,
+                                            size = 28.dp,
+                                        )
+                                    } else if (destination == Destination.Community && selectedFolder != null) {
                                         CommunityAvatar(selectedFolder.folder.label, artwork[selectedFolder.folder.id], imageLoader, size = 28.dp)
                                     }
                                     Text(title, maxLines = 1, style = MaterialTheme.typography.titleMedium)
@@ -438,7 +504,12 @@ fun MosaicApp(
                 ((isFeed && !libraryReadFailed) || isSaved) -> {
                     Box(Modifier.fillMaxSize()) {
                         FeedScreen(
-                            state = if (isSaved) savedFeed else if (feed.folderId == expectedFolderId) feed
+                            state = if (isSaved) savedFeed
+                                else if (
+                                    (selectedCustomCommunityId != null &&
+                                        feed.customCommunityId == selectedCustomCommunityId) ||
+                                    (selectedCustomCommunityId == null && feed.folderId == expectedFolderId)
+                                ) feed
                                 else feed.copy(posts = emptyList(), loaded = false),
                             folders = if (isSaved) emptyList() else folders,
                             busy = !isSaved && busy,
@@ -454,12 +525,20 @@ fun MosaicApp(
                             onOpenViewer = openViewer,
                             onSaveCopy = { post -> library.saveCopy(post.media) },
                             showFeedControls = false,
-                            emptyTitle = if (isSaved) "Nothing saved yet" else null,
-                            emptyDescription = if (isSaved) {
-                                "Save a separate copy from any post to keep it here, even if its source folder is removed."
-                            } else null,
+                            emptyTitle = when {
+                                isSaved -> "Nothing saved yet"
+                                selectedCustomCommunityId != null -> "No media in this custom community yet"
+                                else -> null
+                            },
+                            emptyDescription = when {
+                                isSaved -> "Save a separate copy from any post to keep it here, even if its source folder is removed."
+                                selectedCustomCommunityId != null ->
+                                    "This community shows only media from its assigned, available folders. Edit its membership from Communities if needed."
+                                else -> null
+                            },
                             searchQuery = searchQuery,
                             onRetainedMediaChanged = { feedRetainedMedia = it },
+                            videoAudioSession = sharedVideoAudioSession,
                             modifier = Modifier.padding(padding).then(
                                 if (viewerVisible) Modifier.clearAndSetSemantics {} else Modifier
                             ),
@@ -472,6 +551,7 @@ fun MosaicApp(
                             onClose = closeViewer,
                             onSaveCopy = { post -> library.saveCopy(post.media) },
                             onRetainedMediaChanged = { viewerRetainedMedia = it },
+                            videoAudioSession = sharedVideoAudioSession,
                         )
                     }
                 }
@@ -485,11 +565,34 @@ fun MosaicApp(
                         loaded = loaded,
                         onAddFolder = addFolder,
                         onOpenCommunity = { id ->
+                            selectedCustomCommunityId = null
                             selectedCommunityId = id
                             destination = Destination.Community
                             sortMenuExpanded = false
                             searchQuery = ""
                             searchExpanded = false
+                        },
+                        customCommunities = customCommunities,
+                        onOpenCustomCommunity = { id ->
+                            selectedCommunityId = null
+                            selectedCustomCommunityId = id
+                            destination = Destination.Community
+                            sortMenuExpanded = false
+                            searchQuery = ""
+                            searchExpanded = false
+                        },
+                        onCreateCustomCommunity = { name, memberIds ->
+                            library.createCustomCommunity(name, memberIds)
+                        },
+                        onEditCustomCommunity = { id, name, memberIds ->
+                            library.renameCustomCommunity(id, name)
+                            library.setCustomCommunityMembers(id, memberIds)
+                        },
+                        onDeleteCustomCommunity = { id ->
+                            if (selectedCustomCommunityId == id) {
+                                selectedCustomCommunityId = null
+                            }
+                            library.deleteCustomCommunity(id)
                         },
                         onManageFolders = { destination = Destination.Folders },
                         modifier = Modifier.padding(padding),
@@ -504,6 +607,7 @@ fun MosaicApp(
                         onClose = closeViewer,
                         onSaveCopy = { post -> library.saveCopy(post.media) },
                         onRetainedMediaChanged = { viewerRetainedMedia = it },
+                        videoAudioSession = sharedVideoAudioSession,
                     )
                 }
                 else -> when {
@@ -535,7 +639,7 @@ fun MosaicApp(
                     destination == Destination.Settings -> SettingsScreen(
                         theme = theme,
                         folderCount = folders.size,
-                        communityCount = folders.size,
+                        communityCount = folders.size + customCommunities.size,
                         savedCount = savedFeed.posts.size,
                         onThemeSelected = { mode ->
                             scope.launch {

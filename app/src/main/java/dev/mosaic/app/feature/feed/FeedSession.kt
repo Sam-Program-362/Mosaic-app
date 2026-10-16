@@ -18,6 +18,8 @@ data class FeedState(
     val folderId: String? = null,
     val epoch: Long = 0,
     val loaded: Boolean = false,
+    val customCommunityId: String? = null,
+    val memberFolderIds: Set<String> = emptySet(),
 )
 
 data class FeedSnapshot(
@@ -25,6 +27,8 @@ data class FeedSnapshot(
     val sort: FeedSort,
     val folderId: String?,
     val epoch: Long,
+    val customCommunityId: String? = null,
+    val memberFolderIds: Set<String> = emptySet(),
 )
 
 /** Search only the already-indexed names, folder labels, MIME types and media kinds. */
@@ -44,11 +48,26 @@ fun filterFeedPosts(posts: List<FeedPost>, query: String): List<FeedPost> {
 }
 
 /** Copy the exact visible order before any later refresh or sort emission can replace it. */
-fun FeedState.toSnapshot() = FeedSnapshot(posts.toList(), sort, folderId, epoch)
+fun FeedState.toSnapshot() = FeedSnapshot(posts.toList(), sort, folderId, epoch, customCommunityId, memberFolderIds)
 
 /** Stable random ranking survives database emissions and unrelated UI changes. */
-fun buildFeed(media: List<IndexedMedia>, folderId: String?, sort: FeedSort, epoch: Long): List<FeedPost> {
-    val eligible = media.filter { folderId == null || it.folderId == folderId }
+fun buildFeed(media: List<IndexedMedia>, folderId: String?, sort: FeedSort, epoch: Long): List<FeedPost> =
+    buildFeedFiltered(media, sort, epoch) { folderId == null || it.folderId == folderId }
+
+/**
+ * Union feed for a custom community: only explicitly assigned folder IDs contribute,
+ * and stable media identity prevents duplicate rows.
+ */
+fun buildFeedForFolders(media: List<IndexedMedia>, folderIds: Set<String>, sort: FeedSort, epoch: Long): List<FeedPost> =
+    buildFeedFiltered(media, sort, epoch) { it.folderId in folderIds }
+
+private fun buildFeedFiltered(
+    media: List<IndexedMedia>,
+    sort: FeedSort,
+    epoch: Long,
+    include: (IndexedMedia) -> Boolean,
+): List<FeedPost> {
+    val eligible = media.filter(include).distinctBy { it.key }
     val artwork = folderArtwork(media)
     val ranked = eligible.associate { it.key to stableSeed(epoch, it.key.stableKey) }
     val ordered = when (sort) {

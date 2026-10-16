@@ -1,5 +1,39 @@
 # UI context
 
+## Session-wide MP4 audio (shipped in v0.2.1)
+The existing video sound control is unchanged in appearance and position, but
+it now reads and toggles the single process-scoped `VideoAudioSession` shared
+by the Home feed, folder/custom communities, Saved, and the immersive viewer:
+while muted it shows the VolumeOff icon with content description "Unmute
+video"; while unmuted it shows VolumeUp with "Mute video". Unmuting or muting
+on any one surface updates the control state (and playback) on every other
+surface, including newly opened MP4s, until the user changes it again or the
+process ends (a fresh launch starts muted). Device verification:
+`docs/session-audio-device-check.md`.
+
+Image/GIF zoom exists only inside the full-screen viewer: pinch scales a
+still image or GIF between 1x and 4x (panning is clamped to the zoomed
+content), and double-tap toggles between the original scale and a zoomed
+scale. Single-finger vertical swipes still page the viewer, and returning to
+another item always starts at scale 1. The top-level feed does not zoom, and
+video surfaces have no zoom gesture. The app launcher icon is the
+user-provided `mosaic_logo.svg` artwork (adaptive icon with the art in the
+safe zone plus per-density rasters); in-app branding is unchanged.
+
+## Phase 6 custom communities — CI verified, phone acceptance pending
+The searchable community directory now lists custom communities (name, available-media count,
+unavailable-member notice) above folder communities, with **Create custom community** (disabled
+until at least one folder is selected), an editor dialog combining rename + folder-checkbox
+membership editing (creation requires a name and at least one folder; edits may empty membership),
+and a delete confirmation stating folders/media/Saved copies are unaffected. The drawer lists
+custom communities by stable ID under their own heading; duplicate display names are allowed.
+Opening one reuses the existing feed/viewer with an empty state explaining membership, and a banner
+when member folders are unavailable. Artwork is provisional: first member artwork, else initials.
+CI run [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at
+`69d34df` (earlier green run `38678154965` at `63d6a27` is historical) passed 103 tests including Compose flows; physical-device acceptance follows
+`docs/phase-6-device-check.md` and remains open.
+
+
 ## Current 2026-10-15 focused media change — CI verified; limited user phone report, targeted acceptance open
 Feed photos now use full available media width and their decoded/oriented intrinsic ratio for height;
 portrait, landscape, square, and panoramic ratios are not cropped to the video frame or arbitrarily
@@ -200,8 +234,8 @@ Phase 5 source implements independent Save requests in feed and viewer, and a Sa
 built only from app-managed copies. Verify repeated taps create separate copies, Saved
 items render/play after original removal or lost access, and failures leave no record or
 partial destination file. The save-result snackbar states success or that the original
-was left unchanged. Saved-copy removal is out of scope. Custom community creation
-names/selects/reviews folder membership; custom artwork policy remains unresolved.
+was left unchanged. Saved-copy removal is out of scope. Custom community creation/management is implemented in Phase 6 (see top of this file); custom
+artwork policy remains a provisional default with no editor.
 Local deterministic folder artwork uses first static image by case-insensitive name,
 with neutral initials otherwise. Existing no-folder, unavailable, decode/missing-media,
 and empty states remain. The combined Phase 5/viewer-motion CI run passed schema

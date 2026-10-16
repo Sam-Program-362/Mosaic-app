@@ -1,5 +1,6 @@
 package dev.mosaic.app.data.repository
 
+import dev.mosaic.app.core.model.CustomCommunity
 import dev.mosaic.app.core.model.IndexedMedia
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderSummary
@@ -22,4 +23,14 @@ interface LibraryStore {
     )
     /** Must retain media and folder identity on failure. */
     suspend fun markUnavailable(folderId: String, failure: ScanFailure)
+
+    val customCommunities: Flow<List<CustomCommunity>>
+    suspend fun getCustomCommunities(): List<CustomCommunity>
+    /** Insert the community and its membership atomically. Membership IDs must already be distinct. */
+    suspend fun createCustomCommunity(community: CustomCommunity)
+    suspend fun renameCustomCommunity(communityId: String, name: String)
+    /** Replace membership atomically; an empty replacement is allowed after creation. */
+    suspend fun setCustomCommunityMembers(communityId: String, folderIds: List<String>)
+    /** Delete only the community and (through Room foreign keys) its membership rows. */
+    suspend fun deleteCustomCommunity(communityId: String)
 }

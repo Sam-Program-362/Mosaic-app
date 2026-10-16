@@ -47,6 +47,8 @@ import coil3.compose.AsyncImage
 import coil3.decode.BitmapFactoryDecoder
 import coil3.request.ImageRequest
 import dev.mosaic.app.core.model.MediaKind
+import dev.mosaic.app.core.playback.VideoAudioSession
+import dev.mosaic.app.core.playback.applyVideoAudioPreference
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -62,6 +64,7 @@ internal fun LocalMediaPreview(
     post: FeedPost,
     active: Boolean,
     imageLoader: ImageLoader,
+    videoAudioSession: VideoAudioSession? = null,
     onBounds: (PreviewItemGeometry) -> Unit = {},
     viewer: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
@@ -72,6 +75,9 @@ internal fun LocalMediaPreview(
 ) {
     val document = post.media.document
     val colors = LocalMosaicColors.current
+    // Production passes the process-scoped session owned by MosaicApplication.
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     val diagnosticContext = LocalContext.current.applicationContext
     val geometryKey = remember(post.media.key.stableKey, document.modifiedAtMillis, document.sizeBytes) {
         mediaGeometryCacheKey(post.media.key.stableKey, document.modifiedAtMillis, document.sizeBytes)
@@ -165,6 +171,7 @@ internal fun LocalMediaPreview(
             when {
                 document.kind == MediaKind.Video && active -> VideoPreview(
                     post = post,
+                    audioSession = sharedVideoAudioSession,
                     viewer = viewer,
                     aspectRatio = contentRatio,
                     reservedContainerAspectRatio = reservedRatio,
@@ -189,6 +196,10 @@ internal fun LocalMediaPreview(
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,
                     description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
+                    // Zoom exists only in the full-screen viewer (the inner
+                    // feed); the top-level feed renders the same images and
+                    // GIFs without it. Videos never reach this branch.
+                    zoomable = viewer,
                     onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
@@ -197,7 +208,7 @@ internal fun LocalMediaPreview(
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
     val request = remember(uri, modified, animated, context) {
         ImageRequest.Builder(context).data(Uri.parse(uri))
@@ -209,19 +220,26 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
     }
     var loading by remember(request) { mutableStateOf(true) }
     var failed by remember(request) { mutableStateOf(false) }
-    if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
-    AsyncImage(
-        model = request, imageLoader = imageLoader, contentDescription = description,
-        contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
-        onSuccess = {
-            loading = false
-            val image = it.result.image
-            intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
-        },
-        onError = { loading = false; failed = true },
-    )
-    if (failed) Text("Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
-        Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
+    // Still images and GIFs share this rendering path, so the viewer-only
+    // zoom viewport covers both; state resets whenever the request (item)
+    // changes.
+    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
+            AsyncImage(
+                model = request, imageLoader = imageLoader, contentDescription = description,
+                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
+                onSuccess = {
+                    loading = false
+                    val image = it.result.image
+                    intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
+                },
+                onError = { loading = false; failed = true },
+            )
+            if (failed) Text("Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
+                Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
+        }
+    }
 }
 
 @Composable
@@ -286,6 +304,7 @@ private fun playbackStateName(playbackState: Int): String = when (playbackState)
 @Composable
 private fun VideoPreview(
     post: FeedPost,
+    audioSession: VideoAudioSession,
     viewer: Boolean,
     aspectRatio: Float,
     reservedContainerAspectRatio: Float,
@@ -304,7 +323,9 @@ private fun VideoPreview(
     var failed by remember(stableKey, uri) { mutableStateOf(false) }
     var loading by remember(stableKey, uri) { mutableStateOf(true) }
     var hasRenderedFirstFrame by remember(stableKey, uri) { mutableStateOf(false) }
-    var muted by remember(stableKey) { mutableStateOf(true) }
+    // Session-wide audio state: reading it here subscribes this preview to
+    // changes made from any other feed or the viewer, and vice versa.
+    val sessionMuted = audioSession.isMuted
     var shouldPlay by remember(stableKey) { mutableStateOf(initiallyPlayWhenReady) }
     var currentPositionMillis by remember(stableKey) { mutableLongStateOf(initialPositionMillis) }
     var durationMillis by remember(stableKey) { mutableLongStateOf(0L) }
@@ -313,9 +334,15 @@ private fun VideoPreview(
     var controlsVisible by remember(stableKey, viewer) { mutableStateOf(true) }
     var seekFeedback by remember(stableKey) { mutableStateOf<String?>(null) }
     var seekFeedbackToken by remember(stableKey) { mutableIntStateOf(0) }
+    val audioAttributes = remember {
+        AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
+    }
     val (player, playerDiagnosticToken) = remember(stableKey, uri) {
         try {
             val createdPlayer = ExoPlayer.Builder(context).build()
+            // Apply the current session audio preference before any media is
+            // prepared, so a new player can never sound ahead of that state.
+            applyVideoAudioPreference(createdPlayer, sessionMuted, audioAttributes)
             createdPlayer to MediaDiagnostics.playerCreated(context, feedPosition, stableKey)
         } catch (error: Exception) {
             MediaDiagnostics.log(
@@ -325,9 +352,6 @@ private fun VideoPreview(
             )
             throw error
         }
-    }
-    val audioAttributes = remember {
-        AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
     }
     val viewHolder = remember(player) {
         object {
@@ -401,10 +425,11 @@ private fun VideoPreview(
             }
         }
         player.addListener(listener)
-        player.volume = 0f
         player.repeatMode = Player.REPEAT_MODE_ONE
-        // Silent previews must not steal audio focus from the user's music.
-        player.setAudioAttributes(audioAttributes, false)
+        // Re-apply the current session preference before preparing media:
+        // silent playback must not steal audio focus from the user's music,
+        // and an unmuted session choice must already be in effect.
+        applyVideoAudioPreference(player, audioSession.isMuted, audioAttributes)
         try {
             player.setMediaItem(MediaItem.fromUri(Uri.parse(uri)))
             if (initialPositionMillis > 0L) player.seekTo(initialPositionMillis)
@@ -467,6 +492,11 @@ private fun VideoPreview(
                     "firstFrame=$hasRenderedFirstFrame unreleased=${MediaDiagnostics.unreleasedPlayerCount()}",
             )
         }
+    }
+
+    // Propagate session-wide mute/unmute changes to this existing player.
+    LaunchedEffect(player, sessionMuted) {
+        applyVideoAudioPreference(player, sessionMuted, audioAttributes)
     }
 
     LaunchedEffect(player, stableKey) {
@@ -619,16 +649,18 @@ private fun VideoPreview(
             ) {
                 VideoControls(
                     playWhenReady = shouldPlay,
-                    muted = muted,
+                    muted = sessionMuted,
                     positionMillis = currentPositionMillis,
                     durationMillis = durationMillis,
                     isSeeking = isSeeking,
                     seekPositionMillis = seekPositionMillis,
                     onPlayPause = { player.playWhenReady = !player.playWhenReady },
                     onMuteToggle = {
-                        muted = !muted
-                        player.volume = if (muted) 0f else 1f
-                        player.setAudioAttributes(audioAttributes, !muted)
+                        // Update the shared session state first, then apply it
+                        // to this player immediately; the session effect above
+                        // propagates the same change to every other player.
+                        audioSession.toggleMuted()
+                        applyVideoAudioPreference(player, audioSession.isMuted, audioAttributes)
                     },
                     onSeekChange = { value ->
                         isSeeking = true

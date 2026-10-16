@@ -47,6 +47,16 @@ Inspect merged APK permissions after adding media libraries; transitive manifest
 must not silently add network or broad storage/media access. Keep static artwork
 nonanimated, and request audio focus only for audible playback.
 
+Session-scoped playback preferences that must reset on a fresh process (the
+MP4 mute choice, shipped in v0.2.1) live in a single in-memory state object
+owned by the application process (`VideoAudioSession` in `core/playback/`);
+they are never written to DataStore, SharedPreferences, Room, or saved-instance
+state. Every playback surface reads and writes that one state, and every new
+player applies the current preference (volume + audio-focus handling) before
+`prepare()`. Test fresh-instance semantics (a new session starts muted)
+separately from shared-instance propagation, and do not claim real-device
+audio behaviour from unit/UI tests.
+
 Phase 4 tests cover feed-snapshot preservation, viewer initial page/close/vertical
 paging, explicit removal confirmation, exact-folder cleanup, and metadata cascade.
 The viewer activates media only on its current RESUMED page, restores system-bar

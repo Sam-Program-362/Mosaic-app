@@ -39,6 +39,7 @@ import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.FolderSummary
 import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.MediaKind
+import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 
 @Composable
@@ -61,7 +62,11 @@ fun FeedScreen(
     searchQuery: String = "",
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    // Production passes the process-scoped session owned by MosaicApplication.
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     val colors = LocalMosaicColors.current
     val diagnosticContext = LocalContext.current.applicationContext
     val visiblePosts = remember(state.posts, searchQuery) { filterFeedPosts(state.posts, searchQuery) }
@@ -244,7 +249,7 @@ fun FeedScreen(
         },
     )
     // The only feed programmatic scroll is an intentional new-session/sort/search reset.
-    LaunchedEffect(state.folderId, state.sort, state.epoch, searchQuery) {
+    LaunchedEffect(state.folderId, state.customCommunityId, state.sort, state.epoch, searchQuery) {
         val before = listState.layoutInfo.visibleItemsInfo.firstOrNull()
         val trigger = "feed-session-key-change folder=${MediaDiagnostics.shortId(state.folderId ?: "home")} " +
             "sort=${state.sort.name} epoch=${state.epoch} searchActive=${searchQuery.isNotBlank()}"
@@ -294,12 +299,21 @@ fun FeedScreen(
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
         val folder = folders.firstOrNull { it.folder.id == state.folderId }
-        val unavailable = if (state.folderId != null) folder?.folder?.status == FolderStatus.Unavailable
-            else folders.any { it.folder.status == FolderStatus.Unavailable }
+        val unavailable = when {
+            state.customCommunityId != null -> folders.any {
+                it.folder.id in state.memberFolderIds && it.folder.status == FolderStatus.Unavailable
+            }
+            state.folderId != null -> folder?.folder?.status == FolderStatus.Unavailable
+            else -> folders.any { it.folder.status == FolderStatus.Unavailable }
+        }
         if (unavailable) item(key = "unavailable") {
             Column(Modifier.padding(16.dp)) {
-                Text(if (state.folderId == null) "Some folders are unavailable and excluded from Home."
-                    else "This folder is unavailable. Its community and index have been retained.", color = colors.error)
+                Text(when {
+                    state.customCommunityId != null ->
+                        "Some member folders are unavailable and excluded for now. Their membership and index have been retained."
+                    state.folderId == null -> "Some folders are unavailable and excluded from Home."
+                    else -> "This folder is unavailable. Its community and index have been retained."
+                }, color = colors.error)
                 TextButton(onClick = onManageFolders) { Text("Manage / restore access") }
             }
         }
@@ -394,6 +408,7 @@ fun FeedScreen(
                     }
                 },
                 active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == key,
+                videoAudioSession = sharedVideoAudioSession,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
                 hideCommunity = state.folderId != null,
@@ -423,6 +438,7 @@ internal fun MediaPostCard(
     post: FeedPost,
     imageLoader: ImageLoader,
     active: Boolean,
+    videoAudioSession: VideoAudioSession? = null,
     onCardSizeChanged: (IntSize) -> Unit = {},
     onPreviewBounds: (PreviewItemGeometry) -> Unit = {},
     onOpenViewer: (() -> Unit)? = null,
@@ -471,6 +487,7 @@ internal fun MediaPostCard(
             post = post,
             active = active,
             imageLoader = imageLoader,
+            videoAudioSession = videoAudioSession,
             onBounds = onPreviewBounds,
             viewer = false,
             onOpenViewer = onOpenViewer,

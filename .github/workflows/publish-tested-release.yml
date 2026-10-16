@@ -1,0 +1,191 @@
+name: Publish tested signed APK as GitHub Release (one-time)
+
+# One-time release preparation: publishes the ALREADY-TESTED signed APK from
+# the successful signed-build run 38690146270 (artifact mosaic-phase6-signed-apk,
+# commit af58727) as GitHub Release v0.2.0. It does not rebuild or re-sign
+# anything and must not substitute a different APK. The APK is verified
+# in-runner (SHA-256 + apksigner certificate fingerprint) before publishing.
+# The release is created with GITHUB_TOKEN so the new tag does not re-trigger
+# the tag-based build workflow (build.yml) with an untested rebuild.
+
+on:
+  push:
+    branches: ['arena/a0a1b100-mosaic-app']
+    paths: ['.github/workflows/publish-tested-release.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Verify tested APK and publish release
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install Android 35 build tools (apksigner)
+        shell: bash
+        run: |
+          set -o pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if "$SDKMANAGER" 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
+            echo "Android build tools ready"
+          else
+            echo "::error title=Android SDK setup::sdkmanager failed"
+            exit 1
+          fi
+
+      - name: Download the tested signed APK artifact (run 38690146270)
+        uses: actions/download-artifact@v4
+        with:
+          name: mosaic-phase6-signed-apk
+          run-id: 38690146270
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: tested-apk
+
+      - name: Verify APK checksum and signing certificate
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la tested-apk
+          APK="tested-apk/Mosaic-release.apk"
+          test -f "$APK"
+          test -f tested-apk/Mosaic-release.apk.sha256
+          # 1) SHA-256 must match the checksum produced alongside the tested build.
+          (cd tested-apk && sha256sum -c Mosaic-release.apk.sha256)
+          SHA="$(sha256sum "$APK" | cut -d' ' -f1)"
+          SIZE="$(stat -c%s "$APK")"
+          # 2) SHA-256 must match the tested build recorded at signing time.
+          EXPECTED_SHA="7063b0358390a5947a583a758c50bf0713ce9e91af37f667a8311e9881fa83ba"
+          if [ "$SHA" != "$EXPECTED_SHA" ]; then
+            echo "::error title=APK checksum mismatch::computed $SHA, expected tested build $EXPECTED_SHA"
+            exit 1
+          fi
+          # 3) Signature must verify and match the permanent release certificate.
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify "$APK"
+          FP="$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr -d ' \r')"
+          EXPECTED_FP="9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a"
+          if [ "$FP" != "$EXPECTED_FP" ]; then
+            echo "::error title=Certificate mismatch::APK certificate $FP does not match the expected permanent release certificate"
+            exit 1
+          fi
+          echo "apk_sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "apk_size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "cert_fp=$FP" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Tested APK verified::Mosaic-release.apk, $SIZE bytes, SHA-256 $SHA, certificate SHA-256 $FP (matches expected permanent release certificate)"
+
+      - name: Refuse to overwrite an existing release or tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view v0.2.0 --repo Sam-Program-362/Mosaic-app > /dev/null 2>&1; then
+            echo "::error title=Release exists::v0.2.0 already exists; refusing to overwrite"
+            exit 1
+          fi
+          if gh api repos/Sam-Program-362/Mosaic-app/git/ref/tags/v0.2.0 > /dev/null 2>&1; then
+            echo "::error title=Tag exists::v0.2.0 tag already exists; refusing to reuse"
+            exit 1
+          fi
+          echo "No existing v0.2.0 release or tag."
+
+      - name: Write release notes
+        shell: bash
+        env:
+          APK_SHA: ${{ steps.verify.outputs.apk_sha256 }}
+          APK_SIZE: ${{ steps.verify.outputs.apk_size }}
+          CERT_FP: ${{ steps.verify.outputs.cert_fp }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Mosaic v0.2.0
+
+          First GitHub Release of Mosaic — a private, offline-first Android app for
+          browsing user-selected local photos, GIFs, and MP4 videos in a compact
+          feed. This release attaches the **already-tested, permanently signed APK**
+          from the successful signed build; it is not a Play Store publication and
+          no new build was produced for this release.
+
+          ### What's included
+
+          - Native SAF folder picker with persisted read grants; direct-child
+            indexing only — no broad storage access, no runtime network.
+          - Home feed combining all selected folders; automatic per-folder
+            communities; exact folder-feed isolation.
+          - Custom communities (Phase 6): create, rename, browse, edit membership,
+            and delete communities that group explicitly selected folders. Duplicate
+            display names are allowed (stable IDs are the identity); a folder may
+            belong to several communities; originals are never moved or copied.
+          - Random/Newest ordering, refresh, metadata-only search (filenames,
+            folder labels, MIME/media kind — media bytes are never inspected).
+          - Full-width feed photos using their intrinsic aspect ratio; full-screen
+            vertical viewer opening at the tapped item over a frozen feed snapshot.
+          - Video: starts muted, play/pause, mute, seek with elapsed/duration,
+            double-tap ±10 s, tap to show/hide controls; local posters for inactive
+            videos; no speculative video preloading.
+          - Save copy: every tap creates another independent app-managed copy;
+            copies keep rendering after the source folder is removed from Mosaic.
+          - Folder removal with confirmation; removal drops only Mosaic's index and
+            attempts to release its read grant — original files are never altered.
+          - Light/Dark themes, header/drawer navigation, searchable community
+            directory, Settings.
+          - Room v3 local database with explicit, non-destructive migrations.
+
+          ### Build and signing verification
+
+          | Item | Value |
+          |---|---|
+          | Asset | `Mosaic-release.apk` |
+          | App | `dev.mosaic.app`, versionName 0.2.0, versionCode 2, minSdk 26, targetSdk 35 |
+          EOF
+          {
+            echo "| APK file size | $APK_SIZE bytes |"
+            echo "| APK SHA-256 | \`$APK_SHA\` |"
+            echo "| Signing certificate SHA-256 | \`$CERT_FP\` |"
+            echo "| Certificate check | Matches the expected permanent release certificate \`9D:E4:BE:CD:70:5F:EE:F3:EF:53:60:32:FF:3F:62:45:A9:E2:BF:7F:C7:38:0B:E9:56:2A:A5:FC:70:4C:9D:6A\`; \`apksigner verify\` passed in the publishing workflow |"
+          } >> release-notes.md
+          cat >> release-notes.md <<'EOF'
+          | Source commit | `af58727f7d34b882e29b6e336041c4cc963f4c16` (app source identical to Phase 6 commit `69d34df`) |
+          | Build workflow run | [38690146270](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38690146270) (`phase6-signed-build.yml`), artifact `mosaic-phase6-signed-apk` (ID `11955884271`) |
+          | Automated verification | Phase 6 CI run [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913): 103 tests (0 failures/errors/skips), lint, schema and privacy checks |
+
+          ### Known limitations
+
+          - The Phase 7 itemized device-acceptance checklist has been **deferred**
+            by the user and is archived as *Scheduled*, not passed. Existing phone
+            evidence is user-reported: the signed APK installed, opened, and
+            behaves as expected, plus an earlier limited "scrolling is okay, didn't
+            crash" report. CI is not device testing.
+          - The Room v2→v3 migration over pre-existing debug-install data has not
+            been exercised on a phone: the permanent release certificate differs
+            from the debug certificates, so release builds cannot update debug
+            installs in place. Automated migration tests cover the migration.
+          - An earlier reported crash has no logcat/tombstone and no proven cause;
+            it is not claimed fixed.
+          - Saved-copy removal is not implemented (out of v1 scope). No comments,
+            votes, accounts, cloud sync, or analytics. Branding/package naming is
+            provisional (`Mosaic` / `dev.mosaic.app`).
+          - Installing this APK requires allowing installs from your browser/file
+            manager (sideloading). It cannot update a debug-signed install; that
+            limitation does not affect your original media files.
+
+          Full project context is archived in Google Drive under `Projects/Mosaic/`
+          (see `ARCHIVE-INDEX.md` there).
+          EOF
+          cat release-notes.md
+
+      - name: Create GitHub Release v0.2.0 with the tested APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create v0.2.0 tested-apk/Mosaic-release.apk \
+            --repo Sam-Program-362/Mosaic-app \
+            --target af58727f7d34b882e29b6e336041c4cc963f4c16 \
+            --title "Mosaic v0.2.0" \
+            --notes-file release-notes.md
+          gh release view v0.2.0 --repo Sam-Program-362/Mosaic-app \
+            --json tagName,name,url,isDraft,isPrerelease,targetCommitish,assets
+          echo "::notice title=GitHub Release published::https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.0"

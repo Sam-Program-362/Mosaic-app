@@ -280,10 +280,28 @@ report is recorded in the current section above and does not retroactively valid
 prove crash resolution. Exact targeted sweep and capture instructions are in
 `docs/phase-5-device-check.md`.
 
+## Phase 6 implemented — custom communities
+Room v3 adds `custom_communities(id, name, createdAtMillis)` and
+`custom_community_members(communityId, folderId)` with a composite primary key and CASCADE foreign
+keys to both communities and folders. Explicit `MIGRATION_2_3` is chained after `MIGRATION_1_2`; the
+KSP-generated `3.json` schema is tracked. `LibraryStore`/`RoomLibraryStore` expose communities with
+their sorted member folder IDs; `LibraryRepository` (under its existing mutex) validates trimmed
+non-blank names, requires at least one already-selected folder at creation, de-duplicates member
+IDs, allows one folder in many communities, permits empty membership on later edits, and deletes
+only the community row (FK cascade removes memberships). Folder removal relies on the same folder
+FK cascade, so member media/Saved copies are untouched. `LibraryViewModel` resolves a selected
+custom community to its member-ID set and builds the union with `buildFeedForFolders`, which filters
+the available-only projection and de-duplicates by stable media key; unavailable members therefore
+contribute nothing while retained. `CommunityDirectoryScreen` provides create/edit/delete dialogs
+and custom rows alongside folder communities; the drawer lists custom communities by stable ID.
+Artwork is provisional: first available member folder artwork, else initials. Final CI run
+`38678674913` at `69d34df` passed 103 tests, lint, APK privacy, schema consistency and debug build
+(earlier green run `38678154965` at `63d6a27` is historical); physical-device acceptance remains
+open (`docs/phase-6-device-check.md`).
+
 ## Remaining planned architecture
-Room already stores folder/access status, source media metadata and Saved-copy
-metadata; custom-community membership remains for a later slice. Media bytes remain
-outside Room.
+Room stores folder/access status, source media metadata, Saved-copy metadata and custom-community
+membership. Media bytes remain outside Room.
 SAF operations belong in `data/source/`; reconciliation/copy orchestration in
 `data/repository/`, never composables. Coroutines/Flow offload provider/file I/O.
 Room, Coil and Media3 are now installed for implemented slices. Room exports schemas under `app/schemas`; retain generated versions and add
@@ -304,10 +322,31 @@ explicit migrations when changing the database. No WorkManager or background sca
 - Visible/foreground-only playback with lifecycle-scoped player/decoder ownership.
 - Do not retain activities, open streams, or player instances in inappropriate scopes.
 
-Unresolved: final identity/SDK policy, community renaming and custom artwork. Static folder artwork default: first supported
+Unresolved: final identity/SDK policy and custom artwork. Custom-community naming/membership policy
+was approved for Phase 6 (see above). Static folder artwork default: first supported
 static image by case-insensitive filename; neutral initials when none exists.
 
 Offline packaging guard: remove inherited INTERNET/ACCESS_NETWORK_STATE permissions
 with manifest tools:node="remove". CI checks built APK, not just source XML. Muted
 previews don't request audio focus; unmuted video enables Media3-managed focus.
 Detach the TextureView from the player before releasing it on disposal.
+
+## Session-wide MP4 audio (shipped in v0.2.1)
+`core/playback/VideoAudioSession.kt` holds the one in-memory MP4 mute preference
+for the application process: it defaults to muted, exposes Compose snapshot
+state, and is never persisted (no DataStore/SharedPreferences/Room), so a fresh
+process starts muted while Activity recreation, recomposition, navigation, and
+background/foreground cycles within the process preserve the user's choice.
+`MosaicApplication` owns the single instance; `MainActivity` passes it through
+`MosaicApp` into `FeedScreen` and the viewer overlay, down to `VideoPreview`
+(composables without an application-provided instance fall back to a local
+remembered session, used only by previews/tests). A player applies the current
+preference at creation and again in its setup effect before `prepare()` —
+`applyVideoAudioPreference` sets volume (0f/1f) and Media3 audio-focus handling
+(muted previews never request focus) — and a session-keyed effect propagates
+later changes to the existing player. The sound control toggles the shared
+session and applies it to its player immediately; its icon/label read the
+shared state. Player creation, ownership, visibility gating, and disposal are
+otherwise unchanged. Tests: `VideoAudioSessionTest` (unit) and
+`VideoAudioSessionUiTest` (Robolectric Compose wiring); device audio checks
+are in `docs/session-audio-device-check.md`.

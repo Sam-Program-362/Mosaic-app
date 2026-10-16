@@ -1,0 +1,159 @@
+name: Signing investigation (one-time)
+
+# One-time diagnostic: compare the installed build's signing certificate with the
+# Phase 6 build, then attempt a restore-only lookup of the previous branch's
+# cached debug keystore. This workflow never saves a cache, never exports the
+# keystore, and logs only public certificate fingerprints. The debug keystore is
+# development-only and must never be used for release signing.
+on:
+  push:
+    branches: ['arena/a0a1b100-mosaic-app']
+    paths: ['.github/workflows/signing-investigation.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  investigate:
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    env:
+      OLD_RUN_ID: '38624705844'
+      PHASE6_RUN_ID: '38678674913'
+      PHASE6_SHA: '69d34df813ad3dff91c6a5405d7921555280b005'
+      # Google's publicly documented default password for Android *debug* keystores.
+      # Development only; not a production credential.
+      DEBUG_KEYSTORE_PASS: 'android'
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android 35 platform and build tools
+        run: |
+          set -o pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Download installed-version artifact (run 38624705844)
+        uses: actions/download-artifact@v5
+        with:
+          name: mosaic-debug-and-reports
+          run-id: ${{ env.OLD_RUN_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: old-installed
+
+      - name: Download Phase 6 artifact (run 38678674913)
+        uses: actions/download-artifact@v5
+        with:
+          name: mosaic-debug-and-reports
+          run-id: ${{ env.PHASE6_RUN_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: phase6-existing
+
+      - name: Fingerprint both APKs with apksigner
+        id: fingerprints
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          OLD_APK=$(find old-installed -name 'app-debug.apk' | head -1)
+          P6_APK=$(find phase6-existing -name 'app-debug.apk' | head -1)
+          test -n "$OLD_APK" && test -n "$P6_APK"
+          "$APKSIGNER" verify "$OLD_APK"
+          echo "::notice title=Old APK signature::apksigner verify passed for installed-version APK from run $OLD_RUN_ID"
+          "$APKSIGNER" verify "$P6_APK"
+          echo "::notice title=Phase 6 APK signature::apksigner verify passed for Phase 6 APK from run $PHASE6_RUN_ID"
+          OLD_FP=$("$APKSIGNER" verify --print-certs "$OLD_APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr -d '[:space:]' | tr 'A-F' 'a-f')
+          P6_FP=$("$APKSIGNER" verify --print-certs "$P6_APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr -d '[:space:]' | tr 'A-F' 'a-f')
+          OLD_SHA=$(sha256sum "$OLD_APK" | cut -d' ' -f1)
+          P6_SHA=$(sha256sum "$P6_APK" | cut -d' ' -f1)
+          echo "::notice title=Old APK certificate SHA-256::$OLD_FP"
+          echo "::notice title=Phase 6 APK certificate SHA-256::$P6_FP"
+          echo "::notice title=Old APK file SHA-256::$OLD_SHA"
+          echo "::notice title=Phase 6 APK file SHA-256::$P6_SHA"
+          if [ "$OLD_FP" = "$P6_FP" ]; then
+            echo "::notice title=Certificate comparison::MATCH"
+            echo "certificates_match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Certificate comparison::DIFFER"
+            echo "certificates_match=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "old_fp=$OLD_FP" >> "$GITHUB_OUTPUT"
+
+      - name: Restore previous branch debug keystore (restore-only, exact hit required)
+        id: oldkey
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: mosaic-debug-signing-arena/b0f3e3cf-mosaic-app-v1
+          fail-on-cache-miss: true
+
+      - name: Fingerprint restored keystore certificate
+        id: keystore
+        if: steps.oldkey.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW=$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -alias androiddebugkey -storepass "$DEBUG_KEYSTORE_PASS" | sed -n 's/.*SHA256: //p' | head -1)
+          KEY_FP=$(echo "$RAW" | tr -d ':[:space:]' | tr 'A-F' 'a-f')
+          test -n "$KEY_FP"
+          echo "::notice title=Restored keystore certificate SHA-256::$KEY_FP"
+          echo "key_fp=$KEY_FP" >> "$GITHUB_OUTPUT"
+          if [ "$KEY_FP" = "${{ steps.fingerprints.outputs.old_fp }}" ]; then
+            echo "::notice title=Keystore vs old APK::MATCH"
+            echo "key_matches=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice title=Keystore vs old APK::DIFFER"
+            echo "key_matches=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop if restored key does not match the installed APK
+        if: steps.oldkey.outputs.cache-hit == 'true' && steps.keystore.outputs.key_matches != 'true'
+        run: |
+          echo "::error title=Signing investigation::Restored keystore certificate does not match the installed APK. Stopping without a rebuild."
+          exit 1
+
+      - name: Check out Phase 6 source (69d34df)
+        if: steps.keystore.outputs.key_matches == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.PHASE6_SHA }}
+          path: phase6-src
+
+      - name: Build Phase 6 debug APK with the restored key
+        if: steps.keystore.outputs.key_matches == 'true'
+        working-directory: phase6-src
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Verify rebuilt APK certificate and publish artifact
+        if: steps.keystore.outputs.key_matches == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          NEW_APK=phase6-src/app/build/outputs/apk/debug/app-debug.apk
+          "$APKSIGNER" verify "$NEW_APK"
+          NEW_FP=$("$APKSIGNER" verify --print-certs "$NEW_APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr -d '[:space:]' | tr 'A-F' 'a-f')
+          echo "::notice title=Rebuilt Phase 6 APK certificate SHA-256::$NEW_FP"
+          if [ "$NEW_FP" != "${{ steps.fingerprints.outputs.old_fp }}" ]; then
+            echo "::error title=Signing investigation::Rebuilt APK certificate does not match the installed APK. Not publishing."
+            exit 1
+          fi
+          echo "::notice title=Rebuilt APK verification::Certificate matches installed APK exactly"
+          sha256sum "$NEW_APK" > phase6-src/app/build/outputs/apk/debug/app-debug.sha256
+          NEW_SHA=$(cut -d' ' -f1 phase6-src/app/build/outputs/apk/debug/app-debug.sha256)
+          echo "::notice title=Rebuilt Phase 6 APK file SHA-256::$NEW_SHA"
+
+      - name: Upload rebuilt Phase 6 APK and checksum only
+        if: steps.keystore.outputs.key_matches == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: mosaic-phase6-installed-key-build
+          path: |
+            phase6-src/app/build/outputs/apk/debug/app-debug.apk
+            phase6-src/app/build/outputs/apk/debug/app-debug.sha256
+          if-no-files-found: error

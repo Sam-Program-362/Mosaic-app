@@ -139,9 +139,49 @@ class LibraryRepositoryTest {
         }
     }
 
+    @Test fun customCommunitiesValidateMembersAndSupportDuplicateNamesAndMultipleMemberships() = runTest {
+        val store = FakeStore()
+        val repository = LibraryRepository(store, FakeSource())
+        repository.addFolder(FolderSelection("tree-one", 0))
+        repository.addFolder(FolderSelection("tree-two", 0))
+
+        assertNull(repository.createCustomCommunity("  ", listOf("tree-one")))
+        assertNull(repository.createCustomCommunity("Empty", emptyList()))
+        assertNull(repository.createCustomCommunity("Unknown", listOf("not-selected")))
+
+        val first = repository.createCustomCommunity(" Favourites ", listOf("tree-one", "tree-one", "tree-two"))!!
+        val second = repository.createCustomCommunity("Favourites", listOf("tree-one"))!!
+        assertTrue(first.id != second.id)
+        assertEquals("Favourites", first.name)
+        assertEquals(listOf("tree-one", "tree-two"), first.memberFolderIds)
+        assertEquals(listOf("tree-one"), store.communities.getValue(second.id).memberFolderIds)
+
+        assertTrue(repository.renameCustomCommunity(first.id, "Weekend"))
+        assertFalse(repository.renameCustomCommunity(first.id, " "))
+        assertFalse(repository.renameCustomCommunity("missing", "Name"))
+        assertEquals("Weekend", store.communities.getValue(first.id).name)
+
+        assertTrue(repository.setCustomCommunityMembers(first.id, emptyList()))
+        assertTrue(store.communities.getValue(first.id).memberFolderIds.isEmpty())
+        assertFalse(repository.setCustomCommunityMembers(first.id, listOf("not-selected")))
+        assertTrue(repository.setCustomCommunityMembers(first.id, listOf("tree-two", "tree-two")))
+        assertEquals(listOf("tree-two"), store.communities.getValue(first.id).memberFolderIds)
+
+        repository.removeFolder("tree-two")
+        assertTrue(store.communities.getValue(first.id).memberFolderIds.isEmpty())
+        assertEquals(listOf("tree-one"), store.communities.getValue(second.id).memberFolderIds)
+
+        assertTrue(repository.deleteCustomCommunity(second.id))
+        assertFalse(second.id in store.communities)
+        assertTrue("tree-one" in store.records)
+        assertFalse(repository.deleteCustomCommunity(second.id))
+    }
+
     private class FakeStore : LibraryStore {
         override val folders = MutableStateFlow(emptyList<FolderSummary>())
         override val availableMedia = MutableStateFlow(emptyList<IndexedMedia>())
+        override val customCommunities = MutableStateFlow(emptyList<CustomCommunity>())
+        val communities = linkedMapOf<String, CustomCommunity>()
         val records = linkedMapOf<String, FolderRecord>()
         val media = mutableMapOf<String, List<MediaDocument>>()
         override suspend fun getFolders() = records.values.toList()
@@ -149,7 +189,29 @@ class LibraryRepositoryTest {
         override suspend fun removeFolder(folderId: String) {
             records.remove(folderId)
             media.remove(folderId)
+            communities.replaceAll { _, community ->
+                community.copy(memberFolderIds = community.memberFolderIds - folderId)
+            }
+            publishCommunities()
         }
+        override suspend fun getCustomCommunities() = communities.values.toList()
+        override suspend fun createCustomCommunity(community: CustomCommunity) {
+            communities[community.id] = community
+            publishCommunities()
+        }
+        override suspend fun renameCustomCommunity(communityId: String, name: String) {
+            communities[communityId] = communities.getValue(communityId).copy(name = name)
+            publishCommunities()
+        }
+        override suspend fun setCustomCommunityMembers(communityId: String, folderIds: List<String>) {
+            communities[communityId] = communities.getValue(communityId).copy(memberFolderIds = folderIds)
+            publishCommunities()
+        }
+        override suspend fun deleteCustomCommunity(communityId: String) {
+            communities.remove(communityId)
+            publishCommunities()
+        }
+        private fun publishCommunities() { customCommunities.value = communities.values.toList() }
         override suspend fun commitScan(
             folderId: String,
             media: List<MediaDocument>,
