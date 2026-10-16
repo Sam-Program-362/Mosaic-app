@@ -11,6 +11,15 @@ surface, including newly opened MP4s, until the user changes it again or the
 process ends (a fresh launch starts muted). Device verification:
 `docs/session-audio-device-check.md`.
 
+Image/GIF zoom exists only inside the full-screen viewer: pinch scales a
+still image or GIF between 1x and 4x (panning is clamped to the zoomed
+content), and double-tap toggles between the original scale and a zoomed
+scale. Single-finger vertical swipes still page the viewer, and returning to
+another item always starts at scale 1. The top-level feed does not zoom, and
+video surfaces have no zoom gesture. The app launcher icon is the
+user-provided `mosaic_logo.svg` artwork (adaptive icon with the art in the
+safe zone plus per-density rasters); in-app branding is unchanged.
+
 ## Phase 6 custom communities — CI verified, phone acceptance pending
 The searchable community directory now lists custom communities (name, available-media count,
 unavailable-member notice) above folder communities, with **Create custom community** (disabled

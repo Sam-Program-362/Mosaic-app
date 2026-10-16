@@ -25,6 +25,39 @@ immediate action: none in progress. Wait for the user's next development
 instructions and evaluate their ideas before selecting the next
 implementation task; no next phase is approved or started.**
 
+## Final improvement phase before merge (2026-10-16) — branch only, PR #4 open, not merged
+Two user-authorized improvements were implemented on
+`arena/a0a1b100-mosaic-app` on top of the v0.2.1 documentation state. Neither
+changes the published v0.2.1 release, version metadata, signing, or `main`.
+- **External launcher icon (Improvement A):** the user-provided
+  `mosaic_logo.svg` (kept at `app/icon-source/mosaic_logo.svg`) is now the
+  launcher/APK icon: adaptive icon (`mipmap-anydpi-v26`) with the squircle
+  artwork scaled into the 66dp safe zone over `@color/ic_launcher_background`,
+  legacy + round raster mipmaps at mdpi–xxxhdpi, and `android:roundIcon` in
+  the manifest. The old `@drawable/ic_mosaic` vector is no longer the launcher
+  icon and is otherwise untouched; no in-app branding changed. Automated
+  verification covers resource/manifest wiring (see tests below); visual
+  confirmation on a real launcher is still a device check.
+- **Viewer-only image/GIF zoom (Improvement B):** `ZoomableImageViewport`
+  (`feature/feed/MediaZoom.kt`) wraps the shared `LocalImage` path only when
+  `viewer = true`, i.e. inside the full-screen viewer's vertical pager (the
+  inner feed). Pinch scales 1x–4x with clamped panning, double-tap toggles
+  back to scale 1, single-finger drags at scale 1 are never consumed so pager
+  scrolling is unchanged, and zoom state is keyed by the media request so it
+  cannot leak between items. The top-level feed (`viewer = false`) and all
+  video surfaces are behaviourally unchanged; no video playback, audio, or
+  lifecycle code was touched.
+- **Automated results:** Verify run `38862036033` at `0223477` succeeded —
+  **131 tests, 0 failures/errors/skips** (116 prior + 7 zoom-math unit tests,
+  4 zoom UI tests, 4 launcher-icon resource tests), lint, debug APK build,
+  and privacy checks passed. A one-time compile-diagnostics workflow used
+  during development was removed afterwards (`756787e3`).
+- **PR #4** (`arena/a0a1b100-mosaic-app` → `main`) is open and updated with
+  these commits; it must be merged with a merge commit (not squash) when the
+  user decides. Phase 7 remains **Scheduled / Deferred — not passed**; none of
+  its items are affected or claimed by this work. Physical-device checks
+  still open for this phase: launcher appearance (home screen/drawer,
+  installer/file-manager icon) and pinch-zoom feel against the real pager.
 
 ## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
 
