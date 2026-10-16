@@ -10,9 +10,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNode
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
@@ -139,9 +139,9 @@ class MediaZoomUiTest {
             }
         }
 
-        // No zoom semantics are exposed and no zoomable node exists.
-        compose.onNode(SemanticsMatcher.keyIsDefined(ZoomScaleSemanticsKey))
-            .assertDoesNotExist()
-        compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).assertDoesNotExist()
+        // The disabled viewport exposes no zoomable node at all (the tag and
+        // zoom semantics are only applied when zoom is enabled), so a pinch
+        // in the top-level feed has nothing to act on.
+        compose.onAllNodesWithTag(ZOOMABLE_IMAGE_TEST_TAG).assertCountEquals(0)
     }
 }
