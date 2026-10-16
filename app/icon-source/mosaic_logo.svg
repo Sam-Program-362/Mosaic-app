@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Mosaic App Logo">
+  <title>Mosaic — Local Media Browser Logo</title>
+  <defs>
+    <!-- Background Squircle Gradient (Mosaic Dark Theme: #0E1113 to #181C1F) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1C2126" />
+      <stop offset="50%" stop-color="#121619" />
+      <stop offset="100%" stop-color="#0A0C0E" />
+    </linearGradient>
+
+    <!-- Ambient Glow Behind Tiles -->
+    <radialGradient id="ambientGlow" cx="50%" cy="48%" r="48%">
+      <stop offset="0%" stop-color="#FF4500" stop-opacity="0.22" />
+      <stop offset="55%" stop-color="#4FBCFF" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#0E1113" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Primary Accent Orange Gradient (#FF4500 core) -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6A2B" />
+      <stop offset="55%" stop-color="#FF4500" />
+      <stop offset="100%" stop-color="#D93600" />
+    </linearGradient>
+
+    <!-- Warm Coral Secondary Tile Gradient -->
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF944D" />
+      <stop offset="100%" stop-color="#FF5500" />
+    </linearGradient>
+
+    <!-- Link Sky Blue Gradient (#4FBCFF to #0079D3) -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#66C7FF" />
+      <stop offset="100%" stop-color="#0079D3" />
+    </linearGradient>
+
+    <!-- Raised Surface Slate Gradient (#24292D) -->
+    <linearGradient id="slateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2F363C" />
+      <stop offset="100%" stop-color="#1F2428" />
+    </linearGradient>
+
+    <!-- Crisp Light Surface Gradient (#F2F4F5 to #DAE0E6) -->
+    <linearGradient id="lightTileGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#DAE0E6" />
+    </linearGradient>
+
+    <!-- Border Rim Gradient -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A525A" stop-opacity="0.7" />
+      <stop offset="50%" stop-color="#343A3F" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#FF4500" stop-opacity="0.35" />
+    </linearGradient>
+
+    <!-- Soft Drop Shadow for Tiles -->
+    <filter id="tileShadow" x="-15%" y="-15%" width="135%" height="135%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#050606" flood-opacity="0.65" />
+    </filter>
+
+    <!-- Subtle Glow for Hero Elements -->
+    <filter id="heroGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#FF4500" flood-opacity="0.38" />
+    </filter>
+  </defs>
+
+  <!-- 1. App Icon Squircle Base -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad)" />
+  <rect x="26" y="26" width="460" height="460" rx="106" fill="none" stroke="url(#rimGrad)" stroke-width="3" />
+
+  <!-- Subtle Background Grid Lines (Architectural Media Feed Reference) -->
+  <g stroke="#343A3F" stroke-width="1" opacity="0.22">
+    <line x1="104" y1="40" x2="104" y2="472" />
+    <line x1="256" y1="40" x2="256" y2="472" />
+    <line x1="408" y1="40" x2="408" y2="472" />
+    <line x1="40" y1="104" x2="472" y2="104" />
+    <line x1="40" y1="256" x2="472" y2="256" />
+    <line x1="40" y1="408" x2="472" y2="408" />
+  </g>
+
+  <!-- Ambient Center Glow -->
+  <circle cx="256" cy="256" r="210" fill="url(#ambientGlow)" />
+
+  <!-- 2. Mosaic Masonry Grid + Geometric "M" Architecture -->
+  <!-- LEFT COLUMN: Tall Portrait Tile + Bottom Square Tile -->
+  <g filter="url(#heroGlow)">
+    <rect x="88" y="96" width="96" height="196" rx="22" fill="url(#orangeGrad)" />
+    <rect x="89.5" y="97.5" width="93" height="193" rx="20.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5" />
+    <!-- Photo Sun & Mountain Geometry inside Portrait Tile -->
+    <circle cx="122" cy="140" r="11" fill="#FFF3ED" opacity="0.88" />
+    <path d="M98 258 L128 214 L150 242 L164 226 L174 258 Z" fill="#FFF3ED" opacity="0.85" />
+  </g>
+
+  <!-- Bottom-Left Square Tile (Raised Slate Surface with Folder/Community Icon) -->
+  <g filter="url(#tileShadow)">
+    <rect x="88" y="312" width="96" height="104" rx="22" fill="url(#slateGrad)" />
+    <rect x="89.5" y="313.5" width="93" height="101" rx="20.5" fill="none" stroke="#4A525A" stroke-opacity="0.5" stroke-width="1.5" />
+    <path d="M114 348 C114 344.686 116.686 342 120 342 H132 L138 349 H152 C155.314 349 158 351.686 158 355 V379 C158 382.314 155.314 385 152 385 H120 C116.686 385 114 382.314 114 379 V348 Z" fill="#A6ADB2" opacity="0.85" />
+    <rect x="120" y="357" width="32" height="3" rx="1.5" fill="#181C1F" opacity="0.6" />
+  </g>
+
+  <!-- CENTER COLUMN: The "M" Bridge & Immersive Video/Viewer Core -->
+  <!-- Top-Center Crown Tile: Dynamic Chevron Mosaic Bridge -->
+  <g filter="url(#tileShadow)">
+    <path d="M204 96 H308 C316.837 96 324 103.163 324 112 V146 C324 152.5 320.1 158.4 314.1 160.9 L262.1 182.5 C258.2 184.1 253.8 184.1 249.9 182.5 L197.9 160.9 C191.9 158.4 188 152.5 188 146 V112 C188 103.163 195.163 96 204 96 Z" fill="url(#amberGrad)" />
+    <path d="M204 97.5 H308 C316.008 97.5 322.5 103.992 322.5 112 V146 C322.5 151.891 318.966 157.238 313.526 159.505 L261.526 181.115 C257.991 182.588 254.009 182.588 250.474 181.115 L198.474 159.505 C193.034 157.238 189.5 151.891 189.5 146 V112 C189.5 103.992 195.992 97.5 204 97.5 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="1.5" />
+  </g>
+
+  <!-- Center Hero Media Tile (Crisp Light Surface + Play Button) -->
+  <g filter="url(#tileShadow)">
+    <rect x="204" y="198" width="104" height="122" rx="24" fill="url(#lightTileGrad)" />
+    <!-- Play Triangle (MP4 / GIF Active Playback) -->
+    <path d="M244 236 C244 231.5 248.9 228.7 252.8 231.1 L280.4 248.1 C284.1 250.4 284.1 255.6 280.4 257.9 L252.8 274.9 C248.9 277.3 244 274.5 244 270 V236 Z" fill="url(#orangeGrad)" />
+    <!-- Media Progress Bar at bottom of center card -->
+    <rect x="224" y="298" width="64" height="5" rx="2.5" fill="#AEB8C0" />
+    <rect x="224" y="298" width="40" height="5" rx="2.5" fill="#FF4500" />
+  </g>
+
+  <!-- Bottom-Center Feed Indicator Pill (Vertical Swipe / Feed Pager) -->
+  <g filter="url(#tileShadow)">
+    <rect x="204" y="340" width="104" height="76" rx="22" fill="url(#slateGrad)" />
+    <rect x="205.5" y="341.5" width="101" height="73" rx="20.5" fill="none" stroke="#4A525A" stroke-opacity="0.5" stroke-width="1.5" />
+    <path d="M242 382 L256 368 L270 382" fill="none" stroke="#FF4500" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="230" cy="378" r="3.5" fill="#A6ADB2" opacity="0.6" />
+    <circle cx="282" cy="378" r="3.5" fill="#A6ADB2" opacity="0.6" />
+  </g>
+
+  <!-- RIGHT COLUMN: Square Sky-Blue Tile + Tall Portrait Tile -->
+  <!-- Top-Right Square Tile (Sky Blue Link Token #4FBCFF -> #0079D3) -->
+  <g filter="url(#tileShadow)">
+    <rect x="328" y="96" width="96" height="104" rx="22" fill="url(#blueGrad)" />
+    <rect x="329.5" y="97.5" width="93" height="101" rx="20.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="1.5" />
+    <rect x="352" y="132" width="48" height="32" rx="8" fill="none" stroke="#F2F4F5" stroke-width="4" opacity="0.92" />
+    <circle cx="366" cy="148" r="4" fill="#F2F4F5" />
+    <circle cx="386" cy="148" r="4" fill="#F2F4F5" />
+  </g>
+
+  <!-- Bottom-Right Portrait Tile (Vibrant Orange-Red + Saved Copy Ribbon) -->
+  <g filter="url(#heroGlow)">
+    <rect x="328" y="220" width="96" height="196" rx="22" fill="url(#orangeGrad)" />
+    <rect x="329.5" y="221.5" width="93" height="193" rx="20.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5" />
+    <path d="M362 290 C362 286.686 364.686 284 368 284 H384 C387.314 284 390 286.686 390 290 V340 L376 330 L362 340 V290 Z" fill="#FFF3ED" opacity="0.9" />
+  </g>
+</svg>
