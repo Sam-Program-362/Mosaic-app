@@ -196,6 +196,10 @@ internal fun LocalMediaPreview(
                 else -> LocalImage(
                     document.contentUri, document.modifiedAtMillis, imageLoader,
                     description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
+                    // Zoom exists only in the full-screen viewer (the inner
+                    // feed); the top-level feed renders the same images and
+                    // GIFs without it. Videos never reach this branch.
+                    zoomable = viewer,
                     onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
@@ -204,7 +208,7 @@ internal fun LocalMediaPreview(
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
     val request = remember(uri, modified, animated, context) {
         ImageRequest.Builder(context).data(Uri.parse(uri))
@@ -216,19 +220,26 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
     }
     var loading by remember(request) { mutableStateOf(true) }
     var failed by remember(request) { mutableStateOf(false) }
-    if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
-    AsyncImage(
-        model = request, imageLoader = imageLoader, contentDescription = description,
-        contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
-        onSuccess = {
-            loading = false
-            val image = it.result.image
-            intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
-        },
-        onError = { loading = false; failed = true },
-    )
-    if (failed) Text("Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
-        Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
+    // Still images and GIFs share this rendering path, so the viewer-only
+    // zoom viewport covers both; state resets whenever the request (item)
+    // changes.
+    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
+            AsyncImage(
+                model = request, imageLoader = imageLoader, contentDescription = description,
+                contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize(),
+                onSuccess = {
+                    loading = false
+                    val image = it.result.image
+                    intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
+                },
+                onError = { loading = false; failed = true },
+            )
+            if (failed) Text("Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
+                Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
+        }
+    }
 }
 
 @Composable
