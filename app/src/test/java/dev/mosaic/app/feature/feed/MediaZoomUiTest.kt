@@ -90,7 +90,11 @@ class MediaZoomUiTest {
         assertTrue(zoomScale() > MIN_IMAGE_ZOOM_SCALE)
 
         compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput {
-            doubleClick(center)
+            down(center)
+            up()
+            advanceEventTime(60)
+            down(center)
+            up()
         }
         compose.waitForIdle()
 
