@@ -81,12 +81,17 @@ internal fun zoomOffsetAfter(
  * at scale 1 are never consumed, so feed scrolling/paging keeps working;
  * touches are consumed only while pinching (two pointers) or while zoomed,
  * where panning moves within the zoomed image instead of paging.
+ *
+ * [onSingleTap] reports confirmed single taps only: the tap detector waits
+ * out the double-tap window, so a double tap zooms without also firing a
+ * single tap (no interface flicker), and pinch gestures never fire it.
  */
 @Composable
 internal fun ZoomableImageViewport(
     enabled: Boolean,
     resetKey: Any,
     modifier: Modifier = Modifier,
+    onSingleTap: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     if (!enabled) {
@@ -133,6 +138,7 @@ internal fun ZoomableImageViewport(
             }
             .pointerInput(resetKey) {
                 detectTapGestures(
+                    onTap = { onSingleTap?.invoke() },
                     onDoubleTap = {
                         if (scale > MIN_IMAGE_ZOOM_SCALE) {
                             scale = MIN_IMAGE_ZOOM_SCALE

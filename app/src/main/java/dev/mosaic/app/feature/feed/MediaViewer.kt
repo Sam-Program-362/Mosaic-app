@@ -34,8 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -126,6 +128,13 @@ fun MediaViewer(
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
     }
+    // Immersive interface toggle for this viewing session only. Keyed by the
+    // snapshot so reopening the viewer (a new snapshot) always starts with
+    // the interface visible; the state is local to the viewer and cannot
+    // leak into the top-level feed or other screens. System bars follow the
+    // existing viewer policy (hidden while the viewer is open, restored on
+    // exit) in both interface states.
+    var chromeVisible by remember(snapshot) { mutableStateOf(true) }
     val prefetchCenterPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
     val photoWindow = remember(snapshot.posts, prefetchCenterPage) {
         nearbyPhotoWindow(snapshot.posts, prefetchCenterPage)
@@ -160,20 +169,29 @@ fun MediaViewer(
                 active = page == pagerState.currentPage && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
                 imageLoader = imageLoader,
                 viewer = true,
+                onViewerSurfaceTap = { chromeVisible = !chromeVisible },
+                viewerChromeVisible = chromeVisible,
                 videoPreviewVisible = page == pagerState.currentPage,
                 feedPosition = page,
                 videoAudioSession = sharedVideoAudioSession,
             )
         }
         val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]
-        ViewerChrome(
-            post = currentPost,
-            page = pagerState.currentPage + 1,
-            pageCount = snapshot.posts.size,
-            onClose = onClose,
-            onSaveCopy = onSaveCopy,
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
             modifier = Modifier.fillMaxSize().zIndex(1f),
-        )
+        ) {
+            ViewerChrome(
+                post = currentPost,
+                page = pagerState.currentPage + 1,
+                pageCount = snapshot.posts.size,
+                onClose = onClose,
+                onSaveCopy = onSaveCopy,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 

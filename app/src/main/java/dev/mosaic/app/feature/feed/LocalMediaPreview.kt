@@ -67,6 +67,8 @@ internal fun LocalMediaPreview(
     videoAudioSession: VideoAudioSession? = null,
     onBounds: (PreviewItemGeometry) -> Unit = {},
     viewer: Boolean = false,
+    onViewerSurfaceTap: (() -> Unit)? = null,
+    viewerChromeVisible: Boolean = true,
     onOpenViewer: (() -> Unit)? = null,
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
@@ -173,6 +175,8 @@ internal fun LocalMediaPreview(
                     post = post,
                     audioSession = sharedVideoAudioSession,
                     viewer = viewer,
+                    viewerChromeVisible = viewerChromeVisible,
+                    onViewerSurfaceTap = onViewerSurfaceTap,
                     aspectRatio = contentRatio,
                     reservedContainerAspectRatio = reservedRatio,
                     imageLoader = imageLoader,
@@ -200,6 +204,10 @@ internal fun LocalMediaPreview(
                     // feed); the top-level feed renders the same images and
                     // GIFs without it. Videos never reach this branch.
                     zoomable = viewer,
+                    // Tapping the image/GIF toggles the viewer's chrome;
+                    // the media itself (including GIF animation) is
+                    // unaffected by chrome visibility.
+                    onSingleTap = if (viewer) onViewerSurfaceTap else null,
                     onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
@@ -208,7 +216,7 @@ internal fun LocalMediaPreview(
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onSingleTap: (() -> Unit)? = null, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
     val request = remember(uri, modified, animated, context) {
         ImageRequest.Builder(context).data(Uri.parse(uri))
@@ -223,7 +231,7 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
     // Still images and GIFs share this rendering path, so the viewer-only
     // zoom viewport covers both; state resets whenever the request (item)
     // changes.
-    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize()) {
+    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize(), onSingleTap = onSingleTap) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
             AsyncImage(
@@ -306,6 +314,8 @@ private fun VideoPreview(
     post: FeedPost,
     audioSession: VideoAudioSession,
     viewer: Boolean,
+    viewerChromeVisible: Boolean = true,
+    onViewerSurfaceTap: (() -> Unit)? = null,
     aspectRatio: Float,
     reservedContainerAspectRatio: Float,
     imageLoader: ImageLoader,
@@ -499,6 +509,13 @@ private fun VideoPreview(
         applyVideoAudioPreference(player, sessionMuted, audioAttributes)
     }
 
+    // Restoring the viewer chrome brings the playback controls back with it.
+    // Hiding the chrome never touches playback, position, or the audio
+    // session; it only changes overlay visibility.
+    LaunchedEffect(viewerChromeVisible) {
+        if (viewerChromeVisible) controlsVisible = true
+    }
+
     LaunchedEffect(player, stableKey) {
         var previousOverlay: Boolean? = null
         snapshotFlow { videoFrameFallback(hasRenderedFirstFrame, failed, loading).showLoading }
@@ -612,7 +629,14 @@ private fun VideoPreview(
             Box(
                 Modifier.fillMaxSize().pointerInput(stableKey, viewer) {
                     detectTapGestures(
-                        onTap = { controlsVisible = !controlsVisible },
+                        // Surface taps toggle the whole viewer interface when
+                        // the viewer provides a chrome toggle; the playback
+                        // controls are separate composables above this surface,
+                        // so tapping them never reaches this detector.
+                        onTap = {
+                            if (onViewerSurfaceTap != null) onViewerSurfaceTap()
+                            else controlsVisible = !controlsVisible
+                        },
                         onDoubleTap = { offset ->
                             seekBy(if (offset.x < size.width / 2f) -VIDEO_SEEK_STEP_MILLIS else VIDEO_SEEK_STEP_MILLIS)
                         },
@@ -620,7 +644,7 @@ private fun VideoPreview(
                 },
             )
         }
-        seekFeedback?.takeIf { viewer }?.let { feedback ->
+        seekFeedback?.takeIf { viewer && viewerChromeVisible }?.let { feedback ->
             Box(
                 Modifier.align(if (feedback.startsWith("−")) Alignment.CenterStart else Alignment.CenterEnd)
                     .padding(horizontal = 36.dp)
@@ -641,7 +665,7 @@ private fun VideoPreview(
         }
         if (!failed) {
             AnimatedVisibility(
-                visible = !viewer || controlsVisible,
+                visible = !viewer || (controlsVisible && viewerChromeVisible),
                 modifier = Modifier.align(Alignment.BottomCenter)
                     .padding(bottom = if (viewer) VIEWER_CONTROLS_BOTTOM_INSET.dp else 4.dp),
                 enter = fadeIn(),
