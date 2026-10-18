@@ -475,13 +475,16 @@ internal fun MediaPostCard(
                 )
             }
         }
-        Text(
-            mediaTitle(post.media.document.fullName),
-            Modifier.fillMaxWidth()
-                .then(onOpenViewer?.let { Modifier.clickable(role = Role.Button, onClickLabel = "Open full-screen viewer", onClick = it) } ?: Modifier)
+        // The card title opens the viewer on tap (as before) and copies the
+        // exact displayed title on long-press.
+        CopyableTitleText(
+            title = mediaTitle(post.media.document.fullName),
+            modifier = Modifier.fillMaxWidth()
                 .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 10.dp),
             style = MaterialTheme.typography.titleMedium,
             maxLines = 2,
+            onClick = onOpenViewer,
+            onClickLabel = "Open full-screen viewer",
         )
         LocalMediaPreview(
             post = post,
