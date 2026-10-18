@@ -15,7 +15,13 @@ Image/GIF zoom exists only inside the full-screen viewer: pinch scales a
 still image or GIF between 1x and 4x (panning is clamped to the zoomed
 content), and double-tap toggles between the original scale and a zoomed
 scale. Single-finger vertical swipes still page the viewer, and returning to
-another item always starts at scale 1. A confirmed single tap on an image or
+another item always starts at scale 1. From a still photo, a deliberate
+horizontal swipe beginning near either screen edge (just inside the system
+gesture inset) temporarily browses the snapshot's photos oldest-to-newest:
+the first swipe moves directly to the adjacent photo, further horizontal
+swipes anywhere move one photo at a time, and vertical paging or leaving
+the viewer ends the mode. Long-pressing a media title (feed card or viewer
+header) copies the exact displayed title with a "Title copied" toast. A confirmed single tap on an image or
 GIF (or on a video surface, outside its playback controls) hides the viewer
 interface — header, footer, and video controls fade out while the media,
 GIF animation, and video playback continue — and a further tap restores it;

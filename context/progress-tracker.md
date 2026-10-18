@@ -80,6 +80,33 @@ and privacy checks passed. Device checks still open: chrome toggle feel on a
 real device for image/GIF/MP4 (including control-tap isolation on video),
 which needs the signed candidate below.
 
+## Final feature additions before merge (2026-10-16) — branch only, PR #4 open, not merged
+Two user-authorized features on `arena/a0a1b100-mosaic-app`; v0.2.1, `main`,
+version metadata, and signing unchanged.
+- **Temporary chronological browsing (inner feed):** in the fullscreen
+  viewer, a deliberate horizontal swipe starting in the near-edge zone (just
+  inside the system gesture inset) on a still photo builds — lazily, off the
+  UI thread, only at that moment — the oldest-to-newest photo sequence from
+  the opened snapshot (`modifiedAtMillis`; missing timestamps first, then
+  case-insensitive filename, then stable key; anchor found by stable key)
+  and moves straight to the adjacent photo. While active, horizontal swipes
+  anywhere move one photo; boundaries stay put. Only the displayed
+  destination is requested (no sequence preparation or neighbour preloading
+  on viewer entry). Vertical paging or exiting clears the state and requires
+  a fresh edge swipe; the vertical pager position and snapshot order are
+  never modified. Zoomed pans, pinch, double-tap, GIF, and MP4 surfaces never
+  claim the gesture; chrome visibility does not affect browsing.
+- **Long-press title copy:** feed-card and viewer-header titles copy their
+  exact displayed `mediaTitle` text on platform long-press (clipboard +
+  "Title copied" toast). Card title tap still opens the viewer; viewer
+  long-press does not toggle chrome.
+- **Automated results:** Verify run `39157086439` at `3a59ea0` succeeded —
+  **154 tests, 0 failures/errors/skips** (139 prior + 7 chronological unit
+  tests, 5 timeline UI tests, 3 title-copy UI tests), lint, debug APK, and
+  privacy checks passed. Device checks still open: edge-swipe feel vs. the
+  system Back gesture, chronological navigation on real photos, long-press
+  timing/confirmation on device.
+
 ## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
 
 **User-reported device verification (not agent-run):** after the signed
