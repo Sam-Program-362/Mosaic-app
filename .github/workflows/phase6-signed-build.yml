@@ -108,3 +108,5 @@ jobs:
             Mosaic-release.apk
             Mosaic-release.apk.sha256
           if-no-files-found: error
+
+# Signed device-test candidate: immersive viewer chrome toggle (139 tests green at 16ce648).
