@@ -34,8 +34,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,8 +55,19 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import coil3.ImageLoader
 import dev.mosaic.app.core.model.MediaKey
+import dev.mosaic.app.core.playback.VideoAudioSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal data class ViewerSession(val snapshot: FeedSnapshot, val initialPage: Int)
+
+/** Temporary chronological browsing within one random-feed page of the viewer. */
+private data class ViewerTimeline(
+    val sequence: List<FeedPost>,
+    val index: Int,
+    val randomPage: Int,
+)
 
 /** Opens the viewer with a soft expand/fade and retains its content through the reverse close motion. */
 @OptIn(ExperimentalFoundationApi::class)
@@ -67,7 +81,10 @@ internal fun AnimatedMediaViewerOverlay(
     onSaveCopy: (FeedPost) -> Unit,
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     AnimatedVisibility(
         visibleState = visibleState,
         modifier = modifier,
@@ -89,6 +106,7 @@ internal fun AnimatedMediaViewerOverlay(
                 onSaveCopy = onSaveCopy,
                 onRetainedMediaChanged = onRetainedMediaChanged,
                 modifier = Modifier.fillMaxSize(),
+                videoAudioSession = sharedVideoAudioSession,
             )
         }
     }
@@ -105,7 +123,10 @@ fun MediaViewer(
     onSaveCopy: ((FeedPost) -> Unit)? = null,
     onRetainedMediaChanged: (Set<MediaKey>) -> Unit = {},
     modifier: Modifier = Modifier,
+    videoAudioSession: VideoAudioSession? = null,
 ) {
+    val fallbackVideoAudioSession = remember { VideoAudioSession() }
+    val sharedVideoAudioSession = videoAudioSession ?: fallbackVideoAudioSession
     if (snapshot.posts.isEmpty()) {
         Box(modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
             Text("No media is available in this feed.", color = Color.White)
@@ -117,6 +138,52 @@ fun MediaViewer(
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val pagerState = rememberPagerState(initialPage.coerceIn(0, snapshot.posts.lastIndex)) {
         snapshot.posts.size
+    }
+    // Immersive interface toggle for this viewing session only. Keyed by the
+    // snapshot so reopening the viewer (a new snapshot) always starts with
+    // the interface visible; the state is local to the viewer and cannot
+    // leak into the top-level feed or other screens. System bars follow the
+    // existing viewer policy (hidden while the viewer is open, restored on
+    // exit) in both interface states.
+    var chromeVisible by remember(snapshot) { mutableStateOf(true) }
+    // Temporary chronological browsing, anchored to the random-feed page it
+    // was activated on. It exists only in viewer state: leaving the viewer
+    // or moving vertically to another random-feed page clears it, and the
+    // snapshot order is never modified. The sequence is built lazily, off
+    // the UI thread, only after the first accepted horizontal gesture —
+    // opening the viewer prepares nothing and requests no neighbours.
+    var timeline by remember(snapshot) { mutableStateOf<ViewerTimeline?>(null) }
+    var timelinePreparing by remember(snapshot) { mutableStateOf(false) }
+    val timelineScope = rememberCoroutineScope()
+    LaunchedEffect(pagerState.currentPage) {
+        val activeTimeline = timeline
+        if (activeTimeline != null && activeTimeline.randomPage != pagerState.currentPage) {
+            timeline = null
+        }
+    }
+    fun handleChronologicalSwipe(direction: Int, anchorPost: FeedPost, randomPage: Int) {
+        val activeTimeline = timeline
+        when {
+            activeTimeline != null && activeTimeline.randomPage == randomPage -> {
+                chronologicalIndexAfter(activeTimeline.index, direction, activeTimeline.sequence.size)
+                    ?.let { nextIndex -> timeline = activeTimeline.copy(index = nextIndex) }
+            }
+            !timelinePreparing -> {
+                timelinePreparing = true
+                timelineScope.launch {
+                    val sequence = withContext(Dispatchers.Default) {
+                        buildChronologicalSequence(snapshot.posts, anchorPost.media.key)
+                    }
+                    timelinePreparing = false
+                    if (sequence != null) {
+                        chronologicalIndexAfter(sequence.anchorIndex, direction, sequence.posts.size)
+                            ?.let { firstIndex ->
+                                timeline = ViewerTimeline(sequence.posts, firstIndex, randomPage)
+                            }
+                    }
+                }
+            }
+        }
     }
     val prefetchCenterPage = if (pagerState.isScrollInProgress) pagerState.targetPage else pagerState.currentPage
     val photoWindow = remember(snapshot.posts, prefetchCenterPage) {
@@ -146,25 +213,48 @@ fun MediaViewer(
             beyondViewportPageCount = 0,
             key = { page -> snapshot.posts[page].media.key.stableKey },
         ) { page ->
-            val post = snapshot.posts[page]
+            val randomPost = snapshot.posts[page]
+            // While chronological browsing is active on this page, the page
+            // shows the timeline item instead of the random item; the
+            // vertical pager's own position and the snapshot stay untouched,
+            // and only this displayed destination item is ever requested.
+            val pageTimeline = timeline?.takeIf { it.randomPage == page }
+            val post = pageTimeline?.sequence?.getOrNull(pageTimeline.index) ?: randomPost
             LocalMediaPreview(
                 post = post,
                 active = page == pagerState.currentPage && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
                 imageLoader = imageLoader,
                 viewer = true,
+                onViewerSurfaceTap = { chromeVisible = !chromeVisible },
+                viewerChromeVisible = chromeVisible,
+                chronologicalActive = pageTimeline != null,
+                onChronologicalSwipe = { direction ->
+                    handleChronologicalSwipe(direction, post, page)
+                },
                 videoPreviewVisible = page == pagerState.currentPage,
                 feedPosition = page,
+                videoAudioSession = sharedVideoAudioSession,
             )
         }
-        val currentPost = snapshot.posts[pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)]
-        ViewerChrome(
-            post = currentPost,
-            page = pagerState.currentPage + 1,
-            pageCount = snapshot.posts.size,
-            onClose = onClose,
-            onSaveCopy = onSaveCopy,
+        val currentPage = pagerState.currentPage.coerceIn(0, snapshot.posts.lastIndex)
+        val currentTimeline = timeline?.takeIf { it.randomPage == currentPage }
+        val currentPost = currentTimeline?.sequence?.getOrNull(currentTimeline.index)
+            ?: snapshot.posts[currentPage]
+        AnimatedVisibility(
+            visible = chromeVisible,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
             modifier = Modifier.fillMaxSize().zIndex(1f),
-        )
+        ) {
+            ViewerChrome(
+                post = currentPost,
+                page = pagerState.currentPage + 1,
+                pageCount = snapshot.posts.size,
+                onClose = onClose,
+                onSaveCopy = onSaveCopy,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 }
 
@@ -189,8 +279,15 @@ private fun ViewerChrome(
             Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
                 Text(post.media.folderLabel, color = Color.White,
                     style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(mediaTitle(post.media.document.fullName), color = Color.White,
-                    style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // Long-press copies the exact displayed title; it does not
+                // toggle the chrome or affect the media underneath.
+                CopyableTitleText(
+                    title = mediaTitle(post.media.document.fullName),
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Text("$page / $pageCount", color = Color.White,
                 style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 12.dp))

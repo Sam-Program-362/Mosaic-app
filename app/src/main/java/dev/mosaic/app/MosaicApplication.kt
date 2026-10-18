@@ -9,12 +9,21 @@ import androidx.room.Room
 import dev.mosaic.app.data.local.LIBRARY_DATABASE_NAME
 import dev.mosaic.app.data.local.LibraryDatabase
 import dev.mosaic.app.data.local.MIGRATION_1_2
+import dev.mosaic.app.data.local.MIGRATION_2_3
 import dev.mosaic.app.data.local.RoomLibraryStore
 import dev.mosaic.app.data.repository.LibraryRepository
+import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.data.repository.SavedCopyRepository
 import dev.mosaic.app.data.source.SafFolderSource
 
 class MosaicApplication : Application() {
+    /**
+     * Session-wide MP4 audio preference. Created with the application process
+     * (muted by default), kept only in memory, and discarded when the process
+     * ends, so every fresh process starts muted. Never persisted.
+     */
+    val videoAudioSession: VideoAudioSession = VideoAudioSession()
+
     // Deliberately no Coil network module or remote fetcher.
     val localImageLoader: ImageLoader by lazy {
         ImageLoader.Builder(applicationContext).components {
@@ -25,7 +34,7 @@ class MosaicApplication : Application() {
 
     val libraryDatabase: LibraryDatabase by lazy {
         Room.databaseBuilder(applicationContext, LibraryDatabase::class.java, LIBRARY_DATABASE_NAME)
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             .build()
     }
 

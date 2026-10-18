@@ -1,0 +1,114 @@
+name: Phase 6 signed build (established release signing)
+
+# v0.2.1 release build: same established signing, artifact verified in-runner
+# and published by the one-time v0.2.1 publish workflow.
+# Reused for post-v0.2.0 device-test candidates: builds and signs the current
+# branch HEAD with the same established signing; artifact-only, never a release.
+# Builds Phase 6 and signs it with the repository's established release-signing
+# configuration (GitHub Secrets + r0adkll/sign-android-release), exactly as in
+# .github/workflows/build.yml. Artifact-only: no tag, no GitHub Release.
+on:
+  push:
+    branches: ['arena/a0a1b100-mosaic-app']
+    paths: ['.github/workflows/phase6-signed-build.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & sign Phase 6 APK
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Android 35 platform and build tools
+        shell: bash
+        run: |
+          set -o pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 2>&1 | tee sdk-setup.log; then
+            echo "Android SDK ready"
+          else
+            echo "::error title=Android SDK setup::sdkmanager failed"
+            exit 1
+          fi
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle script executable
+        run: chmod +x ./gradlew
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Check signing configuration presence (no values logged)
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KS_STORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KS_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          check() { if [ -n "$1" ]; then echo "::notice title=Secret $2::configured"; else echo "::warning title=Secret $2::MISSING OR EMPTY"; fi; }
+          check "$KS_B64" KEYSTORE_BASE64
+          check "$KS_ALIAS" KEY_ALIAS
+          check "$KS_STORE_PASS" KEYSTORE_PASSWORD
+          check "$KS_KEY_PASS" KEY_PASSWORD
+          if [ -n "$KS_B64" ]; then
+            if echo "$KS_B64" | base64 -d > /tmp/ks.bin 2>/dev/null && [ -s /tmp/ks.bin ]; then
+              echo "::notice title=Keystore decode::base64 decoded, $(stat -c%s /tmp/ks.bin) bytes, type $(file -b /tmp/ks.bin | cut -c1-60)"
+              keytool -list -keystore /tmp/ks.bin -storepass "$KS_STORE_PASS" 2>/tmp/ks.err | sed -n '1,12p' || { echo "::warning title=Keystore list::keytool could not list keystore with provided store password"; sed -n '1,3p' /tmp/ks.err; }
+            else
+              echo "::warning title=Keystore decode::KEYSTORE_BASE64 did not base64-decode to a non-empty file"
+            fi
+            rm -f /tmp/ks.bin
+          fi
+
+      - name: Sign Release APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: '35.0.0'
+
+      - name: Prepare named APK, checksum, and certificate fingerprint
+        id: prepare_apk
+        env:
+          SIGNED_APK: ${{ steps.sign_app.outputs.signedReleaseFile }}
+        run: |
+          set -euo pipefail
+          cp "$SIGNED_APK" Mosaic-release.apk
+          sha256sum Mosaic-release.apk > Mosaic-release.apk.sha256
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$APKSIGNER" verify Mosaic-release.apk
+          FP=$("$APKSIGNER" verify --print-certs Mosaic-release.apk | sed -n 's/.*certificate SHA-256 digest: //p' | head -1)
+          SHA=$(cut -d' ' -f1 Mosaic-release.apk.sha256)
+          echo "::notice title=Signed APK certificate SHA-256::$FP"
+          echo "::notice title=Signed APK file SHA-256::$SHA"
+          echo "::notice title=Signed APK source commit::${{ github.sha }}"
+
+      - name: Upload signed APK artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: mosaic-phase6-signed-apk
+          path: |
+            Mosaic-release.apk
+            Mosaic-release.apk.sha256
+          if-no-files-found: error
+
+# Signed device-test candidate: immersive viewer chrome toggle (139 tests green at 16ce648).
+
+# Signed device-test candidate: chronological browsing + title copy (154 tests green at 3a59ea0).

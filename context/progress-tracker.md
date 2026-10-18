@@ -1,5 +1,280 @@
 # Progress tracker
 
+## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
+**Current published stable release: Mosaic v0.2.1**
+(https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1) —
+versionName 0.2.1 / versionCode 3, tag `v0.2.1` on source commit
+`e5ee42d15211b1da13321dfdf9bc977528060531`, asset
+`Mosaic-v0.2.1-release.apk`, SHA-256
+`ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`, permanent
+release certificate `9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a`
+(full record in the session-audio section below). Previous stable release
+v0.2.0 (tag `af58727`) remains published and unchanged. Working branch:
+`arena/a0a1b100-mosaic-app` (branched from `main` baseline `42ae102`; `main`
+does not yet contain Phase 6, the audio fix, or either release tag target).
+Documentation commits after the `v0.2.1` tag target are context-only and do
+not change the released source — always verify the live branch HEAD
+separately from the tag target. The session-wide MP4 audio fix is implemented
+and, per the user's report, passed physical-device testing; automated release
+verification was 116 tests, 0 failures/errors/skips, plus lint and privacy
+checks (sources below). The Phase 7 device-acceptance checklist is
+**Scheduled / Deferred — not passed**. Remaining open decisions: final
+branding/package identity, release SDK policy, whether/when to merge the
+session branch to `main`, and provisional custom-community artwork. **Next
+immediate action: none in progress. Wait for the user's next development
+instructions and evaluate their ideas before selecting the next
+implementation task; no next phase is approved or started.**
+
+## Pre-merge state (2026-10-19) — PR #4 open; user device testing confirmed complete
+All post-v0.2.1 improvement work is on `arena/a0a1b100-mosaic-app` and in
+**PR #4** (`arena/a0a1b100-mosaic-app` → `main`), which is **OPEN, MERGEABLE,
+not merged**. Branch head at this refresh: `8c67941c8b288efa39e5dc5400f9ab946fe7882c`;
+`main` is unchanged at `42ae102`. Five improvement categories are complete
+(detail in the sections below): (A) external launcher icon from the
+user-provided `mosaic_logo.svg`, (B) viewer-only image/GIF pinch zoom,
+(C) immersive tap-to-hide viewer chrome, (D) temporary chronological
+browsing in the viewer, (E) long-press title copy. Current stable release
+remains **v0.2.1** (tag `e5ee42d`); these improvements are unreleased
+development work — no version bump, tag, or release exists for them.
+**User-reported device testing (not agent-run):** the user installed the
+latest signed candidate and confirms testing of these improvements is
+complete and successful. This is user-reported physical-device verification
+of the improvement set, kept distinct from automated CI evidence; it does
+not reclassify any Phase 7 checklist item, which remains
+**Scheduled / Deferred — not passed**. Merge rules for when the user
+decides: merge PR #4 with a **merge commit (never squash)**, so the tagged
+release commits `af58727` (v0.2.0) and `e5ee42d` (v0.2.1) remain in `main`
+ancestry. Latest signed candidate for the improvement set: run `39157385362`
+at `8c67941`, artifact `mosaic-phase6-signed-apk` ID `12147372598`
+(ZIP 14,378,055 bytes; GitHub-reported ZIP SHA-256
+`6901c8e175dac7e6ab8067d92b6f160b3984aa28d06d348fdf8e1a4c0e8df8b7` — a ZIP
+digest, not an APK digest; no APK checksum was produced), application ID
+and version metadata unchanged (0.2.1 / code 3), permanently signed by the
+established workflow with in-runner certificate verification.
+
+## Final improvement phase before merge (2026-10-16) — branch only, PR #4 open, not merged
+Two user-authorized improvements were implemented on
+`arena/a0a1b100-mosaic-app` on top of the v0.2.1 documentation state. Neither
+changes the published v0.2.1 release, version metadata, signing, or `main`.
+- **External launcher icon (Improvement A):** the user-provided
+  `mosaic_logo.svg` (kept at `app/icon-source/mosaic_logo.svg`) is now the
+  launcher/APK icon: adaptive icon (`mipmap-anydpi-v26`) with the squircle
+  artwork scaled into the 66dp safe zone over `@color/ic_launcher_background`,
+  legacy + round raster mipmaps at mdpi–xxxhdpi, and `android:roundIcon` in
+  the manifest. The old `@drawable/ic_mosaic` vector is no longer the launcher
+  icon and is otherwise untouched; no in-app branding changed. Automated
+  verification covers resource/manifest wiring (see tests below); visual
+  confirmation on a real launcher is still a device check.
+- **Viewer-only image/GIF zoom (Improvement B):** `ZoomableImageViewport`
+  (`feature/feed/MediaZoom.kt`) wraps the shared `LocalImage` path only when
+  `viewer = true`, i.e. inside the full-screen viewer's vertical pager (the
+  inner feed). Pinch scales 1x–4x with clamped panning, double-tap toggles
+  back to scale 1, single-finger drags at scale 1 are never consumed so pager
+  scrolling is unchanged, and zoom state is keyed by the media request so it
+  cannot leak between items. The top-level feed (`viewer = false`) and all
+  video surfaces are behaviourally unchanged; no video playback, audio, or
+  lifecycle code was touched.
+- **Automated results:** Verify run `38862036033` at `0223477` succeeded —
+  **131 tests, 0 failures/errors/skips** (116 prior + 7 zoom-math unit tests,
+  4 zoom UI tests, 4 launcher-icon resource tests), lint, debug APK build,
+  and privacy checks passed. A one-time compile-diagnostics workflow used
+  during development was removed afterwards (`756787e3`).
+- **PR #4** (`arena/a0a1b100-mosaic-app` → `main`) is open and updated with
+  these commits; it must be merged with a merge commit (not squash) when the
+  user decides. Phase 7 remains **Scheduled / Deferred — not passed**; none of
+  its items are affected or claimed by this work. **Device testing:** the
+  user later confirmed (2026-10-19) that testing of the installed signed
+  candidate — including launcher appearance and pinch zoom — is complete
+  and successful (user-reported evidence; see "Pre-merge state" above).
+
+## Immersive inner-feed viewer (2026-10-16) — branch only, PR #4 open, not merged
+One user-authorized improvement on `arena/a0a1b100-mosaic-app`: tapping media
+in the fullscreen viewer (the inner feed) now hides/restores the viewer
+interface (chrome). `MediaViewer` owns a session-local `chromeVisible` state
+keyed by the opened snapshot, so reopening always starts with the interface
+visible and nothing leaks to other screens. The header (Back, folder/title,
+page count) and footer (hint, Save copy) fade out together; still images and
+GIFs toggle via the zoom viewport's confirmed-single-tap callback (a double
+tap still only zooms — no flicker, no double toggle — and GIF animation is
+not gated by chrome state). Video surface taps route to the same toggle;
+playback controls are separate composables above the surface so control taps
+never toggle, controls hide/return with the chrome, and playback, position,
+and the session-wide audio preference are untouched. System bars keep the
+existing viewer policy (hidden while viewing, restored on exit). The
+top-level feed is unchanged. Automated results: Verify run `39148933209` at
+`16ce648` succeeded — **139 tests, 0 failures/errors/skips** (131 prior + 6
+viewer-chrome UI tests + 2 tap-discrimination zoom tests), lint, debug APK,
+and privacy checks passed. **Device testing:** the user later confirmed
+(2026-10-19) that testing of the installed signed candidate — including
+the chrome toggle on image/GIF/MP4 — is complete and successful
+(user-reported evidence; see "Pre-merge state" above).
+
+## Final feature additions before merge (2026-10-16) — branch only, PR #4 open, not merged
+Two user-authorized features on `arena/a0a1b100-mosaic-app`; v0.2.1, `main`,
+version metadata, and signing unchanged.
+- **Temporary chronological browsing (inner feed):** in the fullscreen
+  viewer, a deliberate horizontal swipe starting in the near-edge zone (just
+  inside the system gesture inset) on a still photo builds — lazily, off the
+  UI thread, only at that moment — the oldest-to-newest photo sequence from
+  the opened snapshot (`modifiedAtMillis`; missing timestamps first, then
+  case-insensitive filename, then stable key; anchor found by stable key)
+  and moves straight to the adjacent photo. While active, horizontal swipes
+  anywhere move one photo; boundaries stay put. Only the displayed
+  destination is requested (no sequence preparation or neighbour preloading
+  on viewer entry). Vertical paging or exiting clears the state and requires
+  a fresh edge swipe; the vertical pager position and snapshot order are
+  never modified. Zoomed pans, pinch, double-tap, GIF, and MP4 surfaces never
+  claim the gesture; chrome visibility does not affect browsing.
+- **Long-press title copy:** feed-card and viewer-header titles copy their
+  exact displayed `mediaTitle` text on platform long-press (clipboard +
+  "Title copied" toast). Card title tap still opens the viewer; viewer
+  long-press does not toggle chrome.
+- **Automated results:** Verify run `39157086439` at `3a59ea0` succeeded —
+  **154 tests, 0 failures/errors/skips** (139 prior + 7 chronological unit
+  tests, 5 timeline UI tests, 3 title-copy UI tests), lint, debug APK, and
+  privacy checks passed. **Device testing:** the user confirmed
+  (2026-10-19) that testing of the installed signed candidate
+  (run `39157385362`, source `8c67941`) — including edge-swipe
+  chronological browsing on real photos and long-press title copy — is
+  complete and successful (user-reported evidence; see "Pre-merge state"
+  above).
+
+## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
+
+**User-reported device verification (not agent-run):** after the signed
+device-test candidate below was delivered, the user tested it on a physical
+device and reports that the test **passed perfectly** for the session-wide MP4
+audio behaviour (fresh-launch muting, session-wide unmute/mute across videos
+and surfaces, and reset after a fresh launch, per
+`docs/session-audio-device-check.md`). Record this as user evidence; the
+agent did not run a physical device, and it does not complete unrelated
+device-acceptance work (the Phase 7 checklist remains scheduled). On the
+strength of that report the user has authorized publishing this change as
+release **v0.2.1** (versionName 0.2.1, versionCode 3 — an in-place update over
+v0.2.0 with the same permanent release certificate). Release verification and
+publication results are appended to this section when they complete; the
+v0.2.0 release remains unchanged.
+
+Implements the user's final core adjustment on top of the published v0.2.0
+release (which remains unchanged): MP4 audio is now a single session-wide
+preference instead of an independent mute flag per video card. A new
+process-scoped, in-memory `VideoAudioSession`
+(`core/playback/VideoAudioSession.kt`, default muted, never persisted to
+DataStore/SharedPreferences/Room) is owned by `MosaicApplication` and threaded
+through `MainActivity` → `MosaicApp` → `FeedScreen`/`MediaViewer` →
+`LocalMediaPreview`/`VideoPreview`. Each player applies the current session
+preference at creation and again in its setup effect *before* `prepare()`
+(volume + Media3 audio-focus handling via `applyVideoAudioPreference`), a
+session effect propagates later mute/unmute changes to existing players, and
+the existing sound control now toggles the shared state (label/icon read the
+shared state: "Unmute video" while muted, "Mute video" while unmuted). A fresh
+process therefore starts muted; unmute/mute persists across feeds,
+communities, scrolling, viewer open/return, recomposition, Activity
+recreation, and background/foreground within the same process. Player
+ownership, visibility/lifecycle gating, and cleanup are unchanged; no
+dependencies, permissions, or persistence were added.
+
+New tests: `VideoAudioSessionTest` (9 unit tests: fresh-process muted, silent
+pre-`prepare` preference, shared toggle, new-player inheritance, re-mute,
+consumer-recreation and fresh-process semantics) and
+`VideoAudioSessionUiTest` (4 Robolectric Compose tests: accurate control
+state, cross-surface update, inheritance by a newly composed surface,
+recreated-surface inheritance).
+
+**Verification (hosted CI; no Java in this sandbox):** code commit `e8b017a`
+passed Verify Android run
+[38729454211](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38729454211):
+**116 tests, 0 failures/errors/skips** (103 pre-existing + 13 new), lint,
+debug APK build, and packaged-permission privacy checks; the follow-up Verify
+run at final branch HEAD `9e1e572` (docs/workflow-only commits after
+`e8b017a`, run `38729816539`) also succeeded. Two earlier red runs were fixed
+during development (`38728789426`: a `setMuted` property/function JVM
+signature clash, renamed to `updateMuted`; `38729174291`: one UI test calling
+`setContent` twice, rewritten). **Signed device-test candidate:** the existing
+established-signing workflow (`.github/workflows/phase6-signed-build.yml`,
+comment-only reuse note added) ran at HEAD `9e1e572` as run
+[38729816541](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38729816541)
+— all steps succeeded, including `assembleRelease`, signing with the permanent
+release configuration, and in-runner `apksigner verify`. Artifact
+`mosaic-phase6-signed-apk` ID `11969238543` (artifact ZIP 14,151,433 bytes,
+expires 2027-01-13) contains `Mosaic-release.apk` with SHA-256
+`19db3acda94688864dffa8ae3ff5530cba0c6acf775c0263204a715205918590`, signed with
+certificate SHA-256
+`9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a` — the same
+permanent release certificate as v0.2.0, so the candidate should install over
+the v0.2.0 release in place (same versionName 0.2.0 / versionCode 2; identity
+deliberately unchanged for a test candidate). **Physical-device audio
+verification is still required** via `docs/session-audio-device-check.md` and
+must not be inferred from unit/UI tests: real audio output, audio focus,
+background/foreground and force-stop behaviour can only be confirmed on the
+phone. No new release or tag was created by this task; v0.2.0 stays exactly
+as published, and publication of a next version awaits the user's device
+confirmation and separate authorization.
+
+**Release v0.2.1 published (2026-10-15):**
+[Mosaic v0.2.1](https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1),
+tag `v0.2.1` on source commit `e5ee42d15211b1da13321dfdf9bc977528060531`
+(version bump `cd6836d0` + the tested audio implementation at `e8b017a`).
+Release-source Verify runs `38733046620` and `38733379491` both passed:
+**116 tests, 0 failures/errors/skips**, lint, debug APK, privacy checks. The
+signed APK was built fresh from that source by the established-signing
+workflow, run
+[38733379486](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733379486)
+(artifact `mosaic-phase6-signed-apk` ID `11971138920`), then re-verified
+in-runner by publish run
+[38733884128](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38733884128)
+before attaching: asset `Mosaic-v0.2.1-release.apk`, 14,941,999 bytes,
+SHA-256 `ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`,
+`apksigner verify` passed, certificate SHA-256
+`9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a` (matches
+the expected permanent release certificate), and `aapt2` badging confirmed
+`dev.mosaic.app` versionCode 3 / versionName 0.2.1 — so it updates v0.2.0 in
+place. The release was created with `GITHUB_TOKEN`, so the tag did not
+re-trigger `build.yml`; exactly one asset, built from the tagged source, is
+attached. The v0.2.0 release and its asset remain unchanged. Direct APK:
+https://github.com/Sam-Program-362/Mosaic-app/releases/download/v0.2.1/Mosaic-v0.2.1-release.apk
+
+## Phase 7 — device acceptance and stabilization (Scheduled / Deferred; no items passed)
+The user reports they have installed and opened the signed release APK and that it behaves as
+expected. Record this narrowly as limited user-reported evidence: install/open/general behavior
+only. It is not an agent-run test, does not identify itemized Phase 6 results, and does not prove
+the Room v2→v3 migration ran over prior debug-build data (the release certificate differs from the
+debug certificates, so an in-place data-preserving update from a debug install was not possible).
+The user deferred this checklist on 2026-10-15 and considers the app satisfactory for
+proceeding; it is preserved with full test cases in the Google Drive archive
+(`Projects/Mosaic/Scheduled/SCHEDULED - Phase 7 Device Acceptance Testing.md`) and its
+sources remain in `docs/phase-6-device-check.md` sections A–F plus the Phase 4/5 device
+documents. Status of every item: **Scheduled / Deferred — pending user results if the
+user chooses to resume it; do not resume it automatically**. No failing result has been
+supplied and no code-level follow-up is justified yet; do not mark items passed from CI green or
+from the app launching.
+
+## Current phase — Phase 6 custom communities MVP, CI verified; device acceptance pending
+Phase 6 implements local custom communities under the user's approved decisions: duplicate display
+names allowed (stable community IDs are the only identity), at least one member folder required at
+creation but empty membership allowed later, one folder may join multiple communities, unavailable
+member memberships are retained and labelled, and folder removal cascades only its membership rows.
+Room v3 adds `custom_communities` and `custom_community_members` through explicit `MIGRATION_2_3`
+chained after `MIGRATION_1_2`; no destructive fallback. The CI-generated schema
+`app/schemas/dev.mosaic.app.data.local.LibraryDatabase/3.json` (identity hash
+`c9b1d0ba420ba8cf63969ce269c6c164`) was recovered from the green run's annotations, not hand-authored.
+Feeds scope by member folder-ID set (`buildFeedForFolders`), preserving Random/Newest, metadata-only
+search, viewer snapshots, photo geometry, and playback. Creation/management live in the searchable
+community directory and drawer; no new picker, permission, network, or source-media operation exists.
+
+Final verified commit `69d34df` passed CI run
+[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913): 103 tests
+(0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema consistency and
+the video-preloader source guard; artifact `mosaic-debug-and-reports` ID `11947392238` is the
+acceptance build. Historical Phase 6 runs: `38678154965` at `63d6a27` (artifact `11946751459`) was
+the first green run for the Phase 6 code, before the generated-schema (`617dabd`, run `38678435518`)
+and documentation commits; two still earlier runs were red and are not verification: `38677570560`
+(one name-ordering test assertion) and `38677881453` (two Robolectric dialog/directory interaction
+tests, since made deterministic).
+Physical-device acceptance is pending; follow `docs/phase-6-device-check.md`. Local Gradle still
+cannot start in this sandbox (no Java); hosted CI supplied verification. `main` baseline before this
+phase was merge commit `42ae102` (PR #3), whose own CI run `38676173414` succeeded.
+
 ## Current phase — focused production change, CI verified; limited user phone report, targeted checks open
 The 2026-10-15 user request supersedes the earlier disabled-by-default/diagnostic video-preload
 approach. Production neighboring-video buffering, offscreen video-frame prefetch, speculative
@@ -383,9 +658,9 @@ scoped, never retained in the ViewModel.
   2026-10-15 scroll report is recorded in the current section above.
 
 ## Still unimplemented and next acceptance
-Custom community membership is the clearest remaining first-release feature; release-ready
-branding/package/SDK/signing policy and custom-community naming/membership/artwork decisions
-also remain unresolved. Saved-copy removal is explicitly out of scope. Phase 5 Save-copy and
+Custom community membership is implemented in Phase 6 (see the current section above). Release-ready
+branding/package/SDK/signing policy remains unresolved; custom-community artwork stays a provisional
+default with no editor. Saved-copy removal is explicitly out of scope. Phase 5 Save-copy and
 Room v2 migration, viewer, and focused photo-geometry changes are CI-verified, but their
 hardware/provider behavior is not thereby accepted.
 
@@ -398,13 +673,13 @@ removal checklist and the Saved-copy flows for repeated copies, restart, source 
 loss, and failure cleanup. GIF, audio focus/mute, background/offscreen playback, refreshed UI,
 viewer restoration and provider/permission edge cases remain to be exercised on-device.
 
-Recommended next engineering slice is a local custom-communities MVP, after the unresolved
-membership/naming policies are settled. This is a proposal only; see the [fresh-session handoff](../docs/session-handoff.md)
-for scope, dependencies, acceptance criteria, tests and startup instructions. Do not treat CI as
-phone acceptance or claim the earlier crash is fixed.
+Phase 6 has since implemented the local custom-communities MVP under the approved policies in the
+current section above; device acceptance remains open. Do not treat CI as phone acceptance or claim
+the earlier crash is fixed.
 
 ## Open decisions
-Final branding/package/release SDK policy; community rename/duplicate-label policy,
-custom artwork. Missing timestamp fallback is now implemented: unknown dates last,
+Final branding/package/release SDK policy and custom artwork. Custom-community naming/membership
+policies were approved for Phase 6: duplicate names allowed (IDs are identity), at least one member
+at creation, empty later allowed, multiple memberships per folder, unavailable memberships retained. Missing timestamp fallback is now implemented: unknown dates last,
 then case-insensitive filename and stable identity. Shuffle-per-refresh and extension
 hiding remain documented defaults rather than separately finalized UX decisions.

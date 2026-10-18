@@ -119,6 +119,47 @@ class RoomLibraryStoreTest {
         assertEquals(2, store.availableMedia.first().size)
     }
 
+    @Test fun customCommunityCrudMultipleMembershipAndFolderRemovalCascade() = runTest {
+        store.putFolder(FolderRecord("tree-one", "One", true))
+        store.putFolder(FolderRecord("tree-two", "Two", true))
+        store.commitScan("tree-one", listOf(media("one")))
+        store.commitScan("tree-two", listOf(media("two")))
+        val community = CustomCommunity("community-1", "Favourites", listOf("tree-one", "tree-two"), 10L)
+        val other = CustomCommunity("community-2", "Favourites", listOf("tree-one"), 11L)
+        store.createCustomCommunity(community)
+        store.createCustomCommunity(other)
+        assertEquals(listOf(community, other), store.customCommunities.first())
+
+        store.renameCustomCommunity("community-1", "Weekend")
+        store.setCustomCommunityMembers("community-1", listOf("tree-two", "tree-two"))
+        var communities = store.customCommunities.first()
+        assertEquals("Weekend", communities.first { it.id == "community-1" }.name)
+        assertEquals(listOf("tree-two"), communities.first { it.id == "community-1" }.memberFolderIds)
+        store.setCustomCommunityMembers("community-1", emptyList())
+        assertTrue(store.customCommunities.first().first { it.id == "community-1" }.memberFolderIds.isEmpty())
+        store.setCustomCommunityMembers("community-1", listOf("tree-one", "tree-two"))
+
+        store.markUnavailable("tree-two", ScanFailure.PermissionLost)
+        communities = store.customCommunities.first()
+        assertEquals(listOf("tree-one", "tree-two"), communities.first { it.id == "community-1" }.memberFolderIds)
+        assertEquals(listOf("tree-one"), store.availableMedia.first().map { it.folderId })
+        store.commitScan("tree-two", listOf(media("two")))
+        assertEquals(setOf("tree-one", "tree-two"), store.availableMedia.first().map { it.folderId }.toSet())
+
+        store.removeFolder("tree-one")
+        communities = store.customCommunities.first()
+        assertEquals(listOf("tree-two"), communities.first { it.id == "community-1" }.memberFolderIds)
+        assertTrue(communities.first { it.id == "community-2" }.memberFolderIds.isEmpty())
+        assertEquals(listOf("tree-two"), database.libraryDao().getFolders().map { it.id })
+        assertEquals(listOf("two"), database.libraryDao().getMedia("tree-two").map { it.documentId })
+
+        store.deleteCustomCommunity("community-1")
+        communities = store.customCommunities.first()
+        assertEquals(listOf("community-2"), communities.map { it.id })
+        assertEquals(listOf("tree-two"), store.folders.first().map { it.folder.id })
+        assertEquals(1, store.availableMedia.first().size)
+    }
+
     private fun media(id: String) = MediaDocument(id, "content://provider/$id", "same.jpg",
         "image/jpeg", MediaKind.Image, null, null)
 }

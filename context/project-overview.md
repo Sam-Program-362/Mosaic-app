@@ -27,7 +27,9 @@ or proprietary assets to copy.
   never inspect media bytes or use a network service.
 - Immersive vertical viewer follows a snapshot of the originating feed order.
   Photos fit; GIF/video autoplay only when visible/active; MP4 starts muted with
-  sound toggle. Stop/release inactive and off-screen media. Bounded nearby retention and
+  a sound toggle whose mute/unmute choice is shared by every MP4 surface for
+  the rest of the app session (in-memory only; a fresh process starts muted).
+  Stop/release inactive and off-screen media. Bounded nearby retention and
   prefetch target static photos only; the current viewer/feed item remains retained. There is
   no production video-preload manager, neighboring-video buffer, offscreen video-frame prefetch,
   or speculative offscreen-video poster decode. A visible inactive MP4 keeps its local poster;
@@ -117,8 +119,10 @@ communities remain planned. This is not first-release completion.
 Kotlin/Compose/Room/Coil/Media3 are the adopted technical baseline under delegated
 routine technical decisions. See the tracker for exact verification evidence.
 Working identity `Mosaic` / `dev.mosaic.app`, min API 26 and target/compile 35 remain
-provisional. Public naming/trademark review, release SDK policy, folder-community
-renaming/duplicate label policy, and custom-community artwork remain unresolved.
+provisional. Public naming/trademark review, release SDK policy, and custom-community artwork remain unresolved.
+Custom-community naming/membership policies are approved and implemented in Phase 6: duplicate
+names allowed with stable-ID identity, at least one member at creation (empty allowed later),
+multiple memberships per folder, unavailable memberships retained.
 
 ## 2026-10-15 focused production change — CI verified; limited user phone report, targeted checks open
 The user's new scope supersedes the former disabled-by-default/diagnostic video-preload
@@ -151,3 +155,55 @@ new report does not prove the cause of the earlier crash or establish crash reso
 cannot start in this checkout because Java is unavailable; hosted CI supplied verification.
 `google_drive/` is user data and must not be staged or modified. See the [fresh-session handoff](../docs/session-handoff.md)
 for the next-phase recommendation, open device scenarios and startup instructions.
+
+## Phase 6 — custom communities (CI verified; device acceptance pending)
+Phase 6 implements local custom communities combining explicitly assigned, already-selected folders
+without moving/copying source media: create, rename, browse, edit membership, and delete in the
+searchable directory and drawer, with union feeds preserving existing ordering/search/viewer rules.
+Room v3 (`MIGRATION_2_3`, tracked generated schema) stores stable community/folder membership IDs.
+Final CI run [38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913)
+at `69d34df` passed 103 tests, lint, debug APK, privacy and schema checks (artifact `11947392238`;
+earlier green run `38678154965` at `63d6a27` is historical).
+Physical-device acceptance follows `docs/phase-6-device-check.md` and remains open, as do the earlier
+Phase 4/5 device checks.
+
+## Current stable release — v0.2.1 (2026-10-15)
+
+This section supersedes any older chronology above that describes custom
+communities or other shipped features as planned, or that implies no release
+exists. **Current stable release: Mosaic v0.2.1**
+(https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1),
+versionName 0.2.1 / versionCode 3, tag `v0.2.1` on source commit
+`e5ee42d15211b1da13321dfdf9bc977528060531`. Asset
+`Mosaic-v0.2.1-release.apk` (14,941,999 bytes, SHA-256
+`ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`), signed
+with the permanent release certificate (SHA-256
+`9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a`).
+v0.2.0 (tag `af58727`) remains published and unchanged as the previous stable
+release; v0.2.1 updates it in place (higher versionCode, same certificate).
+
+Shipped core functionality: explicit SAF folder selection with direct-child
+indexing; Home plus automatic folder communities; Phase 6 custom communities;
+Random/Newest feeds with metadata-only search; full-width intrinsic-ratio
+photos; the frozen-snapshot immersive viewer; per-tap independent Saved
+copies; confirmed folder removal that never touches originals; Light/Dark
+themes; and session-wide MP4 audio (fresh process starts muted; one shared
+in-memory mute/unmute choice across all playback surfaces for the session).
+Automated verification for the release source: 116 tests, 0
+failures/errors/skips, lint, debug APK, and privacy checks (runs `38733046620`
+and `38733379491`). The user reports the audio behaviour passed physical-device
+testing perfectly — user-reported evidence, separate from CI. The Phase 7
+itemized device-acceptance checklist is **Scheduled / Deferred**, not passed
+(see the progress tracker).
+
+Development state (unreleased, on the session branch / PR #4, pending the
+user's merge decision): launcher icon from the user-provided
+`mosaic_logo.svg` (in-app logo unchanged), viewer-only image/GIF pinch zoom,
+tap-to-hide immersive viewer chrome, temporary edge-swipe chronological
+photo browsing, and long-press title copy. Automated verification for this
+set: 154 tests, 0 failures/errors/skips, lint, debug APK, and privacy
+checks; the user reports the installed signed candidate passed their
+physical-device testing of these improvements (user-reported evidence).
+v0.2.1 remains the current stable release; no new version, tag, or release
+has been created for the improvement set, and merging PR #4 (merge commit,
+not squash) is the user's explicit decision to make.

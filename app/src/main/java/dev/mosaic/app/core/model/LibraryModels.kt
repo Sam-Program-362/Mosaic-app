@@ -14,6 +14,17 @@ data class FolderRecord(
 
 data class FolderSummary(val folder: FolderRecord, val mediaCount: Int)
 
+/**
+ * A user-created community grouping explicitly selected folders by stable ID.
+ * Display names are not identifiers and may be shared by multiple communities.
+ */
+data class CustomCommunity(
+    val id: String,
+    val name: String,
+    val memberFolderIds: List<String> = emptyList(),
+    val createdAtMillis: Long = 0L,
+)
+
 data class MediaDocument(
     val documentId: String,
     val contentUri: String,

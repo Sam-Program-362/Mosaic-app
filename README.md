@@ -11,6 +11,7 @@ and next-phase proposal, start with the [fresh-session handoff](docs/session-han
 
 - Native Kotlin / Jetpack Compose / Material 3 app and Gradle wrapper.
 - Home and automatic folder communities; exact folder-feed isolation.
+- Custom communities grouping explicitly selected folders (create, rename, edit membership, delete) with union feeds; originals are never moved or copied.
 - Random/Newest local ordering, refresh, and decorative noninteractive counts.
 - Local photo/GIF/MP4 previews, plus a full-screen vertical viewer that opens at
   the tapped post and uses a frozen copy of the originating feed order.
@@ -41,8 +42,8 @@ and next-phase proposal, start with the [fresh-session handoff](docs/session-han
   searchable community directory, redesigned Settings/folder screens, and header/drawer-
   only navigation (no bottom bar or rail). Search is limited to indexed metadata.
 
-**Still not implemented:** custom communities, comments, real votes, Saved-copy removal,
-and production release/signing.
+**Still not implemented:** comments, real votes, Saved-copy removal, and production
+release/signing. Custom communities are implemented (Phase 6, CI-verified; device acceptance pending).
 
 ## Verification and phone evidence
 
@@ -53,6 +54,13 @@ privacy checks, Room schema consistency, and the source guard against video-prel
 `mosaic-debug-and-reports` artifact (ID `11923577241`) includes `app-debug.apk` and
 `app-debug.sha256`; download it from the
 [workflow artifact page](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844/artifacts/11923577241).
+
+Phase 6 (custom communities, Room v3) passed CI run
+[38678674913](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38678674913) at `69d34df`:
+103 tests (0 failures/errors/skips), lint, debug APK, packaged-permission privacy, Room schema
+consistency and the same source guard; artifact `mosaic-debug-and-reports` ID `11947392238` is the
+final acceptance build (the earlier green run `38678154965` at `63d6a27` is historical). Use the
+[Phase 6 device check](docs/phase-6-device-check.md) for its physical-device acceptance sequence.
 Older paired preload-mode APKs are not valid acceptance builds; the current build has no preload
 toggle. On 2026-10-15 the user reported: `"Scrolling is okay, didn't crash. Basically it's okey."`
 This is a limited user observation: scrolling was acceptable and no crash occurred during that
