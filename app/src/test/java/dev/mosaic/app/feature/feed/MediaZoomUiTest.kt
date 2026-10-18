@@ -163,6 +163,8 @@ class MediaZoomUiTest {
         }
 
         compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput { click() }
+        // Confirmed single taps fire after the double-tap window closes.
+        compose.mainClock.advanceBy(500)
         compose.waitForIdle()
 
         assertEquals(1, taps)

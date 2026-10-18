@@ -73,6 +73,9 @@ class MediaViewerChromeUiTest {
 
     private fun tapMedia() {
         compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput { click() }
+        // A confirmed single tap fires only after the double-tap window
+        // closes; advance the test clock past it.
+        compose.mainClock.advanceBy(500)
         compose.waitForIdle()
     }
 
