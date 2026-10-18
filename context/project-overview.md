@@ -194,6 +194,16 @@ failures/errors/skips, lint, debug APK, and privacy checks (runs `38733046620`
 and `38733379491`). The user reports the audio behaviour passed physical-device
 testing perfectly — user-reported evidence, separate from CI. The Phase 7
 itemized device-acceptance checklist is **Scheduled / Deferred**, not passed
-(see the progress tracker). No next development phase is approved or started;
-the next action is to wait for the user's instructions and evaluate their
-ideas before selecting any implementation task.
+(see the progress tracker).
+
+Development state (unreleased, on the session branch / PR #4, pending the
+user's merge decision): launcher icon from the user-provided
+`mosaic_logo.svg` (in-app logo unchanged), viewer-only image/GIF pinch zoom,
+tap-to-hide immersive viewer chrome, temporary edge-swipe chronological
+photo browsing, and long-press title copy. Automated verification for this
+set: 154 tests, 0 failures/errors/skips, lint, debug APK, and privacy
+checks; the user reports the installed signed candidate passed their
+physical-device testing of these improvements (user-reported evidence).
+v0.2.1 remains the current stable release; no new version, tag, or release
+has been created for the improvement set, and merging PR #4 (merge commit,
+not squash) is the user's explicit decision to make.

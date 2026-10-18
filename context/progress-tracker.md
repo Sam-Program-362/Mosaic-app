@@ -25,6 +25,33 @@ immediate action: none in progress. Wait for the user's next development
 instructions and evaluate their ideas before selecting the next
 implementation task; no next phase is approved or started.**
 
+## Pre-merge state (2026-10-19) — PR #4 open; user device testing confirmed complete
+All post-v0.2.1 improvement work is on `arena/a0a1b100-mosaic-app` and in
+**PR #4** (`arena/a0a1b100-mosaic-app` → `main`), which is **OPEN, MERGEABLE,
+not merged**. Branch head at this refresh: `8c67941c8b288efa39e5dc5400f9ab946fe7882c`;
+`main` is unchanged at `42ae102`. Five improvement categories are complete
+(detail in the sections below): (A) external launcher icon from the
+user-provided `mosaic_logo.svg`, (B) viewer-only image/GIF pinch zoom,
+(C) immersive tap-to-hide viewer chrome, (D) temporary chronological
+browsing in the viewer, (E) long-press title copy. Current stable release
+remains **v0.2.1** (tag `e5ee42d`); these improvements are unreleased
+development work — no version bump, tag, or release exists for them.
+**User-reported device testing (not agent-run):** the user installed the
+latest signed candidate and confirms testing of these improvements is
+complete and successful. This is user-reported physical-device verification
+of the improvement set, kept distinct from automated CI evidence; it does
+not reclassify any Phase 7 checklist item, which remains
+**Scheduled / Deferred — not passed**. Merge rules for when the user
+decides: merge PR #4 with a **merge commit (never squash)**, so the tagged
+release commits `af58727` (v0.2.0) and `e5ee42d` (v0.2.1) remain in `main`
+ancestry. Latest signed candidate for the improvement set: run `39157385362`
+at `8c67941`, artifact `mosaic-phase6-signed-apk` ID `12147372598`
+(ZIP 14,378,055 bytes; GitHub-reported ZIP SHA-256
+`6901c8e175dac7e6ab8067d92b6f160b3984aa28d06d348fdf8e1a4c0e8df8b7` — a ZIP
+digest, not an APK digest; no APK checksum was produced), application ID
+and version metadata unchanged (0.2.1 / code 3), permanently signed by the
+established workflow with in-runner certificate verification.
+
 ## Final improvement phase before merge (2026-10-16) — branch only, PR #4 open, not merged
 Two user-authorized improvements were implemented on
 `arena/a0a1b100-mosaic-app` on top of the v0.2.1 documentation state. Neither
@@ -55,9 +82,10 @@ changes the published v0.2.1 release, version metadata, signing, or `main`.
 - **PR #4** (`arena/a0a1b100-mosaic-app` → `main`) is open and updated with
   these commits; it must be merged with a merge commit (not squash) when the
   user decides. Phase 7 remains **Scheduled / Deferred — not passed**; none of
-  its items are affected or claimed by this work. Physical-device checks
-  still open for this phase: launcher appearance (home screen/drawer,
-  installer/file-manager icon) and pinch-zoom feel against the real pager.
+  its items are affected or claimed by this work. **Device testing:** the
+  user later confirmed (2026-10-19) that testing of the installed signed
+  candidate — including launcher appearance and pinch zoom — is complete
+  and successful (user-reported evidence; see "Pre-merge state" above).
 
 ## Immersive inner-feed viewer (2026-10-16) — branch only, PR #4 open, not merged
 One user-authorized improvement on `arena/a0a1b100-mosaic-app`: tapping media
@@ -76,9 +104,10 @@ existing viewer policy (hidden while viewing, restored on exit). The
 top-level feed is unchanged. Automated results: Verify run `39148933209` at
 `16ce648` succeeded — **139 tests, 0 failures/errors/skips** (131 prior + 6
 viewer-chrome UI tests + 2 tap-discrimination zoom tests), lint, debug APK,
-and privacy checks passed. Device checks still open: chrome toggle feel on a
-real device for image/GIF/MP4 (including control-tap isolation on video),
-which needs the signed candidate below.
+and privacy checks passed. **Device testing:** the user later confirmed
+(2026-10-19) that testing of the installed signed candidate — including
+the chrome toggle on image/GIF/MP4 — is complete and successful
+(user-reported evidence; see "Pre-merge state" above).
 
 ## Final feature additions before merge (2026-10-16) — branch only, PR #4 open, not merged
 Two user-authorized features on `arena/a0a1b100-mosaic-app`; v0.2.1, `main`,
@@ -103,9 +132,12 @@ version metadata, and signing unchanged.
 - **Automated results:** Verify run `39157086439` at `3a59ea0` succeeded —
   **154 tests, 0 failures/errors/skips** (139 prior + 7 chronological unit
   tests, 5 timeline UI tests, 3 title-copy UI tests), lint, debug APK, and
-  privacy checks passed. Device checks still open: edge-swipe feel vs. the
-  system Back gesture, chronological navigation on real photos, long-press
-  timing/confirmation on device.
+  privacy checks passed. **Device testing:** the user confirmed
+  (2026-10-19) that testing of the installed signed candidate
+  (run `39157385362`, source `8c67941`) — including edge-swipe
+  chronological browsing on real photos and long-press title copy — is
+  complete and successful (user-reported evidence; see "Pre-merge state"
+  above).
 
 ## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
 

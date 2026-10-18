@@ -100,3 +100,15 @@ instructions, evaluates the ideas with them, and only then proposes an
 implementation task for approval. Continue to distinguish automated CI
 evidence, user-reported device results, and unperformed scheduled checks in
 every report.
+
+## Current approval boundary (pre-merge, 2026-10-19)
+The post-v0.2.1 improvement tasks the user authorized after that boundary
+(launcher icon, viewer zoom, immersive chrome, chronological browsing,
+title copy) are implemented, CI-verified, and — per the user's report —
+device-tested successfully; they are complete and authorize nothing
+further. **PR #4 is open and must not be merged by an agent**: the merge is
+the user's explicit decision, and when they give it, it must use a merge
+commit (not squash) so the tagged release commits remain in `main`
+ancestry. No new feature, refactor, tag, release, or version change is
+authorized. Phase 7 acceptance remains Scheduled/Deferred and must not be
+marked passed on the basis of the improvement-set device testing.

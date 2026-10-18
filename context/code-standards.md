@@ -132,6 +132,21 @@ acceptance from CI alone. Code commit `a4264dd` passed CI run
 (0 failures/errors/skips), lint, debug APK, packaged permissions, Room schema, and source guard.
 The APK/checksum are in artifact `mosaic-debug-and-reports` ID `11923577241`.
 
+## Viewer interaction conventions (established 2026-10-16)
+- Ephemeral viewer interaction state (chrome visibility, chronological
+  browsing) is owned by the viewer composable, keyed/reset per opened
+  snapshot or media request, never persisted, and never shared with the
+  top-level feed. Reopening a surface starts from the default state.
+- Competing gestures are arbitrated in one gesture loop, not stacked
+  detectors: the pager's axis is never consumed, additional gestures are
+  claimed only at the default zoom with clear directional intent, and
+  activation zones must respect system gesture insets. Pinch and
+  multi-pointer gestures take precedence over single-pointer navigation.
+- Potentially expensive preparation (such as sorting an index already in
+  memory) runs off the UI thread, is triggered only by the user's explicit
+  gesture, and loads only the requested destination — no speculative
+  preparation or neighbour preloading on screen entry.
+
 On 2026-10-15 the user reported, exactly: `"Scrolling is okay, didn't crash. Basically it's okey."`
 Record this as a limited user-observed scroll result—acceptable scrolling and no crash during that
 test, which the user considers acceptable enough to proceed. It is not an agent-run/exhaustive test;

@@ -350,3 +350,35 @@ shared state. Player creation, ownership, visibility gating, and disposal are
 otherwise unchanged. Tests: `VideoAudioSessionTest` (unit) and
 `VideoAudioSessionUiTest` (Robolectric Compose wiring); device audio checks
 are in `docs/session-audio-device-check.md`.
+
+## Viewer interaction state and chronological browsing (post-v0.2.1, PR #4)
+The fullscreen viewer (`MediaViewer` over a frozen `FeedSnapshot`) owns all
+ephemeral interaction state locally; nothing is persisted or shared with
+the top-level feed:
+- `chromeVisible` (immersive interface toggle) is remembered per opened
+  snapshot and starts visible. The same state is passed into image/GIF and
+  video surfaces; video playback controls are separate composables above
+  the surface and hide/return with the chrome without touching playback or
+  the audio session.
+- Image/GIF zoom lives in `ZoomableImageViewport`, keyed by the media
+  request so state never survives an item change. One gesture loop
+  arbitrates pinch/pan (zoomed), confirmed single tap (chrome toggle),
+  double tap (zoom), and horizontal swipes: a horizontal drag is claimed
+  only at scale 1 with directional intent, and only when chronological
+  browsing is active or the gesture began in the near-edge zone just
+  inside the system-gesture inset. Vertical drags are never consumed, so
+  the `VerticalPager` remains the single vertical navigation owner — there
+  is deliberately no nested pager.
+- Chronological browsing state (`ViewerTimeline`) is also viewer-local,
+  anchored to the random-feed page that activated it. The sequence
+  (`buildChronologicalSequence`) filters the already-open snapshot to
+  `MediaKind.Image`, sorts by indexed `modifiedAtMillis` with deterministic
+  tie-breakers, and is constructed lazily on `Dispatchers.Default` only
+  after the first accepted gesture. The pager item displays the timeline
+  destination instead of the random item, so only that destination is ever
+  requested/decoded — no sequence preparation or neighbour preloading
+  happens on viewer entry. Vertical paging or exiting clears the state.
+Tests: `MediaZoomTest`, `MediaZoomUiTest`, `MediaViewerChromeUiTest`,
+`MediaViewerTimelineUiTest`, `ChronologicalBrowsingTest`,
+`TitleCopyUiTest`; long-press title copy (`CopyableTitleText`) shares one
+implementation between feed cards and the viewer header.

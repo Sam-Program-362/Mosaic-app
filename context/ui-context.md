@@ -11,6 +11,12 @@ surface, including newly opened MP4s, until the user changes it again or the
 process ends (a fresh launch starts muted). Device verification:
 `docs/session-audio-device-check.md`.
 
+Post-v0.2.1 viewer/feed interactions (development branch, PR #4): the user
+reports their physical-device testing of the installed signed candidate
+for the interactions summarized below (launcher icon, zoom, chrome toggle,
+chronological browsing, title copy) is complete and successful —
+user-reported evidence, separate from the 154-test CI result.
+
 Image/GIF zoom exists only inside the full-screen viewer: pinch scales a
 still image or GIF between 1x and 4x (panning is clamped to the zoomed
 content), and double-tap toggles between the original scale and a zoomed
