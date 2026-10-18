@@ -144,4 +144,56 @@ class MediaZoomUiTest {
         // in the top-level feed has nothing to act on.
         compose.onAllNodesWithTag(ZOOMABLE_IMAGE_TEST_TAG).assertCountEquals(0)
     }
+
+    @Test
+    fun singleTapFiresTapCallbackWithoutZooming() {
+        var taps = 0
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                ZoomableImageViewport(
+                    enabled = true,
+                    resetKey = "item-a",
+                    modifier = Modifier.size(200.dp),
+                    onSingleTap = { taps++ },
+                ) {
+                    Box(Modifier.fillMaxSize().background(Color.Black))
+                }
+            }
+        }
+
+        compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput { click() }
+        compose.waitForIdle()
+
+        assertEquals(1, taps)
+        assertEquals(MIN_IMAGE_ZOOM_SCALE, zoomScale(), 0.001f)
+    }
+
+    @Test
+    fun doubleTapZoomsWithoutFiringSingleTap() {
+        var taps = 0
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                ZoomableImageViewport(
+                    enabled = true,
+                    resetKey = "item-a",
+                    modifier = Modifier.size(200.dp),
+                    onSingleTap = { taps++ },
+                ) {
+                    Box(Modifier.fillMaxSize().background(Color.Black))
+                }
+            }
+        }
+
+        compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput {
+            down(center)
+            up()
+            advanceEventTime(60)
+            down(center)
+            up()
+        }
+        compose.waitForIdle()
+
+        assertEquals(0, taps)
+        assertTrue(zoomScale() > MIN_IMAGE_ZOOM_SCALE)
+    }
 }
