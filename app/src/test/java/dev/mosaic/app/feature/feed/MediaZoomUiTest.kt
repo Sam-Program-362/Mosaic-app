@@ -163,9 +163,8 @@ class MediaZoomUiTest {
         }
 
         compose.onNodeWithTag(ZOOMABLE_IMAGE_TEST_TAG).performTouchInput { click() }
-        // Confirmed single taps fire after the double-tap window closes
-        // (~640ms of frames).
-        repeat(40) { compose.mainClock.advanceByFrame() }
+        // Confirmed single taps fire after the double-tap window closes.
+        compose.mainClock.advanceTimeBy(500)
         compose.waitForIdle()
 
         assertEquals(1, taps)
