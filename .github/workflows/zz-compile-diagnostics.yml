@@ -44,3 +44,5 @@ jobs:
           PYEOF
           echo "gradle-status=$STATUS"
           exit 0
+
+# retrigger chrome 2
