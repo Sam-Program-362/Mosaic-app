@@ -69,6 +69,8 @@ internal fun LocalMediaPreview(
     viewer: Boolean = false,
     onViewerSurfaceTap: (() -> Unit)? = null,
     viewerChromeVisible: Boolean = true,
+    onChronologicalSwipe: ((Int) -> Unit)? = null,
+    chronologicalActive: Boolean = false,
     onOpenViewer: (() -> Unit)? = null,
     videoPreviewVisible: Boolean = true,
     feedPosition: Int = -1,
@@ -208,6 +210,14 @@ internal fun LocalMediaPreview(
                     // the media itself (including GIF animation) is
                     // unaffected by chrome visibility.
                     onSingleTap = if (viewer) onViewerSurfaceTap else null,
+                    // Chronological browsing starts from still photos only;
+                    // GIFs keep zoom/tap behaviour but no timeline gestures.
+                    chronologicalActive = chronologicalActive,
+                    onChronologicalSwipe = if (viewer && document.kind == MediaKind.Image) {
+                        onChronologicalSwipe
+                    } else {
+                        null
+                    },
                     onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
                 )
             }
@@ -216,7 +226,7 @@ internal fun LocalMediaPreview(
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onSingleTap: (() -> Unit)? = null, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onSingleTap: (() -> Unit)? = null, chronologicalActive: Boolean = false, onChronologicalSwipe: ((Int) -> Unit)? = null, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
     val request = remember(uri, modified, animated, context) {
         ImageRequest.Builder(context).data(Uri.parse(uri))
@@ -231,7 +241,7 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
     // Still images and GIFs share this rendering path, so the viewer-only
     // zoom viewport covers both; state resets whenever the request (item)
     // changes.
-    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize(), onSingleTap = onSingleTap) {
+    ZoomableImageViewport(enabled = zoomable, resetKey = request, modifier = Modifier.fillMaxSize(), onSingleTap = onSingleTap, chronologicalActive = chronologicalActive, onChronologicalSwipe = onChronologicalSwipe) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (loading) Text("Loading media…", color = LocalMosaicColors.current.textSecondary)
             AsyncImage(

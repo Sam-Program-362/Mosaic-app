@@ -6,7 +6,9 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -20,11 +22,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 /**
  * Pinch-zoom support for still images and GIFs inside the full-screen viewer
@@ -37,6 +43,13 @@ internal const val MAX_IMAGE_ZOOM_SCALE = 4f
 internal const val DOUBLE_TAP_IMAGE_ZOOM_SCALE = 2.5f
 
 internal const val ZOOMABLE_IMAGE_TEST_TAG = "zoomableImageViewport"
+
+/** Width of the near-edge zone (inside the system gesture inset) from which
+ *  a horizontal swipe may first activate chronological browsing. */
+internal const val TIMELINE_EDGE_ZONE_DP = 48
+
+/** Minimum deliberate horizontal travel before a swipe navigates. */
+internal const val TIMELINE_SWIPE_THRESHOLD_DP = 64
 
 /** Current zoom scale of a [ZoomableImageViewport]; exposed for UI tests. */
 internal val ZoomScaleSemanticsKey = SemanticsPropertyKey<Float>("ZoomScale")
@@ -85,6 +98,14 @@ internal fun zoomOffsetAfter(
  * [onSingleTap] reports confirmed single taps only: the tap detector waits
  * out the double-tap window, so a double tap zooms without also firing a
  * single tap (no interface flicker), and pinch gestures never fire it.
+ *
+ * Chronological browsing ([onChronologicalSwipe], direction +1 = next/newer,
+ * -1 = previous/older) is arbitrated in the same gesture loop: a horizontal
+ * drag is claimed only at scale 1 with clear horizontal intent, and only
+ * when chronological browsing is already active ([chronologicalActive]) or
+ * the gesture began in the near-edge activation zone just inside the system
+ * gesture inset. Zoomed pans, pinches, vertical drags (pager), and small or
+ * diagonal movements are never claimed, so existing interactions win.
  */
 @Composable
 internal fun ZoomableImageViewport(
@@ -92,6 +113,8 @@ internal fun ZoomableImageViewport(
     resetKey: Any,
     modifier: Modifier = Modifier,
     onSingleTap: (() -> Unit)? = null,
+    chronologicalActive: Boolean = false,
+    onChronologicalSwipe: ((Int) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     if (!enabled) {
@@ -101,20 +124,60 @@ internal fun ZoomableImageViewport(
     var scale by remember(resetKey) { mutableFloatStateOf(MIN_IMAGE_ZOOM_SCALE) }
     var offset by remember(resetKey) { mutableStateOf(Offset.Zero) }
     var containerSize by remember(resetKey) { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val gestureInsets = WindowInsets.systemGestures
+    val leftInsetPx = gestureInsets.getLeft(density, layoutDirection)
+    val rightInsetPx = gestureInsets.getRight(density, layoutDirection)
+    val edgeZonePx = with(density) { TIMELINE_EDGE_ZONE_DP.dp.roundToPx() }
+    val swipeThresholdPx = with(density) { TIMELINE_SWIPE_THRESHOLD_DP.dp.roundToPx() }
     Box(
         modifier
             .clipToBounds()
             .onSizeChanged { containerSize = it }
             .testTag(ZOOMABLE_IMAGE_TEST_TAG)
             .semantics { zoomScale = scale }
-            .pointerInput(resetKey) {
+            .pointerInput(resetKey, chronologicalActive, onChronologicalSwipe) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var totalMovement = Offset.Zero
+                    var horizontalClaimed = false
+                    // Stays undecided until the gesture shows clear intent;
+                    // a null handler disables chronological claiming entirely.
+                    var horizontalDecided = onChronologicalSwipe == null
+                    var sawMultiplePointers = false
                     var event: PointerEvent
                     do {
                         event = awaitPointerEvent()
                         val zoomChange = event.calculateZoom()
                         val panChange = event.calculatePan()
+                        totalMovement += panChange
+                        if (event.changes.size > 1) sawMultiplePointers = true
+                        if (!horizontalDecided && !sawMultiplePointers &&
+                            scale <= MIN_IMAGE_ZOOM_SCALE
+                        ) {
+                            val absX = abs(totalMovement.x)
+                            val absY = abs(totalMovement.y)
+                            when {
+                                absX > viewConfiguration.touchSlop && absX > absY * 1.5f -> {
+                                    val fromLeftZone = down.position.x >= leftInsetPx &&
+                                        down.position.x <= leftInsetPx + edgeZonePx
+                                    val fromRightZone =
+                                        down.position.x <= size.width - rightInsetPx &&
+                                            down.position.x >= size.width - rightInsetPx - edgeZonePx
+                                    horizontalClaimed =
+                                        chronologicalActive || fromLeftZone || fromRightZone
+                                    horizontalDecided = true
+                                }
+                                absY > viewConfiguration.touchSlop && absY > absX -> {
+                                    horizontalDecided = true // vertical: the pager owns it
+                                }
+                            }
+                        }
+                        if (horizontalClaimed) {
+                            event.changes.forEach { change -> change.consume() }
+                            continue
+                        }
                         val pinching = event.changes.size > 1
                         if (pinching || scale > MIN_IMAGE_ZOOM_SCALE || zoomChange != 1f) {
                             if (zoomChange != 1f) {
@@ -134,6 +197,10 @@ internal fun ZoomableImageViewport(
                             event.changes.forEach { change -> change.consume() }
                         }
                     } while (event.changes.any { change -> change.pressed })
+                    if (horizontalClaimed && abs(totalMovement.x) >= swipeThresholdPx) {
+                        // Swipe left travels toward newer photos; right, older.
+                        onChronologicalSwipe?.invoke(if (totalMovement.x < 0f) 1 else -1)
+                    }
                 }
             }
             .pointerInput(resetKey) {
