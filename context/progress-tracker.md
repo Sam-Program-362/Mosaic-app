@@ -59,6 +59,27 @@ changes the published v0.2.1 release, version metadata, signing, or `main`.
   still open for this phase: launcher appearance (home screen/drawer,
   installer/file-manager icon) and pinch-zoom feel against the real pager.
 
+## Immersive inner-feed viewer (2026-10-16) — branch only, PR #4 open, not merged
+One user-authorized improvement on `arena/a0a1b100-mosaic-app`: tapping media
+in the fullscreen viewer (the inner feed) now hides/restores the viewer
+interface (chrome). `MediaViewer` owns a session-local `chromeVisible` state
+keyed by the opened snapshot, so reopening always starts with the interface
+visible and nothing leaks to other screens. The header (Back, folder/title,
+page count) and footer (hint, Save copy) fade out together; still images and
+GIFs toggle via the zoom viewport's confirmed-single-tap callback (a double
+tap still only zooms — no flicker, no double toggle — and GIF animation is
+not gated by chrome state). Video surface taps route to the same toggle;
+playback controls are separate composables above the surface so control taps
+never toggle, controls hide/return with the chrome, and playback, position,
+and the session-wide audio preference are untouched. System bars keep the
+existing viewer policy (hidden while viewing, restored on exit). The
+top-level feed is unchanged. Automated results: Verify run `39148933209` at
+`16ce648` succeeded — **139 tests, 0 failures/errors/skips** (131 prior + 6
+viewer-chrome UI tests + 2 tap-discrimination zoom tests), lint, debug APK,
+and privacy checks passed. Device checks still open: chrome toggle feel on a
+real device for image/GIF/MP4 (including control-tap isolation on video),
+which needs the signed candidate below.
+
 ## Session-wide MP4 audio control — CI verified; user reports device verification passed; v0.2.1 release preparation
 
 **User-reported device verification (not agent-run):** after the signed

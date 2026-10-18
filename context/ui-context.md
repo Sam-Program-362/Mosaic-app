@@ -15,7 +15,12 @@ Image/GIF zoom exists only inside the full-screen viewer: pinch scales a
 still image or GIF between 1x and 4x (panning is clamped to the zoomed
 content), and double-tap toggles between the original scale and a zoomed
 scale. Single-finger vertical swipes still page the viewer, and returning to
-another item always starts at scale 1. The top-level feed does not zoom, and
+another item always starts at scale 1. A confirmed single tap on an image or
+GIF (or on a video surface, outside its playback controls) hides the viewer
+interface — header, footer, and video controls fade out while the media,
+GIF animation, and video playback continue — and a further tap restores it;
+playback-control taps never toggle it, and reopening the viewer always
+starts with the interface visible. The top-level feed does not zoom, and
 video surfaces have no zoom gesture. The app launcher icon is the
 user-provided `mosaic_logo.svg` artwork (adaptive icon with the art in the
 safe zone plus per-density rasters); in-app branding is unchanged.
