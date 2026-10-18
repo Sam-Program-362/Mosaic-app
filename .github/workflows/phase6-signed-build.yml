@@ -110,3 +110,5 @@ jobs:
           if-no-files-found: error
 
 # Signed device-test candidate: immersive viewer chrome toggle (139 tests green at 16ce648).
+
+# Signed device-test candidate: chronological browsing + title copy (154 tests green at 3a59ea0).
