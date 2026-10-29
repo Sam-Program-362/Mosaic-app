@@ -167,7 +167,46 @@ earlier green run `38678154965` at `63d6a27` is historical).
 Physical-device acceptance follows `docs/phase-6-device-check.md` and remains open, as do the earlier
 Phase 4/5 device checks.
 
+## 2026-10-29 — Mislabelled GIFs and shared-folder Saved copies (implemented; automated checks blocked locally)
+Two user-reported issues were fixed together, without changing unrelated feed/viewer behavior.
+
+- **GIF identification root cause:** folder scanning classified media only from the storage
+  provider's MIME type. A provider reporting `image/jpeg` (or a name ending in `.jpg`) therefore
+  produced `MediaKind.Image`, a static decoder request, and only the first frame. Scanning now
+  performs a bounded 6-byte header read for storage-provider-declared static images and promotes
+  exact `GIF87a`/`GIF89a` signatures to `MediaKind.Gif` (effective MIME `image/gif`). The source
+  file, stored filename, and user-facing title are untouched; correctly reported GIFs, JPEG/PNG
+  and static WebP behavior, and unsupported-format filtering are unchanged. Detected GIFs use the
+  existing animated Coil decoder and playback lifecycle in both Home/community feeds and the
+  immersive viewer.
+- **Save-copy root cause:** every save was streamed into the app-private `filesDir/saved-media`
+  directory and only surfaced in the in-app Saved feed, so no copy existed in a user-accessible
+  device folder. Each Save now writes one independent copy to `Download/Mosaic/Saved` through
+  MediaStore Downloads (Android 10+, pending-row transaction, no storage permission) or, on
+  Android 8–9, through a one-time user-chosen SAF folder with persisted read/write access limited
+  to that folder. The same destination is referenced by the Saved feed; previous private copies
+  remain readable after the Room v4 destination migration. Copies use content-derived MIME and
+  extension (a detected GIF named `.jpg` becomes `.gif`) while the Saved UI keeps the original
+  media title. Every invocation keeps a unique name; failures delete incomplete destinations and
+  metadata.
+
+**Verification status:** verified by CI on branch `fix/gif-detection-and-accessible-saved-copies`
+(PR #6, commits `f00d267` + `35bf7d9`). GitHub Actions run 40862412986 passed 178 unit tests with
+0 failures, `lint`, `assembleDebug`, the packaged-APK privacy check (no INTERNET, network-state,
+broad storage/media or `MANAGE_EXTERNAL_STORAGE` permission) and the Room schema-consistency step,
+which confirmed the committed
+`app/schemas/dev.mosaic.app.data.local.LibraryDatabase/4.json` matches a fresh Gradle/KSP export.
+That schema differs from `3.json` only by the version, identity hash and nullable `destinationUri`
+column. Local Gradle cannot run in the workspace sandbox (`SDK location not found`; no disk for the
+SDK and dependency set). Real-device GIF animation (Home + viewer), MediaStore/SAF folder behavior,
+file-manager visibility and migration over installed data remain unverified. See the
+[current handoff](../docs/session-handoff.md).
+
 ## Current stable release — v0.2.1 (2026-10-15)
+
+> **Live repository correction (2026-10-29):** `main` is at `99c6450` and tag **v0.3.0**
+> exists (versionName 0.3.0 / versionCode 4). PRs #4 and #5 are merged; the v0.2.1 material below
+> is historical. The only open PR is #2, an unrelated old revert.
 
 This section supersedes any older chronology above that describes custom
 communities or other shipped features as planned, or that implies no release

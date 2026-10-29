@@ -1,5 +1,19 @@
 # UI context
 
+## 2026-10-29 — GIF playback and Saved-copy location
+Detected animated GIFs (including GIF bytes stored as `.jpg` with an `image/jpeg` provider type)
+now appear with the existing **Animated GIF** label and animate through the normal feed/viewer
+playback rules; titles still use the original stored filename. No new badge or rename is shown.
+
+Settings adds a **Saved copies** section. On Android 10+ it shows the unified location
+`Download/Mosaic/Saved` and states that each Save creates an independent copy without changing
+originals. On Android 8–9 it instead explains why a folder must be chosen once (Android does not
+allow writing to Downloads without broad storage access) and offers **Choose folder**. Save
+feedback snackbars report success, a missing folder choice, or a destination failure; failures
+always state that the original media was not changed. Saved-feed items render from their actual
+destination URI and use the existing missing/undecodable-media error when a copy has been removed
+externally. Feed cards, viewer gestures, sorting, and playback controls are otherwise unchanged.
+
 ## Session-wide MP4 audio (shipped in v0.2.1)
 The existing video sound control is unchanged in appearance and position, but
 it now reads and toggles the single process-scoped `VideoAudioSession` shared

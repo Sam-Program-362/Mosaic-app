@@ -67,6 +67,7 @@ import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.data.source.FolderPickerContract
+import dev.mosaic.app.data.source.SavedCopyFolderContract
 import dev.mosaic.app.feature.feed.AnimatedMediaViewerOverlay
 import dev.mosaic.app.feature.feed.CommunityAvatar
 import dev.mosaic.app.feature.feed.FeedScreen
@@ -146,6 +147,10 @@ fun MosaicApp(
     val folders by library.folders.collectAsStateWithLifecycle()
     val customCommunities by library.customCommunities.collectAsStateWithLifecycle()
     val customCommunitiesLoaded by library.customCommunitiesLoaded.collectAsStateWithLifecycle()
+    val savedCopyFolder by library.savedCopyFolder.collectAsStateWithLifecycle()
+    val savedFolderPicker = rememberLauncherForActivityResult(SavedCopyFolderContract()) { treeUri ->
+        treeUri?.let { library.chooseSavedCopyFolder(it) }
+    }
     val busy by library.busy.collectAsStateWithLifecycle()
     val loaded by library.loaded.collectAsStateWithLifecycle()
     val libraryReadFailed by library.readFailed.collectAsStateWithLifecycle()
@@ -650,6 +655,9 @@ fun MosaicApp(
                                 }
                             }
                         },
+                        savedFolderLabel = savedCopyFolder.label,
+                        savedFolderRequiresSelection = savedCopyFolder.requiresSelection,
+                        onChooseSavedFolder = { savedFolderPicker.launch(Unit) },
                         modifier = Modifier.padding(padding),
                     )
                     else -> Unit

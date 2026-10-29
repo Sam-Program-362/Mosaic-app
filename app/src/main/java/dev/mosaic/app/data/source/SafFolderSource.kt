@@ -10,12 +10,17 @@ import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.ScanFailure
 import dev.mosaic.app.core.model.ScanResult
 import java.io.FileNotFoundException
+import java.io.InputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class SafFolderSource(private val resolver: ContentResolver) : FolderSource {
-    private val scanner = DirectChildScanner(DirectChildReader { treeUri -> readChildren(treeUri) })
+    private val scanner = DirectChildScanner(
+        reader = DirectChildReader { treeUri -> readChildren(treeUri) },
+        // Runs inside the existing Dispatchers.IO scan, so provider I/O never touches the main thread.
+        headerProbe = MediaHeaderProbe { contentUri -> readGifHeader(contentUri) },
+    )
 
     override suspend fun register(selection: FolderSelection): FolderRegistration = withContext(Dispatchers.IO) {
         val tree = Uri.parse(selection.treeUri)
@@ -72,6 +77,10 @@ class SafFolderSource(private val resolver: ContentResolver) : FolderSource {
         }
     }
 
+    private fun readGifHeader(contentUri: String): ByteArray? = readBoundedHeader {
+        resolver.openInputStream(Uri.parse(contentUri))
+    }
+
     private fun readChildren(treeUri: String): List<ChildDocument> {
         try {
             val tree = Uri.parse(treeUri)
@@ -126,6 +135,26 @@ class SafFolderSource(private val resolver: ContentResolver) : FolderSource {
             }
         }
     }
+}
+
+/**
+ * Reads at most [GIF_SIGNATURE_BYTE_COUNT] bytes from a single already-classified image and always
+ * closes the stream. Returns null for empty, unavailable or failing sources so a scan can continue.
+ */
+internal fun readBoundedHeader(open: () -> InputStream?): ByteArray? = try {
+    open()?.use { input ->
+        val header = ByteArray(GIF_SIGNATURE_BYTE_COUNT)
+        var read = 0
+        while (read < header.size) {
+            val count = input.read(header, read, header.size - read)
+            if (count <= 0) break
+            read += count
+        }
+        if (read == 0) null else header.copyOf(read)
+    }
+} catch (error: Exception) {
+    if (error is CancellationException) throw error
+    null
 }
 
 private fun Cursor.optionalString(column: String): String? =

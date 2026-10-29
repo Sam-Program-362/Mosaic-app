@@ -1,11 +1,7 @@
-# Fresh-session handoff — Mosaic (refreshed 2026-10-19, pre-merge)
+# Fresh-session handoff — Mosaic (refreshed 2026-10-29)
 
-This is the current-state handoff for a new agent session. It contains only
-verified facts, clearly labelled user-reported results, and unresolved
-items. **No merge, feature, refactor, tag, or release is authorized by this
-document.** PR #4 is open and awaiting the user's merge decision; do not
-merge it unless the user explicitly instructs you to (see
-`docs/next-session-prompt.md` for the ready-to-paste startup prompt).
+This handoff records only verified facts, clearly labelled user-reported results, and unresolved
+items. **No merge, tag, release, or version bump is authorized by this document.**
 
 ## Required reading order
 1. `AGENTS.md`
@@ -15,102 +11,94 @@ merge it unless the user explicitly instructs you to (see
 5. `context/ai-workflow-rules.md`
 6. `context/ui-context.md`
 7. `context/progress-tracker.md`
-8. This handoff. Then verify the live repository state (branch, HEAD,
-   tags, releases, PR #4) instead of assuming the facts below are current.
+8. This handoff. Then verify the live repository state instead of assuming these facts are current.
 
-## Repository and PR state (verified 2026-10-19)
-- Working branch: `arena/a0a1b100-mosaic-app`, HEAD
-  `8c67941c8b288efa39e5dc5400f9ab946fe7882c` (later documentation commits
-  may sit on top; check live). `main` is unchanged at `42ae102` and is a
-  direct ancestor of the branch (fast-forward/merge-commit clean).
-- **PR #4** (`arena/a0a1b100-mosaic-app` → `main`) is **OPEN, MERGEABLE**,
-  all checks SUCCESS. When the user decides to merge, it must be a **merge
-  commit, not squash**, so tagged release commits `af58727` (v0.2.0) and
-  `e5ee42d` (v0.2.1) remain in `main` ancestry.
-- The local checkout in the sandbox is stale at the `main` commit with the
-  branch's work present as uncommitted changes. Preserve it untouched;
-  branch pushes have been made through the GitHub API.
+## Repository and release state (verified 2026-10-29)
+- Checked-out branch: `main`, HEAD `99c64503b874250e6777ec968c2c47e629b1b39c`
+  ("Merge pull request #5 from Sam-Program-362/release/v0.3.0-version-bump").
+- Latest tag: **v0.3.0**. `app/build.gradle.kts` has versionName `0.3.0` / versionCode `4`.
+- PR #4 (session branch → main) and PR #5 (version bump) are **merged**. PR #2 is the only open
+  pull request and is an unrelated old revert; do not merge it as part of this work.
+- The older v0.2.1 sections in the context files are historical. No release was created, tagged,
+  or altered for the 2026-10-29 change.
 
-## Releases (unchanged by all recent work)
-- **v0.2.1 — current stable.** https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1
-  Tag → `e5ee42d`; asset `Mosaic-v0.2.1-release.apk` (14,941,999 bytes,
-  uploaded); APK SHA-256
-  `ce659516918de0a4a0fa34f1dccd305fd44ae6b9fce7a9e5641f36659aaa56eb`;
-  versionName 0.2.1 / versionCode 3; permanent certificate SHA-256
-  `9de4becd705feef3ef536032ff3f6245a9e2bf7fc7380be9562aa5fc704c9d6a`.
-- **v0.2.0** unchanged: tag → `af58727`, asset `Mosaic-release.apk`.
-- The post-v0.2.1 improvements below have **no version bump, tag, or
-  release**. If they are released later, that is a separate user decision.
+## Current change — mislabelled GIFs and shared-folder Saved copies
+**Status: implemented and verified by CI on a feature branch; pull request open, not merged.**
+Branch `fix/gif-detection-and-accessible-saved-copies` (`35bf7d9`, after `f00d267`), PR #6 against
+`main`: https://github.com/Sam-Program-362/Mosaic-app/pull/6. Nothing was merged, tagged or released.
 
-## Shipped in v0.2.1 (stable)
-Offline-first local media browsing: explicit SAF folder selection with
-direct-child indexing, Home + folder communities, Phase 6 custom
-communities, Random/Newest feeds with metadata-only search, full-width
-intrinsic-ratio photos, frozen-snapshot immersive viewer, Saved copies,
-safe folder removal, themes, and session-wide MP4 audio (fresh process
-muted; one in-memory shared mute state; never persisted).
+Part A — GIF detection:
+- `DirectChildScanner` now accepts an optional `MediaHeaderProbe`. `SafFolderSource` supplies one
+  that reads at most 6 bytes (`GIF_SIGNATURE_BYTE_COUNT`) inside the existing IO scan, always
+  closes the stream, and returns null for empty/unreadable content.
+- Only provider-declared static images are probed. Exact `GIF87a`/`GIF89a` bytes promote the item
+  to `MediaKind.Gif` with effective MIME `image/gif`; the stored filename and title are unchanged.
+  Probe failure preserves the provider classification and never turns a completed scan into a
+  failed/empty one. Static WebP and unsupported formats are unchanged; search is metadata-only.
+- Rendering needed no new path: detected GIFs use the existing animated Coil request and
+  feed/viewer playback lifecycle.
 
-## Development improvement set (branch/PR #4 only)
-A. **Launcher icon** — from the user-provided `mosaic_logo.svg` (kept at
-   `app/icon-source/mosaic_logo.svg`): adaptive icon with artwork in the
-   66dp safe zone plus legacy/round per-density rasters; manifest icon +
-   roundIcon updated. The in-app logo/branding is unchanged.
-B. **Viewer image/GIF zoom** — pinch 1×–4× with clamped panning and
-   double-tap toggle, only in the fullscreen viewer; top-level feed and
-   videos unchanged.
-C. **Immersive chrome toggle** — confirmed single tap on image/GIF (or a
-   video surface, outside its controls) hides/restores the viewer header,
-   footer, and video controls; GIF animation and video playback continue;
-   control taps never toggle; reopening starts visible. System bars follow
-   the viewer policy (hidden in viewer, restored on exit).
-D. **Temporary chronological browsing** — deliberate near-edge horizontal
-   swipe on a still photo (just inside the system gesture inset) builds
-   the snapshot's photo sequence (oldest→newest by `modifiedAtMillis`,
-   deterministic tie-breaks, anchor by stable key) lazily off the UI
-   thread and moves straight to the adjacent photo; interior swipes then
-   navigate one at a time; vertical paging or exit resets; only the
-   displayed destination is ever loaded; snapshot order untouched.
-E. **Long-press title copy** — feed-card and viewer-header titles copy the
-   exact displayed `mediaTitle` text with a "Title copied" toast.
+Part B — Saved copies:
+- `SavedCopyStorage`/`SavedCopyWriter` (`data/source/SavedCopyStorage.kt`) abstracts destinations.
+  API 29+ writes to MediaStore Downloads at `Download/Mosaic/Saved` with an `IS_PENDING` row.
+  API 26–28 uses a one-time SAF tree chosen in Settings (`SavedCopyFolderPreferences`), persists
+  read/write access to that tree only, creates `Mosaic/Saved`, writes `<name>.partial`, and
+  renames after completion.
+- `SavedCopyRepository` writes one unique copy per Save, derives destination MIME/extension from
+  detected content (GIF bytes named `.jpg` become `.gif`), keeps `fullName` for the Saved title,
+  rejects empty/short reads, publishes only after a complete copy, and deletes the destination if
+  metadata insertion fails. The Saved feed reads `destinationUri`; legacy rows (null URI) keep
+  resolving to `filesDir/saved-media`.
+- Room v4 adds nullable `saved_copies.destinationUri` via explicit `MIGRATION_3_4`.
+- `SavedCopyFolderContract` asks the tree picker for read + write + persistable/prefix flags, so
+  the persisted grant used on Android 8/9 is actually requested; the library picker stays
+  read-only.
 
-## Verification evidence (kept distinct)
-- Automated (GitHub Actions): Verify run `39157086439` at `3a59ea0` —
-  **154 tests, 0 failures/errors/skips**, lint, debug APK, privacy checks;
-  later documentation/candidate commits re-verified green.
-- Signed candidate: established `phase6-signed-build.yml` run `39157385362`
-  at `8c67941`; artifact `mosaic-phase6-signed-apk` ID `12147372598`
-  (ZIP 14,378,055 bytes; GitHub ZIP SHA-256
-  `6901c8e175dac7e6ab8067d92b6f160b3984aa28d06d348fdf8e1a4c0e8df8b7` — ZIP
-  digest, not an APK digest). Application ID and version metadata
-  unchanged (0.2.1 / code 3); signed with the permanent certificate by the
-  established workflow (in-runner apksigner/certificate verification).
-- **User-reported device testing:** the user installed that candidate and
-  confirms testing of the improvement set (launcher, zoom, chrome toggle,
-  chronological browsing, title copy) is complete and successful. This is
-  user-reported evidence, not agent-run testing.
-- Phase 7 itemized device acceptance remains **Scheduled / Deferred — not
-  passed**, and is not reclassified by the above.
+## Verification evidence and limits
+- **Generated:** `app/schemas/dev.mosaic.app.data.local.LibraryDatabase/4.json`, produced by the
+  real Room KSP processor (`room-compiler` 2.7.1 with KSP 2.1.20-1.0.32 — the versions pinned in
+  `gradle/libs.versions.toml`) run over the module's `data/local` and `core/model` sources with
+  `room.schemaLocation` pointed at `app/schemas`. It is not hand-written. Versus `3.json` it changes
+  only the version, the identity hash and the nullable `destinationUri` TEXT column, which matches
+  `ALTER TABLE saved_copies ADD COLUMN destinationUri TEXT`.
+- **Run in CI and passing** on `35bf7d9` (run
+  [40862412986](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/40862412986)):
+  `./gradlew testDebugUnitTest` (178 tests, 0 failures, 0 errors, 0 skipped), `./gradlew lint`,
+  `./gradlew assembleDebug` (debug APK built), the packaged-APK privacy check (no INTERNET,
+  network-state, broad storage/media or MANAGE_EXTERNAL_STORAGE permission) and the
+  schema-consistency step (committed `4.json` identical to the Gradle/KSP export).
+- **Not run locally:** the sandbox has no Android SDK — `:app:testDebugUnitTest` stops at `SDK
+  location not found` — and, after plugin resolution, only ~500 MB of the 3.9 GB disk was free with
+  2 GB RAM, so the SDK plus Compose/Room/media3/Robolectric artifacts do not fit.
+- Fixed during this work: `SafFolderSourceTest` registered its provider with
+  `ShadowContentResolver.registerProviderInternal` only, which serves shadowed `query` calls but not
+  the real `ContentResolver.openInputStream` transport, so the GIF probe always returned null there.
+  `35bf7d9` attaches the provider and asserts the header read happened.
+- **Supplementary evidence only:** a targeted `kotlinc` compile of `DirectChildScanner`,
+  `SafFolderSource`, `SavedCopyStorage`, `SavedCopyRepository` and the scanner test passed against
+  the API 35 `android.jar`; 14 `DirectChildScannerTest` cases and 3 bounded-header/export checks
+  passed on the JVM. This does not cover Compose, Room, Robolectric, lint, APK packaging, or the
+  real platform storage providers.
+- **Not verified on a device:** animated GIF playback in Home/community/viewer, saved-copy
+  playback, MediaStore visibility in a file manager, SAF folder behavior on Android 8–9, storage
+  full/partial-write behavior, and migration over real installed data.
+- Automated evidence from earlier work (v0.3.0 and older CI runs) does **not** cover this change.
+- The user's earlier device reports remain user-reported evidence, not agent-run tests.
 
-## Build, signing, and archive references (no credentials)
-- CI: `.github/workflows/verify.yml` (tests/lint/APK/privacy; ignores
-  `context/**` and `docs/**` on push). Signed candidates use the
-  established `phase6-signed-build.yml` (push-triggered by changes to its
-  own file on this branch) with permanent signing from GitHub secrets;
-  never print secret values or substitute other signing.
-- Drive archive: `Projects/Mosaic/`
-  (https://drive.google.com/drive/folders/1kCMVh3-BKXxAHL0cNMs8V2XRRG_z7hfC)
-  with `ARCHIVE-INDEX.md`; refreshed 2026-10-19 for this pre-merge state.
-  The deferred Phase 7 document lives in its `Scheduled/` subfolder.
+## Required next checks
+1. Review and merge PR #6 when the user asks; merging is not authorized by this document.
+2. Device checks below are the remaining unknown; CI cannot cover them.
+4. On a device: save a real GIF whose bytes start with `GIF87a`/`GIF89a` but whose name ends in
+   `.jpg`; confirm animation in Home and the immersive viewer, confirm `Download/Mosaic/Saved`
+   visibility in a file manager, repeat Save for distinct copies, delete the source and confirm
+   the copy still plays, and repeat on an Android 8/9 device with the one-time folder choice.
 
-## Open decisions / known follow-ups (none authorized to start)
-- Whether and when to merge PR #4 (user's decision; merge commit only).
-- Whether to cut a new release (e.g., v0.3.0) for the improvement set
-  afterwards, with a version bump — separate explicit authorization needed.
-- Post-merge cleanup candidates: the one-time workflows
-  (`phase6-signed-build.yml`, `publish-tested-release.yml`,
-  `publish-v021-release.yml`, `signing-investigation.yml`) are inert on
-  `main` (session-branch-scoped triggers) and can be removed in a small
-  follow-up; the signed-build trigger path would need adjusting if signed
-  candidates are ever built from `main`.
-- Long-standing open decisions from the tracker: final branding/package
-  identity, release SDK policy, provisional custom-community artwork.
+## Known limitations / open items
+- `4.json` was generated outside Gradle (same Room/KSP versions); if CI ever regenerates a
+  different file, replace it with the Gradle-generated one rather than editing JSON by hand.
+- The Saved-feed row remains visible if a copy is deleted externally; it shows the existing
+  "missing or cannot be decoded" state rather than removing the record.
+- No cleanup/removal action for saved copies is part of this change.
+- Earlier unresolved product decisions remain: final branding/package identity, release SDK
+  policy, and provisional custom-community artwork.
+- `google_drive/` is user data and must not be staged or modified.

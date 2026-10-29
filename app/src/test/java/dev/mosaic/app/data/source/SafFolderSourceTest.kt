@@ -2,13 +2,19 @@ package dev.mosaic.app.data.source
 
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
+import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.core.model.ScanFailure
 import dev.mosaic.app.core.model.ScanResult
+import java.io.File
+import java.io.FileNotFoundException
+import java.io.InputStream
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Before
@@ -22,12 +28,19 @@ import org.robolectric.shadows.ShadowContentResolver
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SafFolderSourceTest {
+    private val context = RuntimeEnvironment.getApplication()
     private val provider = ReadOnlyProvider()
     private lateinit var source: SafFolderSource
 
     @Before fun setUp() {
+        // The provider is attached as well as registered: reading media bytes goes through the
+        // real ContentResolver, which needs the provider transport, not just the query shortcut.
+        provider.attachInfo(context, ProviderInfo().apply {
+            authority = "local.test"
+            grantUriPermissions = true
+        })
         ShadowContentResolver.registerProviderInternal("local.test", provider)
-        source = SafFolderSource(RuntimeEnvironment.getApplication().contentResolver)
+        source = SafFolderSource(context.contentResolver)
     }
 
     @Test fun queriesOnlyRootChildrenAndClosesCursor() = runTest {
@@ -76,13 +89,74 @@ class SafFolderSourceTest {
         assertEquals(ScanResult.Failed(ScanFailure.PermissionLost), source.scan(TREE))
     }
 
+    @Test fun mislabelledGifChildIsClassifiedAsGifWithoutRenamingIt() = runTest {
+        provider.listing = rows().apply { addRow(arrayOf<Any?>("image", "holiday.jpg", "image/jpeg", 0L, 10L)) }
+        provider.headerBytes = "GIF89a".toByteArray(Charsets.US_ASCII) + byteArrayOf(1, 2, 3)
+
+        val media = (source.scan(TREE) as ScanResult.Success).media.single()
+        assertEquals(1, provider.headerReads)
+        assertEquals(MediaKind.Gif, media.kind)
+        assertEquals("image/gif", media.mimeType)
+        assertEquals("holiday.jpg", media.fullName)
+    }
+
+    @Test fun unavailableHeaderKeepsTheDeclaredImageKindAndTheScanSucceeds() = runTest {
+        provider.listing = rows().apply { addRow(arrayOf<Any?>("image", "photo.jpg", "image/jpeg", 0L, 10L)) }
+        provider.headerBytes = null
+
+        val media = (source.scan(TREE) as ScanResult.Success).media.single()
+        assertEquals(1, provider.headerReads)
+        assertEquals(MediaKind.Image, media.kind)
+        assertEquals("photo.jpg", media.fullName)
+    }
+
+    @Test fun boundedHeaderReadStopsAtSixBytesAndClosesTheStream() {
+        var closed = false
+        var requested = 0
+        val stream = object : InputStream() {
+            override fun read(): Int = 1
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                requested += length
+                buffer.fill(1, offset, offset + length)
+                return length
+            }
+            override fun close() { closed = true }
+        }
+
+        val header = readBoundedHeader { stream }
+        assertEquals(GIF_SIGNATURE_BYTE_COUNT, header?.size)
+        assertEquals(GIF_SIGNATURE_BYTE_COUNT, requested)
+        assertTrue(closed)
+    }
+
+    @Test fun emptyOrFailingHeaderSourcesReturnNullAndStillCloseStreams() {
+        assertNull(readBoundedHeader { null })
+        assertNull(readBoundedHeader { throw FileNotFoundException("gone") })
+
+        var closed = false
+        val empty = object : InputStream() {
+            override fun read(): Int = -1
+            override fun close() { closed = true }
+        }
+        assertNull(readBoundedHeader { empty })
+        assertTrue(closed)
+    }
+
     private fun rows() = MatrixCursor(COLUMNS)
 
     private class ReadOnlyProvider : ContentProvider() {
         var listing: Cursor? = null
         var denied = false
+        var headerBytes: ByteArray? = null
+        var headerReads = 0
         val queries = mutableListOf<String>()
         override fun onCreate() = true
+        override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+            headerReads++
+            val file = File.createTempFile("mosaic-header", ".bin")
+            file.writeBytes(headerBytes ?: ByteArray(0))
+            return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+        }
         override fun query(uri: Uri, projection: Array<out String>?, selection: String?,
             selectionArgs: Array<out String>?, sortOrder: String?): Cursor? {
             queries += uri.toString()

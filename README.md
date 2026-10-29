@@ -15,8 +15,12 @@ and next-phase proposal, start with the [fresh-session handoff](docs/session-han
 - Random/Newest local ordering, refresh, and decorative noninteractive counts.
 - Local photo/GIF/MP4 previews, plus a full-screen vertical viewer that opens at
   the tapped post and uses a frozen copy of the originating feed order.
-- Every **Save copy** tap creates another independent app-managed copy; Saved items
-  remain local and use the same viewer. Saved-copy removal is not implemented.
+- A bounded 6-byte header check detects GIF87a/GIF89a content even when the file is
+  named `.jpg` or the storage provider reports an image MIME type, so it animates in
+  both the feed and viewer. Original names and files are untouched.
+- Every **Save copy** tap creates another independent copy in `Download/Mosaic/Saved`
+  (Android 10+) or in a one-time chosen folder (Android 8–9); the same copy appears in
+  Saved and uses the same viewer. Saved-copy removal is not implemented.
 - Only the current foreground video plays. MP4 starts muted and exposes play/pause,
   mute, seek/time/duration, double-tap ±10-second seeking and tap-to-hide/show controls
   in the viewer. Inactive videos show a local first-frame thumbnail.
