@@ -23,7 +23,9 @@ items. **No merge, tag, release, or version bump is authorized by this document.
   or altered for the 2026-10-29 change.
 
 ## Current change — mislabelled GIFs and shared-folder Saved copies
-**Status: implemented, tests written, Room schema generated; Gradle/CI verification pending.**
+**Status: implemented and verified by CI on a feature branch; pull request open, not merged.**
+Branch `fix/gif-detection-and-accessible-saved-copies` (`35bf7d9`, after `f00d267`), PR #6 against
+`main`: https://github.com/Sam-Program-362/Mosaic-app/pull/6. Nothing was merged, tagged or released.
 
 Part A — GIF detection:
 - `DirectChildScanner` now accepts an optional `MediaHeaderProbe`. `SafFolderSource` supplies one
@@ -59,12 +61,19 @@ Part B — Saved copies:
   `room.schemaLocation` pointed at `app/schemas`. It is not hand-written. Versus `3.json` it changes
   only the version, the identity hash and the nullable `destinationUri` TEXT column, which matches
   `ALTER TABLE saved_copies ADD COLUMN destinationUri TEXT`.
-- **Not run here:** `./gradlew testDebugUnitTest`, `./gradlew lint`, `./gradlew assembleDebug`,
-  the Gradle-side schema-consistency step, and the packaged-APK permission check.
-- Why: the sandbox has no Android SDK and only 3.9 GB disk / 2 GB RAM (~1.3 GB free with a JDK
-  installed); the AGP, Kotlin, Compose, Room and Robolectric artifact set exceeds that, and
-  `gradle.properties` requests a 2 GB Gradle heap on a 2 GB machine. These checks run in the
-  `Verify Android` GitHub Actions workflow on the pushed branch and pull request.
+- **Run in CI and passing** on `35bf7d9` (run
+  [40862412986](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/40862412986)):
+  `./gradlew testDebugUnitTest` (178 tests, 0 failures, 0 errors, 0 skipped), `./gradlew lint`,
+  `./gradlew assembleDebug` (debug APK built), the packaged-APK privacy check (no INTERNET,
+  network-state, broad storage/media or MANAGE_EXTERNAL_STORAGE permission) and the
+  schema-consistency step (committed `4.json` identical to the Gradle/KSP export).
+- **Not run locally:** the sandbox has no Android SDK — `:app:testDebugUnitTest` stops at `SDK
+  location not found` — and, after plugin resolution, only ~500 MB of the 3.9 GB disk was free with
+  2 GB RAM, so the SDK plus Compose/Room/media3/Robolectric artifacts do not fit.
+- Fixed during this work: `SafFolderSourceTest` registered its provider with
+  `ShadowContentResolver.registerProviderInternal` only, which serves shadowed `query` calls but not
+  the real `ContentResolver.openInputStream` transport, so the GIF probe always returned null there.
+  `35bf7d9` attaches the provider and asserts the header read happened.
 - **Supplementary evidence only:** a targeted `kotlinc` compile of `DirectChildScanner`,
   `SafFolderSource`, `SavedCopyStorage`, `SavedCopyRepository` and the scanner test passed against
   the API 35 `android.jar`; 14 `DirectChildScannerTest` cases and 3 bounded-header/export checks
@@ -77,12 +86,8 @@ Part B — Saved copies:
 - The user's earlier device reports remain user-reported evidence, not agent-run tests.
 
 ## Required next checks
-1. Confirm the `Verify Android` workflow result (unit tests, lint, debug APK) for the feature
-   branch and pull request; fix anything it reports.
-2. Confirm its schema step accepts the committed `4.json` unchanged (it fails on any difference
-   between committed and regenerated schema).
-3. Confirm the packaged-APK privacy check still reports no INTERNET, broad storage/media, or
-   MANAGE_EXTERNAL_STORAGE permission.
+1. Review and merge PR #6 when the user asks; merging is not authorized by this document.
+2. Device checks below are the remaining unknown; CI cannot cover them.
 4. On a device: save a real GIF whose bytes start with `GIF87a`/`GIF89a` but whose name ends in
    `.jpg`; confirm animation in Home and the immersive viewer, confirm `Download/Mosaic/Saved`
    visibility in a file manager, repeat Save for distinct copies, delete the source and confirm

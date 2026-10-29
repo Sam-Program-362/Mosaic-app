@@ -190,17 +190,17 @@ Two user-reported issues were fixed together, without changing unrelated feed/vi
   media title. Every invocation keeps a unique name; failures delete incomplete destinations and
   metadata.
 
-**Verification status:** `app/schemas/dev.mosaic.app.data.local.LibraryDatabase/4.json` was
-produced by the real Room KSP processor (room-compiler 2.7.1 / KSP 2.1.20-1.0.32) and committed;
-it differs from `3.json` only by the version, identity hash and nullable `destinationUri` column.
-This sandbox has no Android SDK and only 3.9 GB of disk, so `./gradlew testDebugUnitTest`, `lint`,
-`assembleDebug` and the APK privacy check could not run here — they run in the `Verify Android`
-workflow on the feature branch and pull request. A supplementary `kotlinc` compile of the new
-scanner, SAF source, storage and repository code against the API 35 jar succeeded; 14
-`DirectChildScannerTest` cases and 3 pure bounded-header/export checks passed on the JVM. The
-Robolectric/Compose repository, SAF, migration and Settings tests were not executed locally.
-Real-device GIF animation (Home + viewer), MediaStore/SAF folder behavior, and file manager
-visibility remain unverified. See the [current handoff](../docs/session-handoff.md).
+**Verification status:** verified by CI on branch `fix/gif-detection-and-accessible-saved-copies`
+(PR #6, commits `f00d267` + `35bf7d9`). GitHub Actions run 40862412986 passed 178 unit tests with
+0 failures, `lint`, `assembleDebug`, the packaged-APK privacy check (no INTERNET, network-state,
+broad storage/media or `MANAGE_EXTERNAL_STORAGE` permission) and the Room schema-consistency step,
+which confirmed the committed
+`app/schemas/dev.mosaic.app.data.local.LibraryDatabase/4.json` matches a fresh Gradle/KSP export.
+That schema differs from `3.json` only by the version, identity hash and nullable `destinationUri`
+column. Local Gradle cannot run in the workspace sandbox (`SDK location not found`; no disk for the
+SDK and dependency set). Real-device GIF animation (Home + viewer), MediaStore/SAF folder behavior,
+file-manager visibility and migration over installed data remain unverified. See the
+[current handoff](../docs/session-handoff.md).
 
 ## Current stable release — v0.2.1 (2026-10-15)
 

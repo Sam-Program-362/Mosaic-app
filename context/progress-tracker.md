@@ -31,13 +31,27 @@ Implemented:
   GIF-export/missing-source/partial-read/commit/DB-failure/legacy-copy cases; v3→v4 migration
   preservation; Settings folder-choice copy; feed Animated GIF presentation.
 
-**Verification status:** the Gradle checks were **not run in this sandbox**, which has no Android
-SDK and only 3.9 GB total disk / 2 GB RAM (roughly 1.3 GB free after a JDK): the AGP, Kotlin,
-Compose, Room and Robolectric artifacts alone exceed that. `./gradlew testDebugUnitTest`, `./gradlew
-lint`, `./gradlew assembleDebug` and the packaged-APK privacy check are **unverified locally**;
-they run in the GitHub Actions `Verify Android` workflow on the feature branch/pull request.
-Room schema generation *was* completed, but by invoking the same Room KSP processor directly
-rather than through Gradle, and `4.json` is committed for that workflow to cross-check.
+**Verification status — passed in CI.** Branch `fix/gif-detection-and-accessible-saved-copies`,
+commits `f00d267` and `35bf7d9`, PR #6 (open, not merged). GitHub Actions run
+[40862412986](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/40862412986) on
+`35bf7d9` finished **successful**:
+- `./gradlew testDebugUnitTest` — **178 tests, 0 failures, 0 errors, 0 skipped** (including the
+  Robolectric SAF/Room/repository/Settings/feed cases).
+- `./gradlew lint` and `./gradlew assembleDebug` — both succeed in the same invocation
+  (`BUILD SUCCESSFUL`, debug APK produced).
+- Packaged-APK privacy step — passes; the debug APK has no INTERNET, network-state, broad
+  storage/media or `MANAGE_EXTERNAL_STORAGE` permission.
+- Schema step — passes; the committed `4.json` is byte-identical to the Gradle/KSP export, so the
+  standalone generation matched the repository workflow.
+- An earlier run (40861187521, `f00d267`) correctly failed on `SafFolderSourceTest` because the
+  Robolectric provider was registered but not attached, so real content reads could not authorize;
+  `35bf7d9` attaches it and asserts the header read happens.
+
+Local Gradle could not run in this sandbox: `./gradlew :app:testDebugUnitTest` reports `SDK location
+not found`, and with only ~500 MB free after plugin resolution the SDK plus the Compose/Room/
+media3/Robolectric artifact set does not fit (`gradle.properties` also asks for a 2 GB heap on a
+2 GB machine). That is why verification ran in CI. Room schema generation outside Gradle used the
+pinned Room 2.7.1 / KSP 2.1.20-1.0.32 processor; CI's regeneration confirms it.
 
 Supplementary evidence (not a substitute for the Gradle build): a targeted `kotlinc` compilation of
 `DirectChildScanner`, `SafFolderSource`, `SavedCopyStorage` and `SavedCopyRepository` against the

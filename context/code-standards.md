@@ -46,7 +46,11 @@ Verification baseline:
 Also verify actual device/emulator behavior when available. Tests include theme
 encoding/defaults, pure scanner/repository cases, and test-only Robolectric SAF/Room
 integration. Provider mocks and Robolectric do not establish real-device picker or
-permission behavior. Retain KSP-generated Room schemas; never invent schema JSON or
+permission behavior. A Robolectric provider that is only registered with
+`ShadowContentResolver.registerProviderInternal` answers shadowed `query` calls but cannot
+serve `ContentResolver.openInputStream`, because that path goes through the real resolver and
+the provider transport; call `attachInfo(context, ProviderInfo().apply { authority = … })` as
+well whenever a test reads media bytes (this cost one CI cycle in the 2026-10-29 change). Retain KSP-generated Room schemas; never invent schema JSON or
 use destructive migration fallback. Do not substitute XML/static checks for Android compilation or execution.
 Future coverage must include child-only indexing, media typing, ID collisions,
 successful vs failed reconciliation, membership isolation, sorting/viewer sequence,
@@ -151,6 +155,11 @@ acceptance from CI alone. Code commit `a4264dd` passed CI run
 [38624705844](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/38624705844): 96 tests
 (0 failures/errors/skips), lint, debug APK, packaged permissions, Room schema, and source guard.
 The APK/checksum are in artifact `mosaic-debug-and-reports` ID `11923577241`.
+
+Code commit `35bf7d9` (branch `fix/gif-detection-and-accessible-saved-copies`, PR #6) passed CI run
+[40862412986](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/40862412986): 178 tests
+(0 failures/errors/skips), lint, debug APK, packaged permissions, Room schema consistency and the
+video-preload source guard. Real-device GIF animation and shared-folder export remain unverified.
 
 ## Viewer interaction conventions (established 2026-10-16)
 - Ephemeral viewer interaction state (chrome visibility, chronological
