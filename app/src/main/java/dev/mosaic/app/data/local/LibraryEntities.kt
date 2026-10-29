@@ -82,6 +82,8 @@ data class SavedCopyEntity(
     val kind: MediaKind,
     val savedAtMillis: Long,
     val sizeBytes: Long,
+    /** Real shared-storage destination. Null only for copies saved before Room v4 (app-private file). */
+    val destinationUri: String? = null,
 )
 
 data class FolderOverview(

@@ -11,6 +11,9 @@ import dev.mosaic.app.core.model.toIndexedMedia
 import dev.mosaic.app.data.repository.LibraryRepository
 import dev.mosaic.app.data.repository.SavedCopyRepository
 import dev.mosaic.app.data.source.FolderAccessException
+import dev.mosaic.app.data.source.SavedCopyFolderState
+import dev.mosaic.app.data.source.SavedDestinationUnavailableException
+import dev.mosaic.app.data.source.SavedFolderNotChosenException
 import dev.mosaic.app.feature.feed.FeedSort
 import dev.mosaic.app.feature.feed.FeedState
 import dev.mosaic.app.feature.feed.buildFeed
@@ -127,15 +130,57 @@ class LibraryViewModel(
     private val mutableSaveNotifications = MutableSharedFlow<String>(extraBufferCapacity = 16)
     val saveNotifications = mutableSaveNotifications.asSharedFlow()
 
+    private val mutableSavedCopyFolder = MutableStateFlow(SavedCopyFolderState("", requiresSelection = false))
+    val savedCopyFolder = mutableSavedCopyFolder.asStateFlow()
+
+    init {
+        viewModelScope.launch { refreshSavedCopyFolder() }
+    }
+
     fun saveCopy(media: IndexedMedia) {
         viewModelScope.launch {
             try {
                 savedCopyRepository.saveCopy(media)
-                mutableSaveNotifications.emit("A new independent copy was added to Saved.")
+                mutableSaveNotifications.emit("A new copy was saved to Mosaic's folder and added to Saved.")
+            } catch (error: SavedFolderNotChosenException) {
+                mutableSaveNotifications.emit(
+                    "Choose a folder for saved copies in Settings first. The original media was not changed.",
+                )
+            } catch (error: SavedDestinationUnavailableException) {
+                mutableSaveNotifications.emit(
+                    "Could not write to Mosaic's saved folder. Check that the folder is still " +
+                        "available and has free space, then try again. The original media was not changed.",
+                )
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 mutableSaveNotifications.emit("Could not save a copy. The original media was not changed.")
             }
+        }
+    }
+
+    /** Persists the one-time Android 8/9 folder choice for saved copies. */
+    fun chooseSavedCopyFolder(treeUri: String) {
+        viewModelScope.launch {
+            val selected = try {
+                savedCopyRepository.chooseFolder(treeUri)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                false
+            }
+            refreshSavedCopyFolder()
+            mutableSaveNotifications.emit(
+                if (selected) "Saved copies will use the folder you chose."
+                else "Mosaic could not keep access to that folder. Choose another folder.",
+            )
+        }
+    }
+
+    private suspend fun refreshSavedCopyFolder() {
+        try {
+            mutableSavedCopyFolder.value = savedCopyRepository.folderState()
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            mutableSavedCopyFolder.value = SavedCopyFolderState("Unavailable", requiresSelection = true)
         }
     }
 

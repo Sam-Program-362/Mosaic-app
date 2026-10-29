@@ -177,6 +177,22 @@ class FeedUiTest {
         org.junit.Assert.assertFalse(bufferingAfterFirstFrame.showError)
     }
 
+    @Test fun gifContentWithAMisleadingJpgNameStillUsesTheAnimatedPresentation() {
+        val media = IndexedMedia(
+            "folder", "Travel",
+            MediaDocument("id", "content://missing/id", "holiday.jpg", "image/gif", MediaKind.Gif, null, null),
+        )
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                Column { MediaPostCard(FeedPost(media, DecorativeCounts(1, 0), null), loader, false) }
+            }
+        }
+
+        compose.onNodeWithText("Animated GIF", substring = true).assertExists()
+        // The user-facing title stays based on the original stored filename.
+        compose.onNodeWithText("holiday").assertExists()
+    }
+
     @Test fun everySaveTapStartsAnotherIndependentCopyRequest() {
         val media = IndexedMedia("folder", "Travel", MediaDocument("id", "content://missing/id", "summer.jpg",
             "image/jpeg", MediaKind.Image, null, null))

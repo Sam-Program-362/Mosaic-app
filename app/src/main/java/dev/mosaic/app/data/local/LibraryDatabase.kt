@@ -12,7 +12,7 @@ const val LIBRARY_DATABASE_NAME = "library.db"
         FolderEntity::class, MediaEntity::class, SavedCopyEntity::class,
         CustomCommunityEntity::class, CustomCommunityMemberEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class LibraryDatabase : RoomDatabase() {
@@ -29,6 +29,17 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
                 `savedAtMillis` INTEGER NOT NULL, `sizeBytes` INTEGER NOT NULL, PRIMARY KEY(`id`))""",
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_copies_savedAtMillis` ON `saved_copies` (`savedAtMillis`)")
+    }
+}
+
+/**
+ * Adds the user-visible destination of each new Saved copy. Existing rows keep their private
+ * file name and destinationUri stays null, so previously saved media is preserved and rendered
+ * from the app-private directory.
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `saved_copies` ADD COLUMN `destinationUri` TEXT")
     }
 }
 

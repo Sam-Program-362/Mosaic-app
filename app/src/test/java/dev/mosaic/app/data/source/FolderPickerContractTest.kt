@@ -37,6 +37,24 @@ class FolderPickerContractTest {
         assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, selection?.grantFlags)
     }
 
+    @Test fun savedCopyFolderRequestsPersistableReadWriteTreeAccess() {
+        val intent = SavedCopyFolderContract().createIntent(RuntimeEnvironment.getApplication(), Unit)
+        assertEquals(Intent.ACTION_OPEN_DOCUMENT_TREE, intent.action)
+        assertTrue(intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        assertTrue(intent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0)
+        assertTrue(intent.flags and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION != 0)
+    }
+
+    @Test fun savedCopyFolderCancellationKeepsNoGrant() {
+        val contract = SavedCopyFolderContract()
+        assertNull(contract.parseResult(Activity.RESULT_CANCELED, selectedIntent()))
+        assertNull(contract.parseResult(Activity.RESULT_OK, Intent()))
+        assertEquals(
+            "content://local.test/tree/root",
+            contract.parseResult(Activity.RESULT_OK, selectedIntent()),
+        )
+    }
+
     private fun selectedIntent() = Intent().apply {
         data = Uri.parse("content://local.test/tree/root")
         flags = Intent.FLAG_GRANT_READ_URI_PERMISSION

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.ui.theme.MosaicTheme
 import org.junit.Assert.assertEquals
@@ -44,5 +45,68 @@ class SettingsScreenUiTest {
         compose.onNodeWithText("Dark").assertIsSelected()
         compose.onNodeWithText("Light").performClick()
         compose.runOnIdle { assertEquals(ThemeMode.Light, selectedTheme) }
+    }
+
+    @Test fun olderAndroidSavedFolderRequiresOneExplainedFolderChoice() {
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                SettingsScreen(
+                    theme = ThemeMode.Dark,
+                    folderCount = 0,
+                    communityCount = 0,
+                    savedCount = 0,
+                    onThemeSelected = {},
+                    savedFolderLabel = "No folder chosen",
+                    savedFolderRequiresSelection = true,
+                )
+            }
+        }
+
+        compose.onNodeWithText("SAVED COPIES").assertExists()
+        compose.onNodeWithText("Choose one folder for saved copies").assertExists()
+        compose.onNodeWithText("No folder chosen").assertExists()
+        compose.onNodeWithText("broad storage access", substring = true).assertExists()
+        compose.onNodeWithText("Choose folder").assertExists().performScrollTo().performClick()
+    }
+
+    @Test fun savedFolderButtonInvokesTheAppShellPicker() {
+        var chooseRequests = 0
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                SettingsScreen(
+                    theme = ThemeMode.Dark,
+                    folderCount = 0,
+                    communityCount = 0,
+                    savedCount = 0,
+                    onThemeSelected = {},
+                    savedFolderLabel = "No folder chosen",
+                    savedFolderRequiresSelection = true,
+                    onChooseSavedFolder = { chooseRequests++ },
+                )
+            }
+        }
+
+        compose.onNodeWithText("Choose folder").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, chooseRequests) }
+    }
+
+    @Test fun modernAndroidShowsTheUnifiedSavedFolderWithoutAPicker() {
+        compose.setContent {
+            MosaicTheme(ThemeMode.Dark) {
+                SettingsScreen(
+                    theme = ThemeMode.Dark,
+                    folderCount = 0,
+                    communityCount = 0,
+                    savedCount = 0,
+                    onThemeSelected = {},
+                    savedFolderLabel = "Download/Mosaic/Saved",
+                    savedFolderRequiresSelection = false,
+                )
+            }
+        }
+
+        compose.onNodeWithText("Saved copy location").assertExists()
+        compose.onNodeWithText("Download/Mosaic/Saved").assertExists()
+        compose.onNodeWithText("Choose folder").assertDoesNotExist()
     }
 }

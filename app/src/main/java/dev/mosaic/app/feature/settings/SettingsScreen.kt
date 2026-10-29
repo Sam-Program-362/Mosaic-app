@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,6 +42,9 @@ fun SettingsScreen(
     communityCount: Int,
     savedCount: Int,
     onThemeSelected: (ThemeMode) -> Unit,
+    savedFolderLabel: String = "",
+    savedFolderRequiresSelection: Boolean = false,
+    onChooseSavedFolder: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalMosaicColors.current
@@ -80,6 +84,48 @@ fun SettingsScreen(
                 LibraryStat("Folders", folderCount, Modifier.weight(1f))
                 LibraryStat("Communities", communityCount, Modifier.weight(1f))
                 LibraryStat("Saved", savedCount, Modifier.weight(1f))
+            }
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SectionLabel("Saved copies")
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                color = colors.surface,
+                border = BorderStroke(1.dp, colors.divider),
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        if (savedFolderRequiresSelection) "Choose one folder for saved copies"
+                        else "Saved copy location",
+                        color = colors.textPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        savedFolderLabel.ifBlank { "Download/Mosaic/Saved" },
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "Each Save creates a new, independent copy in this folder and in Saved. " +
+                            "Original media is never renamed, moved, or changed.",
+                        color = colors.textSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    if (savedFolderRequiresSelection) {
+                        Text(
+                            "Android 8–9 does not allow writing to Downloads without broad storage access. " +
+                                "Choose a folder once; Mosaic keeps access only to that folder.",
+                            color = colors.textSecondary,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Button(onClick = onChooseSavedFolder) { Text("Choose folder") }
+                    }
+                }
             }
         }
 
