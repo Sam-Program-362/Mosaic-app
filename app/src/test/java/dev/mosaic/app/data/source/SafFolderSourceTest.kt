@@ -2,6 +2,7 @@ package dev.mosaic.app.data.source
 
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.pm.ProviderInfo
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
@@ -27,12 +28,19 @@ import org.robolectric.shadows.ShadowContentResolver
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SafFolderSourceTest {
+    private val context = RuntimeEnvironment.getApplication()
     private val provider = ReadOnlyProvider()
     private lateinit var source: SafFolderSource
 
     @Before fun setUp() {
+        // The provider is attached as well as registered: reading media bytes goes through the
+        // real ContentResolver, which needs the provider transport, not just the query shortcut.
+        provider.attachInfo(context, ProviderInfo().apply {
+            authority = "local.test"
+            grantUriPermissions = true
+        })
         ShadowContentResolver.registerProviderInternal("local.test", provider)
-        source = SafFolderSource(RuntimeEnvironment.getApplication().contentResolver)
+        source = SafFolderSource(context.contentResolver)
     }
 
     @Test fun queriesOnlyRootChildrenAndClosesCursor() = runTest {
@@ -82,20 +90,22 @@ class SafFolderSourceTest {
     }
 
     @Test fun mislabelledGifChildIsClassifiedAsGifWithoutRenamingIt() = runTest {
-        provider.listing = rows().apply { addRow(arrayOf("image", "holiday.jpg", "image/jpeg", 0L, 10L)) }
+        provider.listing = rows().apply { addRow(arrayOf<Any?>("image", "holiday.jpg", "image/jpeg", 0L, 10L)) }
         provider.headerBytes = "GIF89a".toByteArray(Charsets.US_ASCII) + byteArrayOf(1, 2, 3)
 
         val media = (source.scan(TREE) as ScanResult.Success).media.single()
+        assertEquals(1, provider.headerReads)
         assertEquals(MediaKind.Gif, media.kind)
         assertEquals("image/gif", media.mimeType)
         assertEquals("holiday.jpg", media.fullName)
     }
 
     @Test fun unavailableHeaderKeepsTheDeclaredImageKindAndTheScanSucceeds() = runTest {
-        provider.listing = rows().apply { addRow(arrayOf("image", "photo.jpg", "image/jpeg", 0L, 10L)) }
+        provider.listing = rows().apply { addRow(arrayOf<Any?>("image", "photo.jpg", "image/jpeg", 0L, 10L)) }
         provider.headerBytes = null
 
         val media = (source.scan(TREE) as ScanResult.Success).media.single()
+        assertEquals(1, provider.headerReads)
         assertEquals(MediaKind.Image, media.kind)
         assertEquals("photo.jpg", media.fullName)
     }
@@ -138,9 +148,11 @@ class SafFolderSourceTest {
         var listing: Cursor? = null
         var denied = false
         var headerBytes: ByteArray? = null
+        var headerReads = 0
         val queries = mutableListOf<String>()
         override fun onCreate() = true
         override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+            headerReads++
             val file = File.createTempFile("mosaic-header", ".bin")
             file.writeBytes(headerBytes ?: ByteArray(0))
             return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
