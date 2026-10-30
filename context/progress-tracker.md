@@ -1,5 +1,45 @@
 # Progress tracker
 
+## 2026-10-30 — Portable local backup/restore (PR #7; implementation complete, CI verification via GitHub Actions)
+Branch `feature/local-library-backup-restore` from `main` (`99c6450`), commit `ae6119f`,
+**PR #7 open and not merged**: https://github.com/Sam-Program-362/Mosaic-app/pull/7.
+**PR #6 (`fix/gif-detection-and-accessible-saved-copies`, head `7b252bc`) is untouched and
+stays open.** No merge, tag, release, version, signing, application-id, or Room schema change.
+
+Implemented (detail in `docs/session-handoff.md` and `docs/backup-format-v1.md`):
+- **Portable backup format v1** — checksummed ZIP (`manifest.json` + `settings.json` +
+  `folders.json` + `communities.json`), Room-schema independent, strict bounded parsing with
+  allowlisted entries only (no disk extraction), SHA-256/size verification before JSON parse,
+  and clear whole-archive errors (unsupported version, traversal, duplicates, unexpected or
+  missing entries, corrupt JSON, size/count/depth limits) — a failed validation never mutates
+  data. Two committed versioned fixtures under `app/src/test/resources/backup/`.
+- **Export** — Settings → Backup & Restore, SAF `ACTION_CREATE_DOCUMENT`, folder labels +
+  generated portable IDs, custom communities with portable memberships, theme; excludes Saved
+  copies, media rows, raw URIs, permissions; success only after the stream closes; cancellation
+  and errors reported.
+- **Import** — SAF `ACTION_OPEN_DOCUMENT` → validate/preview → per-folder reconnection through
+  the existing SAF picker (new tree URIs mapped to portable IDs; skips/failures drop only their
+  own memberships and are reported) → explicit confirmation → single Room transaction
+  (`replaceLibraryConfiguration`) → rescan → theme write (Room-first; `themeRestored=false` is
+  reported honestly on theme failure; pre-commit failures roll back new grants). Saved copies
+  are never touched.
+- **New tests:** `BackupArchiveTest` (28 cases), `BackupRestorePlannerTest` (6),
+  `LibraryBackupRepositoryTest` (9 Room-backed cases), `BackupViewModelTest` (6),
+  `BackupRestoreSectionUiTest` (8), plus a `SettingsScreenUiTest` slot assertion; the existing
+  `LibraryRepositoryTest.FakeStore` implements the new store method.
+- Docs: new `docs/backup-format-v1.md`; updated `README.md`, `context/architecture.md`,
+  `context/code-standards.md`, `context/ui-context.md`, `context/project-overview.md`,
+  `docs/session-handoff.md`.
+
+**Verification — GitHub Actions only** (the sandbox has no JDK/Android SDK, so local Gradle
+cannot start and no local pass is claimed): Verify Android run
+[41051985076](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41051985076) on
+`ae6119f` — **final results are appended below once the run completes**. Prescribed checks:
+`./gradlew testDebugUnitTest`, `./gradlew lint`, `./gradlew assembleDebug`, packaged-APK
+privacy check, Room schema-consistency step (unchanged schema expected), production source
+guard. Device-level SAF picker behavior (export/import/reconnection on a real provider) is
+**not** covered by CI and remains open for phone testing.
+
 ## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
 **Current published stable release: Mosaic v0.2.1**
 (https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1) —

@@ -18,8 +18,13 @@ internal object BackupArchiveWriter {
         val descriptors = mutableListOf<BackupEntryDescriptor>()
         val zip = ZipOutputStream(BufferedOutputStream(out))
         writeEntry(zip, BackupFormat.SETTINGS_ENTRY, draft.settings.toJson().toByteArray(Charsets.UTF_8), descriptors)
-        writeEntry(zip, BackupFormat.FOLDERS_ENTRY, draft.folders.toJson().toByteArray(Charsets.UTF_8), descriptors)
-        writeEntry(zip, BackupFormat.COMMUNITIES_ENTRY, draft.communities.toJson().toByteArray(Charsets.UTF_8), descriptors)
+        writeEntry(zip, BackupFormat.FOLDERS_ENTRY, draft.folders.toFoldersJson().toByteArray(Charsets.UTF_8), descriptors)
+        writeEntry(
+            zip,
+            BackupFormat.COMMUNITIES_ENTRY,
+            draft.communities.toCommunitiesJson().toByteArray(Charsets.UTF_8),
+            descriptors,
+        )
         writeEntry(zip, BackupFormat.MANIFEST_ENTRY, draft.manifestJson(descriptors).toByteArray(Charsets.UTF_8), descriptors)
         // Finish all entries and the central directory without closing the caller's stream.
         zip.finish()

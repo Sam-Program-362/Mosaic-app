@@ -52,28 +52,20 @@ data class BackupDraft(
 internal fun BackupSettings.toJson(): String =
     """{"theme":${BackupJson.quote(theme.storedValue)}}"""
 
-internal fun List<BackupFolderEntry>.toJson(): String = buildString {
-    append("""{"folders":[""")
-    forEachIndexed { index, folder ->
-        if (index > 0) append(',')
-        append("""{"backupId":${BackupJson.quote(folder.backupId)},"label":${BackupJson.quote(folder.label)}}""")
+internal fun List<BackupFolderEntry>.toFoldersJson(): String {
+    val items = joinToString(separator = ",") { folder ->
+        """{"backupId":${BackupJson.quote(folder.backupId)},"label":${BackupJson.quote(folder.label)}}"""
     }
-    append("]}")
+    return """{"folders":[$items]}"""
 }
 
-internal fun List<BackupCommunityEntry>.toJson(): String = buildString {
-    append("""{"communities":[""")
-    forEachIndexed { index, community ->
-        if (index > 0) append(',')
-        append("""{"id":${BackupJson.quote(community.id)},"name":${BackupJson.quote(community.name)},""")
-        append(""""createdAtMillis":${community.createdAtMillis},"memberBackupIds":[""")
-        community.memberBackupIds.forEachIndexed { memberIndex, backupId ->
-            if (memberIndex > 0) append(',')
-            append(BackupJson.quote(backupId))
-        }
-        append("]}")
+internal fun List<BackupCommunityEntry>.toCommunitiesJson(): String {
+    val items = joinToString(separator = ",") { community ->
+        val members = community.memberBackupIds.joinToString(separator = ",") { BackupJson.quote(it) }
+        """{"id":${BackupJson.quote(community.id)},"name":${BackupJson.quote(community.name)},""" +
+            """"createdAtMillis":${community.createdAtMillis},"memberBackupIds":[$members]}"""
     }
-    append("]}")
+    return """{"communities":[$items]}"""
 }
 
 internal fun BackupDraft.manifestJson(entries: List<BackupEntryDescriptor>): String = buildString {
