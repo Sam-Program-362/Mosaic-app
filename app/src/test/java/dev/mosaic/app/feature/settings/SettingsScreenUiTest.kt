@@ -1,7 +1,6 @@
 package dev.mosaic.app.feature.settings
 
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription

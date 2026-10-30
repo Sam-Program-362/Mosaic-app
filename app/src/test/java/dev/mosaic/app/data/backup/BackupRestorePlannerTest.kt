@@ -94,10 +94,16 @@ class BackupRestorePlannerTest {
         }
     }
 
-    private fun expectReject(block: () -> Unit) {
+    private fun expectReject(messagePart: String? = null, block: () -> Unit) {
         try {
             block()
-        } catch (_: BackupFormatException) {
+        } catch (error: BackupFormatException) {
+            if (messagePart != null) {
+                assertTrue(
+                    "expected \"$messagePart\" in \"${error.message}\"",
+                    error.message.orEmpty().contains(messagePart),
+                )
+            }
             return
         }
         fail("expected a BackupFormatException")

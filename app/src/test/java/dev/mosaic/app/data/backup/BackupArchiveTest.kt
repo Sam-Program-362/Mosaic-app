@@ -366,13 +366,13 @@ class BackupArchiveTest {
 
     @Test fun inputIsClosedAfterASuccessfulRead() {
         val tracking = TrackingInputStream(ByteArrayInputStream(writeBytes(draft())))
-        readBytes(tracking)
+        BackupArchiveReader.read(tracking)
         assertTrue("stream must be closed after success", tracking.closed)
     }
 
     @Test fun inputIsClosedEvenWhenValidationFails() {
         val tracking = TrackingInputStream(ByteArrayInputStream(archiveOf(dropEntry = BackupFormat.FOLDERS_ENTRY)))
-        expectReject { readBytes(tracking) }
+        expectReject { BackupArchiveReader.read(tracking) }
         assertTrue("stream must be closed after failure", tracking.closed)
     }
 

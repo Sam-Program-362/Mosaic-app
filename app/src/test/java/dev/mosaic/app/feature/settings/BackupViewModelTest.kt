@@ -18,6 +18,7 @@ import java.io.FileNotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -89,10 +90,15 @@ class BackupViewModelTest {
         viewModel = BackupViewModel(newBackupRepository())
     }
 
-    private fun awaitUntil(what: String, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000
+    /**
+     * Drains Main-dispatched work, then yields real time so Dispatchers.IO can
+     * progress: blocking polls alone would starve the Main test dispatcher.
+     */
+    private fun TestScope.pumpUntil(what: String, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 10_000
         while (!condition()) {
             if (System.currentTimeMillis() > deadline) fail("timed out waiting for: $what")
+            testScheduler.advanceUntilIdle()
             Thread.sleep(10)
         }
     }
@@ -110,8 +116,8 @@ class BackupViewModelTest {
 
     @Test fun exportSuccessIsReportedOnlyAfterTheArchiveIsWritten() = runTest {
         viewModel.onExportUri(backupUri)
-        awaitUntil("archive written") { backupUri.toString() in storage.files }
-        awaitUntil("busy cleared") { !viewModel.export.value.busy }
+        pumpUntil("archive written") { backupUri.toString() in storage.files }
+        pumpUntil("busy cleared") { !viewModel.export.value.busy }
 
         assertTrue(viewModel.message.value.orEmpty().contains("Backup saved"))
         assertTrue(viewModel.message.value.orEmpty().contains("Saved copies are not included"))
@@ -129,7 +135,7 @@ class BackupViewModelTest {
         storage.files[backupUri.toString()] = "definitely not a zip".toByteArray()
 
         viewModel.onImportUri(backupUri)
-        awaitUntil("validation error") { viewModel.importError.value != null }
+        pumpUntil("validation error") { viewModel.importError.value != null }
 
         assertTrue(viewModel.importStage.value is BackupViewModel.ImportStage.Idle)
         assertFalse(viewModel.importError.value.orEmpty().isBlank())
@@ -145,12 +151,12 @@ class BackupViewModelTest {
         library.createCustomCommunity("Trip", listOf("tree-one", "tree-two"))
         theme.theme = ThemeMode.Light
         viewModel.onExportUri(backupUri)
-        awaitUntil("archive written") { backupUri.toString() in storage.files }
+        pumpUntil("archive written") { backupUri.toString() in storage.files }
 
         // "Reinstall" onto an empty library.
         reinstall()
         viewModel.onImportUri(backupUri)
-        awaitUntil("preview shown") { viewModel.importStage.value is BackupViewModel.ImportStage.Previewed }
+        pumpUntil("preview shown") { viewModel.importStage.value is BackupViewModel.ImportStage.Previewed }
 
         val preview = viewModel.importStage.value as BackupViewModel.ImportStage.Previewed
         assertEquals(2, preview.payload.folders.size)
@@ -190,7 +196,7 @@ class BackupViewModelTest {
         viewModel.onFolderReconnected(folderA, selection("content://new/one"))
         viewModel.onFolderReconnected(folderB, selection("content://new/two"))
         viewModel.onConfirmRestore()
-        awaitUntil("restore finished") { viewModel.importStage.value is BackupViewModel.ImportStage.Finished }
+        pumpUntil("restore finished") { viewModel.importStage.value is BackupViewModel.ImportStage.Finished }
 
         val finished = viewModel.importStage.value as BackupViewModel.ImportStage.Finished
         assertEquals(2, finished.summary.restoredFolderLabels.size)
@@ -207,11 +213,11 @@ class BackupViewModelTest {
     @Test fun cancelImportFromReconnectLeavesTheLibraryUntouched() = runTest {
         store.putFolder(FolderRecord("tree-one", "Camera", true))
         viewModel.onExportUri(backupUri)
-        awaitUntil("archive written") { backupUri.toString() in storage.files }
+        pumpUntil("archive written") { backupUri.toString() in storage.files }
 
         reinstall()
         viewModel.onImportUri(backupUri)
-        awaitUntil("preview shown") { viewModel.importStage.value is BackupViewModel.ImportStage.Previewed }
+        pumpUntil("preview shown") { viewModel.importStage.value is BackupViewModel.ImportStage.Previewed }
         viewModel.onContinueToReconnect()
         assertTrue(viewModel.importStage.value is BackupViewModel.ImportStage.Reconnecting)
 

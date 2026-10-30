@@ -248,34 +248,36 @@ class LibraryBackupRepositoryTest {
     }
 
     @Test fun restoreReplacesExistingConfigurationAndRepeatedImportIsDeterministic() = runTest {
-        // Existing library that is NOT part of the backup.
-        source.labels["old-tree"] = "Old folder"
-        library.addFolder(FolderSelection("old-tree", 0))
-        source.labels.clear()
+        // Back up exactly two folders first…
         seedTwoFoldersAndOneCommunity()
         library.createCustomCommunity("Trip", listOf("tree-one", "tree-two"))
         backup.exportTo(backupUri)
+        // …then add an unrelated existing folder that is NOT part of the backup.
+        source.labels["old-tree"] = "Old folder"
+        library.addFolder(FolderSelection("old-tree", 0))
 
         val payload = backup.readPayload(backupUri)
+        // Reconnect the archived folders to their same local trees; the unrelated
+        // old-tree folder is not in the backup and must be removed exactly once.
         val mappings = mapOf(
-            payload.folders[0].backupId to FolderSelection("content://new/one", 3),
-            payload.folders[1].backupId to FolderSelection("content://new/two", 3),
+            payload.folders[0].backupId to FolderSelection("tree-one", 3),
+            payload.folders[1].backupId to FolderSelection("tree-two", 3),
         )
 
         val first = backup.restore(payload, mappings)
         assertEquals(1, first.removedExistingFolderCount)
-        assertEquals(setOf("content://new/one", "content://new/two"), store.getFolders().mapTo(mutableSetOf()) { it.id })
-        assertEquals(listOf("old-tree"), source.released.filter { it == "old-tree" })
+        assertEquals(setOf("tree-one", "tree-two"), store.getFolders().mapTo(mutableSetOf()) { it.id })
+        assertEquals(listOf("old-tree"), source.released)
 
         val second = backup.restore(payload, mappings)
         // Same final state, same community ID, no duplicates, nothing further removed.
         assertEquals(0, second.removedExistingFolderCount)
-        assertEquals(setOf("content://new/one", "content://new/two"), store.getFolders().mapTo(mutableSetOf()) { it.id })
+        assertEquals(setOf("tree-one", "tree-two"), store.getFolders().mapTo(mutableSetOf()) { it.id })
         val communities = store.getCustomCommunities()
         assertEquals(1, communities.size)
-        assertEquals(listOf("content://new/one", "content://new/two"), communities[0].memberFolderIds)
+        assertEquals(listOf("tree-one", "tree-two"), communities[0].memberFolderIds)
         assertEquals(first.restoredFolderLabels, second.restoredFolderLabels)
-        assertEquals(1, source.released.count { it == "old-tree" })
+        assertEquals(listOf("old-tree"), source.released)
         assertEquals(2, theme.writes.size)
     }
 
