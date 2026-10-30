@@ -1,7 +1,8 @@
 # Progress tracker
 
-## 2026-10-30 — Portable local backup/restore (PR #7; implementation complete, CI verification via GitHub Actions)
-Branch `feature/local-library-backup-restore` from `main` (`99c6450`), commit `ae6119f`,
+## 2026-10-30 — Portable local backup/restore (PR #7; CI verified — GitHub Actions run 41123210618)
+Branch `feature/local-library-backup-restore` from `main` (`99c6450`), head `3053e2a`
+(commits `ae6119f` → `a81f374` → `5e82ebe` → `3053e2a`),
 **PR #7 open and not merged**: https://github.com/Sam-Program-362/Mosaic-app/pull/7.
 **PR #6 (`fix/gif-detection-and-accessible-saved-copies`, head `7b252bc`) is untouched and
 stays open.** No merge, tag, release, version, signing, application-id, or Room schema change.
@@ -33,12 +34,17 @@ Implemented (detail in `docs/session-handoff.md` and `docs/backup-format-v1.md`)
 
 **Verification — GitHub Actions only** (the sandbox has no JDK/Android SDK, so local Gradle
 cannot start and no local pass is claimed): Verify Android run
-[41051985076](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41051985076) on
-`ae6119f` — **final results are appended below once the run completes**. Prescribed checks:
-`./gradlew testDebugUnitTest`, `./gradlew lint`, `./gradlew assembleDebug`, packaged-APK
-privacy check, Room schema-consistency step (unchanged schema expected), production source
-guard. Device-level SAF picker behavior (export/import/reconnection on a real provider) is
-**not** covered by CI and remains open for phone testing.
+[41123210618](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41123210618) on
+`3053e2a` — **SUCCESS**. All prescribed checks passed in that single run:
+`./gradlew testDebugUnitTest` (**212 tests, 0 failures, 0 errors, 0 skipped** across 32
+classes — including the 57 new backup cases: BackupArchiveTest 28, BackupRestorePlannerTest 6,
+LibraryBackupRepositoryTest 9, BackupViewModelTest 6, BackupRestoreSectionUiTest 8, plus the
+SettingsScreenUiTest slot assertion), `./gradlew lint`, `./gradlew assembleDebug`, packaged-APK
+privacy check, Room schema-consistency step (schema unchanged), and the production source
+guard. Three earlier runs on this PR (41051985076, 41053383466, 41054812203) failed on
+compile/test defects that were fixed in commits `a81f374`, `5e82ebe`, `3053e2a`; only the final
+run above is claimed. Device-level SAF picker behavior (export/import/reconnection on a real
+provider) is **not** covered by CI and remains open for phone testing.
 
 ## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
 **Current published stable release: Mosaic v0.2.1**
