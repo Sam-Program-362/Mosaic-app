@@ -419,6 +419,14 @@ private fun ResultDialog(
                         color = colors.error,
                     )
                 }
+                if (summary.unreleasedFolderLabels.isNotEmpty()) {
+                    Text(
+                        "Folder access could not be released for: " +
+                            "${summary.unreleasedFolderLabels.joinToString()}. " +
+                            "Revoke it in Android settings if you no longer use it.",
+                        color = colors.error,
+                    )
+                }
                 Text(
                     if (summary.themeRestored) "Theme preference restored."
                     else "Theme preference could not be restored.",

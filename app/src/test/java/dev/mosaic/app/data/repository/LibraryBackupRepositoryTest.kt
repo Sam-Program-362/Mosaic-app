@@ -2,6 +2,7 @@ package dev.mosaic.app.data.repository
 
 import android.net.Uri
 import androidx.room.Room
+import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderRegistration
 import dev.mosaic.app.core.model.FolderSelection
 import dev.mosaic.app.core.model.FolderStatus
@@ -9,7 +10,9 @@ import dev.mosaic.app.core.model.MediaDocument
 import dev.mosaic.app.core.model.MediaKind
 import dev.mosaic.app.core.model.ScanFailure
 import dev.mosaic.app.core.model.ScanResult
+import dev.mosaic.app.data.backup.BackupExportException
 import dev.mosaic.app.data.backup.BackupFormatException
+import dev.mosaic.app.data.backup.BackupFormat
 import dev.mosaic.app.data.backup.BackupStorage
 import dev.mosaic.app.data.backup.BackupThemeStore
 import dev.mosaic.app.data.backup.PlannedCommunity
@@ -23,6 +26,7 @@ import dev.mosaic.app.data.source.FolderAccessException
 import dev.mosaic.app.data.source.FolderSource
 import java.io.FileNotFoundException
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -304,6 +308,122 @@ class LibraryBackupRepositoryTest {
         assertTrue(theme.writes.isEmpty())
     }
 
+    @Test fun transactionFailureKeepsExistingConfigurationAndItsPermissions() = runTest {
+        seedTwoFoldersAndOneCommunity()
+        source.labels["old-tree"] = "Old folder"
+        library.addFolder(FolderSelection("old-tree", 0))
+        // The plan removes all three existing folders, then the transaction aborts
+        // on the duplicate community id.
+        val plan = RestorePlan(
+            folders = listOf(PlannedFolder("f1", "Camera", FolderSelection("content://new/one", 3))),
+            communities = listOf(
+                PlannedCommunity("dup", "A", 1L, listOf("f1")),
+                PlannedCommunity("dup", "B", 2L, emptyList()),
+            ),
+            skippedFolderLabels = emptyList(),
+        )
+        try {
+            library.restoreLibrary(plan)
+            fail("expected the duplicate community id to abort the transaction")
+        } catch (_: Exception) {
+            // SQLite constraint from the Room transaction.
+        }
+
+        // The old configuration is intact AND still holds its permissions: no
+        // pre-existing folder's grant was revoked before the commit failed.
+        assertEquals(
+            setOf("tree-one", "tree-two", "old-tree"),
+            store.getFolders().mapTo(mutableSetOf()) { it.id },
+        )
+        assertTrue(store.getCustomCommunities().isEmpty())
+        // Only the grant this restore newly acquired was rolled back.
+        assertEquals(listOf("content://new/one"), source.releaseAttempts)
+    }
+
+    @Test fun cancellationDuringRegistrationRollsBackOnlyNewlyAcquiredGrants() = runTest {
+        seedTwoFoldersAndOneCommunity()
+        source.labels["old-tree"] = "Old folder"
+        library.addFolder(FolderSelection("old-tree", 0))
+        backup.exportTo(backupUri)
+        val payload = backup.readPayload(backupUri)
+
+        // First new folder registers and takes a grant; the second is cancelled.
+        source.cancelRegisterFor = "content://new/two"
+        try {
+            backup.restore(
+                payload,
+                mapOf(
+                    payload.folders[0].backupId to FolderSelection("content://new/one", 3),
+                    payload.folders[1].backupId to FolderSelection("content://new/two", 3),
+                ),
+            )
+            fail("expected cancellation to propagate out of the restore")
+        } catch (_: CancellationException) {
+            // expected
+        }
+
+        // The newly acquired grant was released again before propagating…
+        assertEquals(listOf("content://new/one"), source.releaseAttempts)
+        // …and grants belonging to folders that existed before the restore were
+        // never touched, so the old library keeps working.
+        assertEquals(
+            setOf("tree-one", "tree-two", "old-tree"),
+            store.getFolders().mapTo(mutableSetOf()) { it.id },
+        )
+        assertTrue(store.getCustomCommunities().isEmpty())
+        assertTrue(theme.writes.isEmpty())
+    }
+
+    @Test fun releaseFailuresAfterCommitAreReportedInsteadOfSwallowed() = runTest {
+        seedTwoFoldersAndOneCommunity()
+        backup.exportTo(backupUri)
+        val payload = backup.readPayload(backupUri)
+        // Two extra folders added after the export are removed by this restore;
+        // both revocations fail, in different ways.
+        source.labels["extra-tree"] = "Extra"
+        library.addFolder(FolderSelection("extra-tree", 0))
+        source.labels["old-tree"] = "Old folder"
+        library.addFolder(FolderSelection("old-tree", 0))
+        source.failReleaseFor = "extra-tree"
+        source.refuseReleaseFor = "old-tree"
+        val backupIdByLabel = payload.folders.associate { it.label to it.backupId }
+
+        val summary = backup.restore(
+            payload,
+            mapOf(
+                backupIdByLabel.getValue("Camera") to FolderSelection("tree-one", 3),
+                backupIdByLabel.getValue("Screenshots") to FolderSelection("tree-two", 3),
+            ),
+        )
+
+        // The committed restore stands; both failed revocations are reported, not hidden.
+        assertEquals(2, summary.removedExistingFolderCount)
+        assertEquals(listOf("Extra", "Old folder"), summary.unreleasedFolderLabels)
+        assertEquals(2, source.releaseAttempts.size)
+        assertTrue(source.released.isEmpty())
+        assertEquals(setOf("tree-one", "tree-two"), store.getFolders().mapTo(mutableSetOf()) { it.id })
+        assertTrue(summary.themeRestored)
+    }
+
+    @Test fun exportOverTheSizeLimitFailsWithoutWritingAnything() = runTest {
+        // 1000 maximum-length labels push folders.json past the entry/total size
+        // limits the reader enforces; export must fail instead of succeeding with
+        // an archive its own reader would refuse.
+        repeat(1000) { index ->
+            store.putFolder(
+                FolderRecord("tree-$index", "L".repeat(BackupFormat.MAX_TEXT_LENGTH), true),
+            )
+        }
+        try {
+            backup.exportTo(backupUri)
+            fail("expected export to fail for an oversized archive")
+        } catch (_: BackupExportException) {
+            // expected: clear failure, raised while building the archive.
+        }
+        // Nothing reached the destination and no success can be reported.
+        assertFalse(storage.files.containsKey(backupUri.toString()))
+    }
+
     @Test fun themeWriteFailureIsReportedAsNotRestored() = runTest {
         seedTwoFoldersAndOneCommunity()
         backup.exportTo(backupUri)
@@ -348,10 +468,17 @@ class LibraryBackupRepositoryTest {
         val labels = mutableMapOf<String, String?>()
         var result: ScanResult = ScanResult.Success(emptyList())
         var failRegisterFor: String? = null
+        var cancelRegisterFor: String? = null
+        var failReleaseFor: String? = null
+        var refuseReleaseFor: String? = null
         val registered = mutableListOf<String>()
         val released = mutableListOf<String>()
+        val releaseAttempts = mutableListOf<String>()
 
         override suspend fun register(selection: FolderSelection): FolderRegistration {
+            if (selection.treeUri == cancelRegisterFor) {
+                throw CancellationException("restore cancelled during registration")
+            }
             if (selection.treeUri == failRegisterFor) throw FolderAccessException(ScanFailure.PermissionLost)
             registered += selection.treeUri
             return FolderRegistration(labels[selection.treeUri], true)
@@ -360,6 +487,9 @@ class LibraryBackupRepositoryTest {
         override suspend fun scan(treeUri: String) = result
 
         override suspend fun releaseReadPermission(treeUri: String): Boolean {
+            releaseAttempts += treeUri
+            if (treeUri == failReleaseFor) throw IOException("permission revocation failed")
+            if (treeUri == refuseReleaseFor) return false
             released += treeUri
             return true
         }

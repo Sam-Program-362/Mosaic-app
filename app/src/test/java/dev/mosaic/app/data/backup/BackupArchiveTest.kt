@@ -171,6 +171,45 @@ class BackupArchiveTest {
         assertEquals(payload.communities, again.communities)
     }
 
+    // --- writer size limits ---------------------------------------------------
+
+    @Test fun writerNeverProducesAnArchiveTheReaderRejectsForSizeLimits() {
+        // Largest entries the format permits (per-entry cap and reader collection
+        // caps respected) must still round-trip through the real reader.
+        val folders = (1..980).map {
+            BackupFolderEntry("folder-$it", "L".repeat(BackupFormat.MAX_TEXT_LENGTH))
+        }
+        val communities = (1..790).map {
+            BackupCommunityEntry(
+                "community-$it",
+                "N".repeat(BackupFormat.MAX_TEXT_LENGTH),
+                1L,
+                listOf("folder-1"),
+            )
+        }
+
+        val payload = readBytes(writeBytes(draft(folders = folders, communities = communities)))
+
+        assertEquals(980, payload.folders.size)
+        assertEquals(790, payload.communities.size)
+        assertTrue(payload.manifest.entries.sumOf { it.sizeBytes } > 1_900_000L)
+    }
+
+    @Test fun writerRefusesAnArchiveOverTheTotalUncompressedLimit() {
+        // ~4.7 MiB of folder data: past the reader's cumulative limit. The writer
+        // must reject it with a clear export error instead of producing bytes that
+        // its own reader would refuse on import.
+        val folders = (1..4500).map {
+            BackupFolderEntry("folder-$it", "L".repeat(BackupFormat.MAX_TEXT_LENGTH))
+        }
+        try {
+            writeBytes(draft(folders = folders))
+            fail("expected the writer to reject an archive over the total size limit")
+        } catch (error: BackupExportException) {
+            assertTrue("unexpected message: ${error.message}", error.message.orEmpty().contains("size limit"))
+        }
+    }
+
     // --- manifest integrity and versioning -----------------------------------
 
     @Test fun unknownOptionalFieldsAreIgnoredAtEveryLevel() {

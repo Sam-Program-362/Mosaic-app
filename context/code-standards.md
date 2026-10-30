@@ -21,10 +21,12 @@
   `saved_copies`. Export writes folder labels, communities (IDs/names/created time/portable
   memberships), and the theme only — no media rows, caches, diagnostics, or session state.
 - Restore commits Room-first: validate → register → single `replaceLibraryConfiguration`
-  transaction → rescan → theme write. Do not claim Room+DataStore atomicity; report a
-  failed theme write honestly. Validation/preview stages must never mutate. A malformed or
-  incompatible backup leaves the current library untouched, and failures before commit
-  roll back newly persisted grants.
+  transaction → revoke removed folders' grants (only after the commit; report a failed
+  revocation as `unreleasedFolderLabels`, never swallow it) → rescan → theme write. Do not
+  claim Room+DataStore atomicity; report a failed theme write honestly. Validation/preview
+  stages must never mutate. A malformed or incompatible backup leaves the current library
+  untouched, and any failure before commit — cancellation included — rolls back only the
+  grants newly acquired by that restore, never pre-existing folders' permissions.
 
 Use idiomatic Kotlin, immutable state/data classes, typed expected failures,
 null safety (no unchecked `!!`), and stable IDs. Classes/composables UpperCamelCase;

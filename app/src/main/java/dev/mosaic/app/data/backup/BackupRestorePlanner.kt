@@ -44,11 +44,15 @@ data class RestoreOutcome(
     val removedExistingFolderCount: Int,
     val communityCount: Int,
     val failedScanLabels: List<String>,
+    /** Labels of removed folders whose grants could not be revoked after the commit. */
+    val unreleasedFolderLabels: List<String> = emptyList(),
 )
 
 /**
  * User-facing outcome of a committed restore. Theme persistence is separate
- * from the Room transaction and is reported honestly when it fails.
+ * from the Room transaction and is reported honestly when it fails; likewise
+ * folder-permission revocation happens after the commit and is reported when
+ * it fails instead of being silently ignored.
  */
 data class RestoreSummary(
     val restoredFolderLabels: List<String>,
@@ -59,6 +63,7 @@ data class RestoreSummary(
     val droppedMemberships: List<DroppedMembership>,
     val failedScanLabels: List<String>,
     val themeRestored: Boolean,
+    val unreleasedFolderLabels: List<String> = emptyList(),
 )
 
 /**

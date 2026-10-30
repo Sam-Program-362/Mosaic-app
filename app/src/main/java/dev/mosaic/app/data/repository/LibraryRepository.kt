@@ -12,8 +12,10 @@ import dev.mosaic.app.data.backup.RestorePlan
 import dev.mosaic.app.data.source.FolderSource
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /** Serializes selection/refresh; a failed scan never reconciles media deletions. */
 class LibraryRepository(private val store: LibraryStore, private val source: FolderSource) {
@@ -105,15 +107,20 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
 
     /**
      * Stage 3 commit for a backup restore: replace the folder/community configuration
-     * with the validated plan. Registration (SAF I/O) happens before any mutation;
-     * the configuration swap is a single Room transaction; every reconnected folder is
-     * then rescanned to rebuild its media index (failed scans keep the folder
-     * Unavailable — never an empty scan — and are reported, not thrown).
+     * with the validated plan. Registration (SAF I/O) and the configuration swap are one
+     * rollback-protected operation; every reconnected folder is then rescanned to rebuild
+     * its media index (failed scans keep the folder Unavailable — never an empty scan —
+     * and are reported, not thrown).
      *
-     * Failure story: if anything throws before the transaction commits, newly
-     * persisted grants are released again and the existing library is untouched
-     * (the Room transaction itself is atomic). Theme/DataStore persistence is the
-     * caller's responsibility because it cannot join the Room transaction.
+     * Failure story: if anything throws before the transaction commits — cancellation
+     * during registration included — the grants this restore newly acquired are released
+     * again (on [NonCancellable] so cleanup survives cancellation), grants of folders that
+     * existed before the restore are never touched, and the existing library keeps its
+     * own permissions because the Room transaction is atomic. Existing folders' grants
+     * are revoked only after the transaction has committed; a revocation failure cannot
+     * undo the commit, so it is reported in [RestoreOutcome.unreleasedFolderLabels]
+     * instead of being ignored. Theme/DataStore persistence is the caller's
+     * responsibility because it cannot join the Room transaction.
      */
     suspend fun restoreLibrary(plan: RestorePlan): RestoreOutcome = operations.withLock {
         val existingBefore = store.getFolders()
@@ -122,33 +129,31 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         val registered = mutableListOf<RegisteredRestoreFolder>()
         val failedLabels = mutableListOf<String>()
         val failedUris = mutableSetOf<String>()
-        plan.folders.forEach { folder ->
-            try {
-                val registration = source.register(folder.selection)
-                registered += RegisteredRestoreFolder(
-                    folder,
-                    registration.label ?: folder.archivedLabel,
-                    registration.persistedRead,
-                )
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                // Permission denial/provider failure: skip this folder and report it.
-                failedLabels += folder.archivedLabel
-                failedUris += folder.selection.treeUri
-            }
-        }
-
-        val keptUris = registered.mapTo(mutableSetOf()) { it.planned.selection.treeUri }
-        // A register failure for a folder that already exists locally keeps its row:
-        // a failed restore step must never destroy valid existing data.
-        val retainedUnregistered = failedUris.intersect(existingIds)
-        val removed = existingBefore.filter { it.id !in keptUris && it.id !in retainedUnregistered }
-
+        var removed: List<FolderRecord> = emptyList()
         try {
-            // Release first (same ordering as removeFolder): a crash must not leave
-            // an orphaned persisted grant for a folder no longer selected.
-            removed.forEach { source.releaseReadPermission(it.id) }
+            plan.folders.forEach { folder ->
+                try {
+                    val registration = source.register(folder.selection)
+                    registered += RegisteredRestoreFolder(
+                        folder,
+                        registration.label ?: folder.archivedLabel,
+                        registration.persistedRead,
+                    )
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (_: Exception) {
+                    // Permission denial/provider failure: skip this folder and report it.
+                    failedLabels += folder.archivedLabel
+                    failedUris += folder.selection.treeUri
+                }
+            }
+
+            val keptUris = registered.mapTo(mutableSetOf()) { it.planned.selection.treeUri }
+            // A register failure for a folder that already exists locally keeps its row:
+            // a failed restore step must never destroy valid existing data.
+            val retainedUnregistered = failedUris.intersect(existingIds)
+            removed = existingBefore.filter { it.id !in keptUris && it.id !in retainedUnregistered }
+
             val registeredBackupIds = registered.mapTo(mutableSetOf()) { it.planned.backupId }
             val uriByBackupId = registered.associate { it.planned.backupId to it.planned.selection.treeUri }
             val folderRecords = registered.map { entry ->
@@ -171,10 +176,23 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
             }
             store.replaceLibraryConfiguration(folderRecords, communityRecords)
         } catch (error: Exception) {
-            // Rollback then rethrow (CancellationException included) — nothing is swallowed.
-            rollbackRestoreGrants(registered, existingIds)
+            // Nothing committed: roll back only the grants this restore took, on
+            // NonCancellable so cleanup runs even during cancellation, and leave
+            // every pre-existing folder's permission exactly as it was.
+            val rollbackFailures = withContext(NonCancellable) {
+                rollbackRestoreGrants(registered, existingIds)
+            }
+            // Cleanup failures must not be silent: attach them to the primary error.
+            rollbackFailures.forEach { failure ->
+                if (failure !== error) error.addSuppressed(failure)
+            }
             throw error
         }
+
+        // The transaction committed. Only now may the removed folders' grants be
+        // revoked — a failed commit must never leave the old configuration without
+        // its permissions. Release failures are collected and reported.
+        val unreleasedFolderLabels = releaseRemovedGrants(removed)
 
         val failedScanLabels = mutableListOf<String>()
         registered.forEach { entry ->
@@ -194,6 +212,7 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
             removedExistingFolderCount = removed.size,
             communityCount = plan.communities.size,
             failedScanLabels = failedScanLabels,
+            unreleasedFolderLabels = unreleasedFolderLabels,
         )
     }
 
@@ -203,21 +222,48 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         val persistedRead: Boolean,
     )
 
-    /** Best-effort cleanup when the configuration transaction fails: undo grants taken by this restore only. */
+    /**
+     * Revokes the grants of folders this restore removed. Called only after the
+     * configuration transaction has committed. A revocation that fails or is refused
+     * cannot undo the committed restore, so it is reported — never swallowed — as an
+     * unreleased folder label in the outcome. Cancellation is rethrown, not swallowed.
+     */
+    private suspend fun releaseRemovedGrants(removed: List<FolderRecord>): List<String> {
+        val unreleased = mutableListOf<String>()
+        removed.forEach { folder ->
+            val grantReleased = try {
+                source.releaseReadPermission(folder.id)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                false
+            }
+            if (!grantReleased) unreleased += folder.label
+        }
+        return unreleased
+    }
+
+    /**
+     * Best-effort teardown when the configuration transaction fails: undo grants taken
+     * by this restore only. Runs under NonCancellable; a grant that cannot be undone is
+     * returned so the caller can attach it to the primary failure instead of ignoring it.
+     */
     private suspend fun rollbackRestoreGrants(
         registered: List<RegisteredRestoreFolder>,
         existingIds: Set<String>,
-    ) {
+    ): List<Exception> {
+        val failures = mutableListOf<Exception>()
         registered.forEach { entry ->
             val uri = entry.planned.selection.treeUri
             if (uri !in existingIds) {
                 try {
                     source.releaseReadPermission(uri)
-                } catch (_: Exception) {
-                    // Best-effort teardown; the primary failure is reported instead.
+                } catch (error: Exception) {
+                    failures += error
                 }
             }
         }
+        return failures
     }
 
     private suspend fun scan(folderId: String, preserveDocumentIds: Set<String> = emptySet()) {

@@ -48,6 +48,7 @@ class BackupRestoreSectionUiTest {
         skipped: List<String> = emptyList(),
         dropped: List<DroppedMembership> = emptyList(),
         themeRestored: Boolean = true,
+        unreleased: List<String> = emptyList(),
     ) = RestoreSummary(
         restoredFolderLabels = restored,
         skippedFolderLabels = skipped,
@@ -57,6 +58,7 @@ class BackupRestoreSectionUiTest {
         droppedMemberships = dropped,
         failedScanLabels = emptyList(),
         themeRestored = themeRestored,
+        unreleasedFolderLabels = unreleased,
     )
 
     @Composable private fun Section(
@@ -215,6 +217,7 @@ class BackupRestoreSectionUiTest {
                         skipped = listOf("Wallpapers"),
                         dropped = listOf(DroppedMembership("Trip 2026", "Wallpapers")),
                         themeRestored = false,
+                        unreleased = listOf("Old folder"),
                     ),
                 ),
                 onDismissResult = { dismissed++ },
@@ -229,6 +232,10 @@ class BackupRestoreSectionUiTest {
         compose.onNodeWithText("· Trip 2026 — Wallpapers").assertExists()
         compose.onNodeWithText("1 previous folders not in the backup were removed from Mosaic.").assertExists()
         compose.onNodeWithText("Theme preference could not be restored.").assertExists()
+        compose.onNodeWithText(
+            "Folder access could not be released for: Old folder. " +
+                "Revoke it in Android settings if you no longer use it.",
+        ).assertExists()
         compose.onNodeWithText("Saved copies were not changed.").assertExists()
 
         compose.onNodeWithText("Done").performClick()

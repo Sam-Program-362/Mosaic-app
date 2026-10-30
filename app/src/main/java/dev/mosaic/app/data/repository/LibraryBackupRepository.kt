@@ -38,10 +38,13 @@ import kotlinx.coroutines.withContext
  * Import validates the whole archive before anything is shown or mutated
  * (Stage 1), the user reconnection step maps portable IDs to newly selected
  * trees (Stage 2), and [restore] commits: one Room transaction for folders and
- * communities, then rescans, then the theme. Room and DataStore cannot share a
- * transaction, so the order is Room-first — on failure nothing in Room is
- * committed and the theme is untouched; if the theme write then fails, the
- * summary reports `themeRestored = false` rather than claiming atomicity.
+ * communities — with registration rollback-protected so a failure or
+ * cancellation releases only newly acquired grants — then revoked grants for
+ * removed folders (reported when revocation fails), then rescans, then the
+ * theme. Room and DataStore cannot share a transaction, so the order is
+ * Room-first — on failure nothing in Room is committed and the theme is
+ * untouched; if the theme write then fails, the summary reports
+ * `themeRestored = false` rather than claiming atomicity.
  * Saved copies are never read or written by this repository.
  */
 class LibraryBackupRepository(
@@ -98,6 +101,7 @@ class LibraryBackupRepository(
             droppedMemberships = droppedMemberships,
             failedScanLabels = outcome.failedScanLabels,
             themeRestored = themeRestored,
+            unreleasedFolderLabels = outcome.unreleasedFolderLabels,
         )
     }
 

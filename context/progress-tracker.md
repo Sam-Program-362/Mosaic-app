@@ -21,9 +21,10 @@ Implemented (detail in `docs/session-handoff.md` and `docs/backup-format-v1.md`)
 - **Import** — SAF `ACTION_OPEN_DOCUMENT` → validate/preview → per-folder reconnection through
   the existing SAF picker (new tree URIs mapped to portable IDs; skips/failures drop only their
   own memberships and are reported) → explicit confirmation → single Room transaction
-  (`replaceLibraryConfiguration`) → rescan → theme write (Room-first; `themeRestored=false` is
-  reported honestly on theme failure; pre-commit failures roll back new grants). Saved copies
-  are never touched.
+  (`replaceLibraryConfiguration`) → revoke removed folders' grants (only after commit;
+  failures reported) → rescan → theme write (Room-first; `themeRestored=false` is
+  reported honestly on theme failure; pre-commit failures roll back newly acquired grants
+  only). Saved copies are never touched.
 - **New tests:** `BackupArchiveTest` (28 cases), `BackupRestorePlannerTest` (6),
   `LibraryBackupRepositoryTest` (9 Room-backed cases), `BackupViewModelTest` (6),
   `BackupRestoreSectionUiTest` (8), plus a `SettingsScreenUiTest` slot assertion; the existing
@@ -45,6 +46,28 @@ guard. Three earlier runs on this PR (41051985076, 41053383466, 41054812203) fai
 compile/test defects that were fixed in commits `a81f374`, `5e82ebe`, `3053e2a`; only the final
 run above is claimed. Device-level SAF picker behavior (export/import/reconnection on a real
 provider) is **not** covered by CI and remains open for phone testing.
+
+### Read-only review fixes (2026-10-30, same PR)
+Three review findings were fixed on the same branch without touching the format contract:
+1. **Export/import size consistency** — `BackupArchiveWriter` now enforces the reader's
+   cumulative `MAX_TOTAL_UNCOMPRESSED_BYTES` (4 MiB) in addition to the per-entry cap,
+   throwing a clear `BackupExportException` while the archive is still being built, so
+   `exportTo` never writes to the destination or reports success for an archive its own
+   reader would reject. Regression tests: maximal legal draft round-trips through the real
+   reader; a draft over the total limit is refused; an oversized library export leaves the
+   destination untouched.
+2. **Cancellation during registration** — registration now runs inside the
+   rollback-protected operation: any failure after grants were taken (cancellation
+   included) releases the newly acquired grants under `NonCancellable` before
+   propagating, and never touches grants of folders that existed before the restore.
+   Test: cancellation after one successful registration rolls back only the new grant.
+3. **Existing permission release after commit** — removed folders' grants are revoked
+   only *after* `replaceLibraryConfiguration` commits, so a failed transaction leaves the
+   old configuration and its permissions intact; revocation failures are collected into
+   `RestoreOutcome/RestoreSummary.unreleasedFolderLabels` and shown in the result dialog,
+   and rollback-release failures attach to the primary error instead of being swallowed.
+   Tests: transaction failure keeps existing permissions; release failure (throw and
+   refusal) is reported while the committed restore stands.
 
 ## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
 **Current published stable release: Mosaic v0.2.1**

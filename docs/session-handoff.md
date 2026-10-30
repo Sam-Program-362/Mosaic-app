@@ -38,9 +38,12 @@ over the release):
   unsupported `formatVersion` are all clear errors with **no partial restore**.
 - **Code:** new `data/backup/` package (format constants, strict bounded JSON parser,
   models + validation, archive writer/reader, restore planner, `BackupStorage`,
-  `BackupThemeStore`), `data/repository/LibraryBackupRepository`, `LibraryRepository.restoreLibrary`
-  (register → release removed grants → single `replaceLibraryConfiguration` Room transaction →
-  rescan; pre-commit failures roll back newly taken grants), `LibraryStore.replaceLibraryConfiguration`,
+  `BackupThemeStore`),  `data/repository/LibraryBackupRepository`, `LibraryRepository.restoreLibrary`
+  (register → single `replaceLibraryConfiguration` Room transaction → revoke removed
+  folders' grants only after commit, with failures reported as `unreleasedFolderLabels`
+  → rescan; any pre-commit failure, cancellation included, rolls back newly acquired
+  grants only and never touches pre-existing folders' permissions),
+  `LibraryStore.replaceLibraryConfiguration`,
   `feature/settings/BackupViewModel` (Idle → Validating → Previewed → Reconnecting → Restoring → Finished)
   and `BackupRestoreSection` (Settings card + preview/reconnect/confirm/result/error dialogs via
   `CreateDocument`/`OpenDocument`/`FolderPickerContract`). Wired through `SettingsScreen` (new

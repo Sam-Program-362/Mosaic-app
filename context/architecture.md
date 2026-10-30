@@ -51,15 +51,18 @@ index rows, raw SAF/provider URIs, and persisted URI permissions.
   `restore()`: plan → `LibraryRepository.restoreLibrary` → theme. Room commits first in one
   transaction; a later theme failure is reported as `themeRestored = false` — never claimed
   atomic. Saved copies are never read or written.
-- `LibraryRepository.restoreLibrary` runs under the existing operations mutex: register
-  each reconnected tree (failures are skipped and reported, never redirected), release
-  grants of folders being removed first (same ordering as `removeFolder`), one
-  `LibraryStore.replaceLibraryConfiguration` transaction (delete communities, delete
-  folders absent from the restore, upsert restored folders as Unavailable, insert
-  communities with members filtered to actually-registered folders), then rescan each
-  reconnected folder (failed scans keep Unavailable and are reported). On failure before
-  the transaction commits, newly taken grants are released again and the library is
-  untouched.
+- `LibraryRepository.restoreLibrary` runs under the existing operations mutex as one
+  rollback-protected operation: register each reconnected tree (failures are skipped and
+  reported, never redirected), then one `LibraryStore.replaceLibraryConfiguration`
+  transaction (delete communities, delete folders absent from the restore, upsert restored
+  folders as Unavailable, insert communities with members filtered to
+  actually-registered folders). If anything fails before the commit — cancellation during
+  registration included — only the grants this restore newly acquired are released again
+  (under NonCancellable), grants of pre-existing folders are never touched, and rollback
+  failures attach to the primary error instead of being swallowed. Existing folders'
+  grants are revoked only after the transaction commits; a failed revocation is reported
+  as `unreleasedFolderLabels` rather than ignored. Afterwards each reconnected folder is
+  rescanned (failed scans keep Unavailable and are reported).
 - `feature/settings/BackupViewModel` runs the stage machine
   (Idle → Validating → Previewed → Reconnecting → Restoring → Finished) with explicit
   cancellation/error states; `BackupRestoreSection` renders the Settings card (content,
