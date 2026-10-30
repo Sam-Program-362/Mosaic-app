@@ -29,6 +29,45 @@ files directory. Media players are owned by visible compositions, not by the Vie
 or application singleton.
 Backup is disabled to avoid implicit cloud transfer of future local media metadata/copies.
 
+## 2026-10-30 — Portable backup and restore (format v1)
+Settings gains **Backup & Restore**: an offline, user-controlled export/import of the
+library configuration (folder labels + portable IDs, custom communities + portable
+memberships, Light/Dark theme) as a checksummed ZIP defined by
+`docs/backup-format-v1.md`. The format is independent of the Room schema (v3 and the
+future PR #6 v4 use the same contract) and deliberately excludes Saved copies, media
+index rows, raw SAF/provider URIs, and persisted URI permissions.
+- `data/backup/`: `BackupFormat` (constants/limits/typed errors), `BackupJson` (minimal
+  strict bounded parser, unknown fields ignored), `BackupModels` (manifest/settings/
+  folders/communities parse + serialize + semantic validation), `BackupArchiveWriter`
+  (streams entries, computes SHA-256/size, writes manifest last), `BackupArchiveReader`
+  (allowlisted entry names only, never extracts to disk, bounded entry count/size/total,
+  verifies manifest checksums before parsing JSON, rejects traversal/duplicates/
+  unexpected entries/unsupported versions), `BackupRestorePlanner` (pure Stage-2 mapping:
+  portable ID → newly selected tree URI, read-grant and duplicate-target validation),
+  `BackupStorage` (ContentResolver byte boundary with a hard read cap) and
+  `BackupThemeStore` (the single persisted preference behind a boundary).
+- `data/repository/LibraryBackupRepository` owns export (folder/community/theme snapshot →
+  ZIP → SAF destination, success only after the stream closes), Stage-1 read/validate, and
+  `restore()`: plan → `LibraryRepository.restoreLibrary` → theme. Room commits first in one
+  transaction; a later theme failure is reported as `themeRestored = false` — never claimed
+  atomic. Saved copies are never read or written.
+- `LibraryRepository.restoreLibrary` runs under the existing operations mutex: register
+  each reconnected tree (failures are skipped and reported, never redirected), release
+  grants of folders being removed first (same ordering as `removeFolder`), one
+  `LibraryStore.replaceLibraryConfiguration` transaction (delete communities, delete
+  folders absent from the restore, upsert restored folders as Unavailable, insert
+  communities with members filtered to actually-registered folders), then rescan each
+  reconnected folder (failed scans keep Unavailable and are reported). On failure before
+  the transaction commits, newly taken grants are released again and the library is
+  untouched.
+- `feature/settings/BackupViewModel` runs the stage machine
+  (Idle → Validating → Previewed → Reconnecting → Restoring → Finished) with explicit
+  cancellation/error states; `BackupRestoreSection` renders the Settings card (content,
+  Saved-exclusion and reconnection notices) plus preview/reconnect/confirm/result/error
+  dialogs through the existing SAF `CreateDocument`/`OpenDocument`/`FolderPickerContract`
+  launchers. Preview and reconnection never mutate data; only the explicit final
+  confirmation commits.
+
 ## Phase 2 implementation
 - `core/model/`: immutable metadata/selection models and typed scan outcomes.
 - `data/source/`: SAF picker/grant retention, direct-child reader/scanner and MIME typing.

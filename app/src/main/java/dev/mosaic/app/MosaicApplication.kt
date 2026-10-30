@@ -6,13 +6,17 @@ import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import androidx.room.Room
+import dev.mosaic.app.data.backup.ContentBackupStorage
+import dev.mosaic.app.data.backup.DataStoreBackupThemeStore
 import dev.mosaic.app.data.local.LIBRARY_DATABASE_NAME
 import dev.mosaic.app.data.local.LibraryDatabase
 import dev.mosaic.app.data.local.MIGRATION_1_2
 import dev.mosaic.app.data.local.MIGRATION_2_3
 import dev.mosaic.app.data.local.RoomLibraryStore
+import dev.mosaic.app.data.repository.LibraryBackupRepository
 import dev.mosaic.app.data.repository.LibraryRepository
 import dev.mosaic.app.core.playback.VideoAudioSession
+import dev.mosaic.app.data.preferences.ThemePreferences
 import dev.mosaic.app.data.repository.SavedCopyRepository
 import dev.mosaic.app.data.source.SafFolderSource
 
@@ -44,5 +48,16 @@ class MosaicApplication : Application() {
 
     val savedCopyRepository: SavedCopyRepository by lazy {
         SavedCopyRepository(libraryDatabase.savedCopyDao(), contentResolver, filesDir)
+    }
+
+    /** Portable export/import of folder labels, custom communities, and theme (format v1). */
+    val backupRepository: LibraryBackupRepository by lazy {
+        LibraryBackupRepository(
+            library = libraryRepository,
+            themeStore = DataStoreBackupThemeStore(ThemePreferences(applicationContext)),
+            storage = ContentBackupStorage(contentResolver),
+            appVersionName = BuildConfig.VERSION_NAME,
+            appVersionCode = BuildConfig.VERSION_CODE.toLong(),
+        )
     }
 }

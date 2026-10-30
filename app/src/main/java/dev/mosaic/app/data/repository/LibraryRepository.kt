@@ -3,10 +3,15 @@ package dev.mosaic.app.data.repository
 import dev.mosaic.app.core.model.CustomCommunity
 import dev.mosaic.app.core.model.FolderRecord
 import dev.mosaic.app.core.model.FolderSelection
+import dev.mosaic.app.core.model.FolderStatus
 import dev.mosaic.app.core.model.MediaKey
 import dev.mosaic.app.core.model.ScanResult
+import dev.mosaic.app.data.backup.PlannedFolder
+import dev.mosaic.app.data.backup.RestoreOutcome
+import dev.mosaic.app.data.backup.RestorePlan
 import dev.mosaic.app.data.source.FolderSource
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -96,6 +101,123 @@ class LibraryRepository(private val store: LibraryStore, private val source: Fol
         if (store.getCustomCommunities().none { it.id == communityId }) return@withLock false
         store.deleteCustomCommunity(communityId)
         true
+    }
+
+    /**
+     * Stage 3 commit for a backup restore: replace the folder/community configuration
+     * with the validated plan. Registration (SAF I/O) happens before any mutation;
+     * the configuration swap is a single Room transaction; every reconnected folder is
+     * then rescanned to rebuild its media index (failed scans keep the folder
+     * Unavailable — never an empty scan — and are reported, not thrown).
+     *
+     * Failure story: if anything throws before the transaction commits, newly
+     * persisted grants are released again and the existing library is untouched
+     * (the Room transaction itself is atomic). Theme/DataStore persistence is the
+     * caller's responsibility because it cannot join the Room transaction.
+     */
+    suspend fun restoreLibrary(plan: RestorePlan): RestoreOutcome = operations.withLock {
+        val existingBefore = store.getFolders()
+        val existingIds = existingBefore.mapTo(mutableSetOf()) { it.id }
+
+        val registered = mutableListOf<RegisteredRestoreFolder>()
+        val failedLabels = mutableListOf<String>()
+        val failedUris = mutableSetOf<String>()
+        plan.folders.forEach { folder ->
+            try {
+                val registration = source.register(folder.selection)
+                registered += RegisteredRestoreFolder(
+                    folder,
+                    registration.label ?: folder.archivedLabel,
+                    registration.persistedRead,
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                // Permission denial/provider failure: skip this folder and report it.
+                failedLabels += folder.archivedLabel
+                failedUris += folder.selection.treeUri
+            }
+        }
+
+        val keptUris = registered.mapTo(mutableSetOf()) { it.planned.selection.treeUri }
+        // A register failure for a folder that already exists locally keeps its row:
+        // a failed restore step must never destroy valid existing data.
+        val retainedUnregistered = failedUris.intersect(existingIds)
+        val removed = existingBefore.filter { it.id !in keptUris && it.id !in retainedUnregistered }
+
+        try {
+            // Release first (same ordering as removeFolder): a crash must not leave
+            // an orphaned persisted grant for a folder no longer selected.
+            removed.forEach { source.releaseReadPermission(it.id) }
+            val registeredBackupIds = registered.mapTo(mutableSetOf()) { it.planned.backupId }
+            val uriByBackupId = registered.associate { it.planned.backupId to it.planned.selection.treeUri }
+            val folderRecords = registered.map { entry ->
+                FolderRecord(
+                    id = entry.planned.selection.treeUri,
+                    label = entry.label,
+                    persistedRead = entry.persistedRead,
+                    status = FolderStatus.Unavailable,
+                    failure = null,
+                )
+            }
+            val communityRecords = plan.communities.map { community ->
+                CustomCommunity(
+                    id = community.id,
+                    name = community.name,
+                    memberFolderIds = community.memberBackupIds.filter { it in registeredBackupIds }
+                        .map { uriByBackupId.getValue(it) },
+                    createdAtMillis = community.createdAtMillis,
+                )
+            }
+            store.replaceLibraryConfiguration(folderRecords, communityRecords)
+        } catch (error: Exception) {
+            // Rollback then rethrow (CancellationException included) — nothing is swallowed.
+            rollbackRestoreGrants(registered, existingIds)
+            throw error
+        }
+
+        val failedScanLabels = mutableListOf<String>()
+        registered.forEach { entry ->
+            try {
+                scan(entry.planned.selection.treeUri)
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
+                failedScanLabels += entry.planned.archivedLabel
+            }
+        }
+
+        RestoreOutcome(
+            registeredBackupIds = registered.mapTo(mutableSetOf()) { it.planned.backupId },
+            restoredFolderLabels = registered.map { it.planned.archivedLabel },
+            failedFolderLabels = failedLabels,
+            removedExistingFolderCount = removed.size,
+            communityCount = plan.communities.size,
+            failedScanLabels = failedScanLabels,
+        )
+    }
+
+    private class RegisteredRestoreFolder(
+        val planned: PlannedFolder,
+        val label: String,
+        val persistedRead: Boolean,
+    )
+
+    /** Best-effort cleanup when the configuration transaction fails: undo grants taken by this restore only. */
+    private suspend fun rollbackRestoreGrants(
+        registered: List<RegisteredRestoreFolder>,
+        existingIds: Set<String>,
+    ) {
+        registered.forEach { entry ->
+            val uri = entry.planned.selection.treeUri
+            if (uri !in existingIds) {
+                try {
+                    source.releaseReadPermission(uri)
+                } catch (_: Exception) {
+                    // Best-effort teardown; the primary failure is reported instead.
+                }
+            }
+        }
     }
 
     private suspend fun scan(folderId: String, preserveDocumentIds: Set<String> = emptySet()) {

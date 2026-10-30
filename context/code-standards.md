@@ -1,5 +1,31 @@
 # Code standards
 
+## 2026-10-30 — portable backup rules
+- Backup format v1 is a stable public contract (`docs/backup-format-v1.md`): a ZIP with
+  exactly `manifest.json`, `settings.json`, `folders.json`, `communities.json`. Never
+  change field names/types/limits within version 1; unknown JSON fields are ignored,
+  unknown ZIP entries are rejected, and `formatVersion > 1` must fail with a clear
+  unsupported-version error before any mutation.
+- Import treats archives as untrusted: read only the four allowlisted entries in memory
+  (never extract to disk), reject traversal/duplicate/unexpected names, bound entry count,
+  per-entry and total bytes plus JSON depth/collection sizes, verify manifest size +
+  SHA-256 before parsing, close every stream (including on failure), and surface failures
+  as user-facing `BackupFormatException` messages that never contain paths, URIs, or
+  archive contents.
+- Never write raw SAF/provider tree URIs, document URIs, or persisted permission grants
+  into a backup. Folder identity in the archive is a generated portable ID; on import the
+  user reselects each folder and the new tree URI is mapped to that ID. Never assume a
+  new tree URI equals an old one, and never redirect a membership to a folder that did
+  not reconnect — drop it and report it.
+- Saved copies are excluded from backup v1 in both directions; restore must not touch
+  `saved_copies`. Export writes folder labels, communities (IDs/names/created time/portable
+  memberships), and the theme only — no media rows, caches, diagnostics, or session state.
+- Restore commits Room-first: validate → register → single `replaceLibraryConfiguration`
+  transaction → rescan → theme write. Do not claim Room+DataStore atomicity; report a
+  failed theme write honestly. Validation/preview stages must never mutate. A malformed or
+  incompatible backup leaves the current library untouched, and failures before commit
+  roll back newly persisted grants.
+
 Use idiomatic Kotlin, immutable state/data classes, typed expected failures,
 null safety (no unchecked `!!`), and stable IDs. Classes/composables UpperCamelCase;
 functions/properties lowerCamelCase; true constants SCREAMING_SNAKE_CASE.

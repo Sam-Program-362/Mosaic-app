@@ -68,6 +68,33 @@ class RoomLibraryStore(private val database: LibraryDatabase) : LibraryStore {
         dao.setStatus(folderId, FolderStatus.Unavailable, failure)
     }
 
+    override suspend fun replaceLibraryConfiguration(
+        folders: List<FolderRecord>,
+        communities: List<CustomCommunity>,
+    ) {
+        database.withTransaction {
+            // Communities first so membership rows go with their parents (FK cascade).
+            dao.getCustomCommunities().forEach { dao.deleteCustomCommunity(it.id) }
+            val keptFolderIds = folders.mapTo(mutableSetOf()) { it.id }
+            // Only folders absent from the restored set are removed; their media
+            // metadata cascades locally. Kept folders retain their index until rescan.
+            dao.getFolders().filter { it.id !in keptFolderIds }.forEach { dao.deleteFolder(it.id) }
+            folders.forEach { folder ->
+                dao.putFolder(
+                    FolderEntity(folder.id, folder.label, folder.persistedRead, folder.status, folder.failure),
+                )
+            }
+            communities.forEach { community ->
+                dao.insertCustomCommunity(
+                    CustomCommunityEntity(community.id, community.name, community.createdAtMillis),
+                )
+                dao.insertCustomCommunityMembers(
+                    community.memberFolderIds.distinct().map { CustomCommunityMemberEntity(community.id, it) },
+                )
+            }
+        }
+    }
+
     override val customCommunities = combine(
         dao.observeCustomCommunities(),
         dao.observeCustomCommunityMembers(),

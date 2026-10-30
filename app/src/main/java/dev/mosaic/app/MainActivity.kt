@@ -12,6 +12,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.mosaic.app.feature.folders.LibraryViewModel
+import dev.mosaic.app.feature.settings.BackupViewModel
 import dev.mosaic.app.data.preferences.ThemeMode
 import dev.mosaic.app.data.preferences.ThemePreferences
 import dev.mosaic.app.ui.MosaicApp
@@ -27,8 +28,12 @@ class MainActivity : ComponentActivity() {
             initializer {
                 LibraryViewModel(app.libraryRepository, app.savedCopyRepository)
             }
+            initializer {
+                BackupViewModel(app.backupRepository)
+            }
         }
         val library = ViewModelProvider(this, factory)[LibraryViewModel::class.java]
+        val backup = ViewModelProvider(this, factory)[BackupViewModel::class.java]
         setContent {
             val theme = preferences.theme.collectAsStateWithLifecycle(ThemeMode.Dark).value
             SideEffect {
@@ -41,7 +46,7 @@ class MainActivity : ComponentActivity() {
             }
             MosaicTheme(theme) {
                 MosaicApp(theme = theme, onThemeSelected = preferences::setTheme, library = library,
-                    imageLoader = app.localImageLoader, videoAudioSession = app.videoAudioSession)
+                    backup = backup, imageLoader = app.localImageLoader, videoAudioSession = app.videoAudioSession)
             }
         }
     }
