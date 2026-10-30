@@ -61,6 +61,12 @@ internal object BackupArchiveReader {
             }
         }
 
+        // A non-zip or empty input yields no entries at all (the JDK returns null
+        // instead of throwing); report that clearly rather than as a missing file.
+        if (scannedEntries == 0) {
+            throw BackupFormatException("The selected file is not a readable backup archive.")
+        }
+
         // Completeness first: exactly manifest + the three data entries.
         if (BackupFormat.MANIFEST_ENTRY !in entryBytes) {
             throw BackupFormatException("The archive is missing ${BackupFormat.MANIFEST_ENTRY}.")

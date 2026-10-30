@@ -290,7 +290,7 @@ class BackupArchiveTest {
         expectReject("unknown folder") {
             readBytes(
                 archiveOf(
-                    communities = """{"communities":[{"id":"community-one","name":"Trip","""" +
+                    communities = """{"communities":[{"id":"community-one","name":"Trip",""" +
                         """"createdAtMillis":1,"memberBackupIds":["folder-one","ghost"]}]}""",
                 ),
             )
@@ -301,7 +301,7 @@ class BackupArchiveTest {
         expectReject("more than once") {
             readBytes(
                 archiveOf(
-                    communities = """{"communities":[{"id":"community-one","name":"Trip","""" +
+                    communities = """{"communities":[{"id":"community-one","name":"Trip",""" +
                         """"createdAtMillis":1,"memberBackupIds":["folder-one","folder-one"]}]}""",
                 ),
             )
