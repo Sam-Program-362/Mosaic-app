@@ -50,6 +50,10 @@ locally and no local pass is claimed): Verify Android run
   `MANAGE_EXTERNAL_STORAGE` permission); Room schema-consistency step — pass; production
   video-preload source guard — pass.
 - Artifact `mosaic-debug-and-reports` ID `13034239424` contains the debug APK and reports.
+- The documentation commit `3db9c2f` on top of it passed the same workflow
+  ([41180600345](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180600345):
+  249 tests, 0 failures, lint, `assembleDebug`, APK privacy, schema and source checks; artifact
+  `13034597181`), so the PR head is green with the merged debug APK.
 - The first run on this branch ([41180098291](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180098291),
   `de78ba3`) had 1 failing assertion in the new rollback test (it expected the newly acquired
   grant *not* to be released, while the rollback deliberately releases it); fixed in `64454cd`.

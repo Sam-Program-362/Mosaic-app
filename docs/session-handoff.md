@@ -68,7 +68,10 @@ local Gradle run is claimed): Verify Android run
 `64454cd288217058b793bec8e2ab95a730cb6f5e` — **SUCCESS: 249 tests, 0 failures, 0 errors,
 0 skipped**, plus `lint`, `assembleDebug`, the packaged-APK privacy check, the Room
 schema-consistency step and the production video-preload source guard. Debug APK artifact
-`mosaic-debug-and-reports` ID `13034239424`. The first run on this branch
+`mosaic-debug-and-reports` ID `13034239424`. The documentation commit `3db9c2f` also passed the
+same workflow (run
+[41180600345](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180600345), artifact
+`13034597181`). The first run on this branch
 ([41180098291](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180098291),
 `de78ba3`) failed one new assertion that expected the rolled-back grant to remain in place; the
 rollback deliberately releases it, so the assertion was corrected in `64454cd`.
