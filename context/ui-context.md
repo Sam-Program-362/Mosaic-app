@@ -14,6 +14,27 @@ always state that the original media was not changed. Saved-feed items render fr
 destination URI and use the existing missing/undecodable-media error when a copy has been removed
 externally. Feed cards, viewer gestures, sorting, and playback controls are otherwise unchanged.
 
+## 2026-10-30 — Settings → Backup & Restore
+Settings gains a **Backup & Restore** section (between *Your library* and *About Mosaic*)
+with a card that states what a backup contains (selected folder names, custom communities,
+Light/Dark theme), a prominent **“Saved copies are not included in backups.”** notice, and
+the reconnection notice explaining that Android folder permissions do not survive
+uninstall and the media index is rebuilt by rescanning. Two actions: **Export backup**
+(SAF `ACTION_CREATE_DOCUMENT`, `application/zip`) and **Import backup**
+(`ACTION_OPEN_DOCUMENT` with zip/octet-stream types plus content validation). Inline
+progress (“Creating backup…”, “Checking backup…”) and a status line report success,
+cancellation (“No file was written.” / “Your library was not changed.”), and errors.
+
+Import renders as dialogs over Settings: **preview** (folder/community counts, theme,
+Saved-exclusion notice, nothing changed yet) → **reconnect folders** (each archived label
+with Reconnected / Not reconnected / Skipped status, per-row Select folder/Change/Clear/
+Skip/Undo, cancelled or duplicate selections surfaced inline, running “n of m
+reconnected” line) → **explicit confirmation** (“Replace your library configuration?”
+with exact counts and what is removed) → **result summary** (folders restored, skipped,
+failed, communities, dropped memberships by name, rescans to retry, theme outcome,
+“Saved copies were not changed.”). Validation failures show a dismissable error dialog.
+No bottom navigation/nav rail change; the wizard lives entirely in Settings dialogs.
+Device behavior of the SAF pickers is unverified until phone testing.
 ## Session-wide MP4 audio (shipped in v0.2.1)
 The existing video sound control is unchanged in appearance and position, but
 it now reads and toggles the single process-scoped `VideoAudioSession` shared

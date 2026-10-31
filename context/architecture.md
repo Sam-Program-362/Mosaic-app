@@ -29,6 +29,67 @@ Mosaic folder (legacy private copies remain readable). Media players are owned b
 or application singleton.
 Backup is disabled to avoid implicit cloud transfer of future local media metadata/copies.
 
+## 2026-10-30 — Portable backup and restore (format v1)
+Settings gains **Backup & Restore**: an offline, user-controlled export/import of the
+library configuration (folder labels + portable IDs, custom communities + portable
+memberships, Light/Dark theme) as a checksummed ZIP defined by
+`docs/backup-format-v1.md`. The format is independent of the Room schema (v3 and the
+PR #6's v4 use the same contract) and deliberately excludes Saved copies, media
+index rows, raw SAF/provider URIs, and persisted URI permissions.
+- `data/backup/`: `BackupFormat` (constants/limits/typed errors), `BackupJson` (minimal
+  strict bounded parser, unknown fields ignored), `BackupModels` (manifest/settings/
+  folders/communities parse + serialize + semantic validation), `BackupArchiveWriter`
+  (streams entries, computes SHA-256/size, writes manifest last), `BackupArchiveReader`
+  (allowlisted entry names only, never extracts to disk, bounded entry count/size/total,
+  verifies manifest checksums before parsing JSON, rejects traversal/duplicates/
+  unexpected entries/unsupported versions), `BackupRestorePlanner` (pure Stage-2 mapping:
+  portable ID → newly selected tree URI, read-grant and duplicate-target validation),
+  `BackupStorage` (ContentResolver byte boundary with a hard read cap) and
+  `BackupThemeStore` (the single persisted preference behind a boundary).
+- `data/repository/LibraryBackupRepository` owns export (folder/community/theme snapshot →
+  ZIP → SAF destination, success only after the stream closes), Stage-1 read/validate, and
+  `restore()`: plan → `LibraryRepository.restoreLibrary` → theme. Room commits first in one
+  transaction; a later theme failure is reported as `themeRestored = false` — never claimed
+  atomic. Saved copies are never read or written.
+- `LibraryRepository.restoreLibrary` runs under the existing operations mutex as one
+  rollback-protected operation: register each reconnected tree (failures are skipped and
+  reported, never redirected), then one `LibraryStore.replaceLibraryConfiguration`
+  transaction (delete communities, delete folders absent from the restore, upsert restored
+  folders as Unavailable, insert communities with members filtered to
+  actually-registered folders). If anything fails before the commit — cancellation during
+  registration included — only the grants this restore newly acquired are released again
+  (under NonCancellable), grants of pre-existing folders are never touched, and rollback
+  failures attach to the primary error instead of being swallowed. Existing folders'
+  grants are revoked only after the transaction commits; a failed revocation is reported
+  as `unreleasedFolderLabels` rather than ignored. Afterwards each reconnected folder is
+  rescanned (failed scans keep Unavailable and are reported).
+- `feature/settings/BackupViewModel` runs the stage machine
+  (Idle → Validating → Previewed → Reconnecting → Restoring → Finished) with explicit
+  cancellation/error states; `BackupRestoreSection` renders the Settings card (content,
+  Saved-exclusion and reconnection notices) plus preview/reconnect/confirm/result/error
+  dialogs through the existing SAF `CreateDocument`/`OpenDocument`/`FolderPickerContract`
+  launchers. Preview and reconnection never mutate data; only the explicit final
+  confirmation commits.
+
+## 2026-10-31 — Backup & Restore integrated into the PR #6 branch
+The merged Backup & Restore implementation (format v1, from PR #7 on `main`) now runs on the
+branch that owns GIF detection and shared-folder Saved copies. Integration is a merge, not a
+reimplementation: `docs/backup-format-v1.md`, `data/backup/*`, `LibraryBackupRepository`,
+`LibraryRepository.restoreLibrary`, the `LibraryStore`/`RoomLibraryStore` restore methods, the
+settings backup composables and both format fixtures are identical to `main`.
+- `MosaicApplication` composes both graphs (PR #6 saved-copy storage/repository and PR #7
+  `LibraryBackupRepository` with its DataStore theme store and SAF archive storage).
+- Room stays at v4 from PR #6 (`MIGRATION_3_4`, committed `4.json`); PR #7 changed no entity or
+  version, so no migration conflict exists and the backup layer is schema-independent as designed.
+- `SettingsScreen` keeps the Saved-copies card and exposes the backup UI through its optional
+  `backupSection` slot; `MainActivity`/`MosaicApp` pass `BackupViewModel` next to
+  `LibraryViewModel`.
+- Restore still replaces only folders/communities (one Room transaction) and then the theme;
+  `saved_copies` and saved media bytes are never read, deleted or rewritten by backup or restore.
+- `Pr7BackupFixtureIntegrationTest` imports the committed PR #7 fixture over Room v4 and covers
+  changed SAF URIs, membership/theme restore, skip semantics, invalid-archive safety, rollback,
+  Saved-copy preservation and rescan-based index rebuilding.
+
 ## Phase 2 implementation
 - `core/model/`: immutable metadata/selection models and typed scan outcomes.
 - `data/source/`: SAF picker/grant retention, direct-child reader/scanner and MIME typing.
