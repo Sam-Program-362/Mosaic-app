@@ -77,6 +77,8 @@ import dev.mosaic.app.feature.feed.nearbyPhotoWindow
 import dev.mosaic.app.feature.folders.CommunityDirectoryScreen
 import dev.mosaic.app.feature.folders.FolderManagement
 import dev.mosaic.app.feature.folders.LibraryViewModel
+import dev.mosaic.app.feature.settings.BackupRestoreSection
+import dev.mosaic.app.feature.settings.BackupViewModel
 import dev.mosaic.app.feature.settings.SettingsScreen
 import dev.mosaic.app.ui.theme.LocalMosaicColors
 import java.io.IOException
@@ -94,6 +96,7 @@ fun MosaicApp(
     theme: ThemeMode,
     onThemeSelected: suspend (ThemeMode) -> Unit,
     library: LibraryViewModel,
+    backup: BackupViewModel,
     imageLoader: ImageLoader,
     videoAudioSession: VideoAudioSession? = null,
 ) {
@@ -651,6 +654,31 @@ fun MosaicApp(
                             }
                         },
                         modifier = Modifier.padding(padding),
+                        backupSection = {
+                            val exportState by backup.export.collectAsStateWithLifecycle()
+                            val importStage by backup.importStage.collectAsStateWithLifecycle()
+                            val importError by backup.importError.collectAsStateWithLifecycle()
+                            val statusMessage by backup.message.collectAsStateWithLifecycle()
+                            val notice by backup.notice.collectAsStateWithLifecycle()
+                            BackupRestoreSection(
+                                exportBusy = exportState.busy,
+                                importStage = importStage,
+                                importError = importError,
+                                statusMessage = statusMessage,
+                                notice = notice,
+                                onExportUri = backup::onExportUri,
+                                onImportUri = backup::onImportUri,
+                                onFolderReconnected = backup::onFolderReconnected,
+                                onSkipFolder = backup::onSkipFolder,
+                                onUnskipFolder = backup::onUnskipFolder,
+                                onClearReconnection = backup::onClearReconnection,
+                                onContinueToReconnect = backup::onContinueToReconnect,
+                                onConfirmRestore = backup::onConfirmRestore,
+                                onCancelImport = backup::onCancelImport,
+                                onDismissResult = backup::onDismissResult,
+                                onClearError = backup::onClearError,
+                            )
+                        },
                     )
                     else -> Unit
                 }
