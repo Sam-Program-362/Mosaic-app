@@ -121,7 +121,7 @@ fun BackupRestoreSection(
                 Button(
                     onClick = {
                         try {
-                            exportLauncher.launch(BackupFormat.EXPORT_MIME_TYPE)
+                            exportLauncher.launch("Mosaic-backup.zip")
                         } catch (_: ActivityNotFoundException) {
                             onExportUri(null)
                         }
