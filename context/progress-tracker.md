@@ -1,5 +1,65 @@
 # Progress tracker
 
+## 2026-10-31 — Backup & Restore (PR #7) integrated into PR #6 (intermediate PR #8; CI verified)
+**Branch/branching (verified against the live remote this session):**
+- Working branch **`feature/pr6-backup-v1-integration`**, created from the verified PR #6 head
+  `7b252bc3ccacf16c116984a859332e20fa05abaa` (branch
+  `fix/gif-detection-and-accessible-saved-copies`) — **not** from `main`.
+- `origin/main` `9bd46bb681ee3f9c1e3e4de0608e516cfbcda039` (the merged PR #7) was merged **into**
+  that branch with a merge commit, so the backup implementation is the published PR #7 code
+  itself; nothing was re-created by hand.
+- Intermediate PR **#8**, base **`fix/gif-detection-and-accessible-saved-copies`** (PR #6's
+  branch, not `main`): https://github.com/Sam-Program-362/Mosaic-app/pull/8. **Open, not merged.**
+- Untouched: `main`, PR #7, PR #6 and its branch, tags, GitHub Releases, `applicationId`,
+  signing, versionName/versionCode, and the format-v1 contract.
+
+Integration facts:
+- **Only one code conflict:** `MosaicApplication.kt` (both sides added composition-root imports).
+  It now exposes the PR #6 saved-copy graph (MediaStore/SAF storage + `SavedCopyRepository`) and
+  the PR #7 `LibraryBackupRepository` (DataStore theme store, SAF archive storage).
+- **No Room/migration conflict:** PR #7 changed no entity or schema version, so PR #6's Room v4
+  (`MIGRATION_3_4` + committed `4.json`) stands unchanged and the backup layer runs on v4 exactly
+  as it ran on v3. The schema-consistency step confirms `4.json` still matches a fresh export.
+- `SettingsScreen` keeps the PR #6 *Saved copies* section and gains PR #7's optional
+  `backupSection` slot; `MosaicApp`/`MainActivity` pass `BackupViewModel` next to
+  `LibraryViewModel`.
+- `docs/backup-format-v1.md`, all of `data/backup/`, `LibraryBackupRepository`,
+  `LibraryRepository.restoreLibrary`, `LibraryStore`/`RoomLibraryStore.replaceLibraryConfiguration`,
+  the settings backup UI and both committed fixtures are **byte-identical to `main`**
+  (`git diff origin/main -- <paths>` is empty). Format v1 is unchanged.
+- Restore replaces folder/community configuration only; `saved_copies` (legacy rows with a null
+  `destinationUri` included) is never read, deleted or rewritten.
+
+New integration test — `Pr7BackupFixtureIntegrationTest` (7 Robolectric cases) drives the
+**committed PR #7 fixture** `app/src/test/resources/backup/mosaic-backup-v1.zip` (unmodified)
+through the merged stack over Room v4: changed SAF URIs, community ID/name/membership, theme
+restore, skip semantics (no invented membership, empty community stays empty), rejection of
+duplicate-entry / broken-checksum / future-version / non-archive input with no mutation, failed
+transaction rollback releasing only newly acquired grants, Saved copies preserved (legacy and
+shared-destination rows), rescan-based media-index rebuild including a content-detected GIF, and a
+post-restore export that is still a readable format-v1 archive without URIs or saved-copy IDs.
+All PR #6 and PR #7 tests are kept and still run.
+
+**Verification — GitHub Actions only** (no JDK/Android SDK in this sandbox, so nothing was run
+locally and no local pass is claimed): Verify Android run
+[41180358698](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180358698) on
+`64454cd288217058b793bec8e2ab95a730cb6f5e` — **SUCCESS**:
+- `./gradlew testDebugUnitTest` — **249 tests, 0 failures, 0 errors, 0 skipped**.
+- `./gradlew lint`, `./gradlew assembleDebug` — pass; debug APK produced.
+- Packaged-APK privacy check — pass (no INTERNET, network-state, broad storage/media or
+  `MANAGE_EXTERNAL_STORAGE` permission); Room schema-consistency step — pass; production
+  video-preload source guard — pass.
+- Artifact `mosaic-debug-and-reports` ID `13034239424` contains the debug APK and reports.
+- The first run on this branch ([41180098291](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41180098291),
+  `de78ba3`) had 1 failing assertion in the new rollback test (it expected the newly acquired
+  grant *not* to be released, while the rollback deliberately releases it); fixed in `64454cd`.
+  That run otherwise compiled and passed the other 248 tests.
+
+Remaining limitations: the debug APK's import of a release-exported backup, MediaStore/SAF
+behavior, Android 8–9 saved-folder grants and GIF animation are still real-device checks — CI
+covers neither the platform SAF pickers nor the installed-app upgrade path.
+
+
 ## 2026-10-29 — Mislabelled GIF detection + shared-folder Saved copies (implemented; verification blocked)
 **Live repository state verified this session:** branch `main`, HEAD `99c6450` (merge of PR #5),
 tag **v0.3.0** exists, versionName 0.3.0 / versionCode 4. PRs #4 and #5 are merged. The only open

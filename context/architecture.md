@@ -34,7 +34,7 @@ Settings gains **Backup & Restore**: an offline, user-controlled export/import o
 library configuration (folder labels + portable IDs, custom communities + portable
 memberships, Light/Dark theme) as a checksummed ZIP defined by
 `docs/backup-format-v1.md`. The format is independent of the Room schema (v3 and the
-future PR #6 v4 use the same contract) and deliberately excludes Saved copies, media
+PR #6's v4 use the same contract) and deliberately excludes Saved copies, media
 index rows, raw SAF/provider URIs, and persisted URI permissions.
 - `data/backup/`: `BackupFormat` (constants/limits/typed errors), `BackupJson` (minimal
   strict bounded parser, unknown fields ignored), `BackupModels` (manifest/settings/
@@ -70,6 +70,25 @@ index rows, raw SAF/provider URIs, and persisted URI permissions.
   dialogs through the existing SAF `CreateDocument`/`OpenDocument`/`FolderPickerContract`
   launchers. Preview and reconnection never mutate data; only the explicit final
   confirmation commits.
+
+## 2026-10-31 — Backup & Restore integrated into the PR #6 branch
+The merged Backup & Restore implementation (format v1, from PR #7 on `main`) now runs on the
+branch that owns GIF detection and shared-folder Saved copies. Integration is a merge, not a
+reimplementation: `docs/backup-format-v1.md`, `data/backup/*`, `LibraryBackupRepository`,
+`LibraryRepository.restoreLibrary`, the `LibraryStore`/`RoomLibraryStore` restore methods, the
+settings backup composables and both format fixtures are identical to `main`.
+- `MosaicApplication` composes both graphs (PR #6 saved-copy storage/repository and PR #7
+  `LibraryBackupRepository` with its DataStore theme store and SAF archive storage).
+- Room stays at v4 from PR #6 (`MIGRATION_3_4`, committed `4.json`); PR #7 changed no entity or
+  version, so no migration conflict exists and the backup layer is schema-independent as designed.
+- `SettingsScreen` keeps the Saved-copies card and exposes the backup UI through its optional
+  `backupSection` slot; `MainActivity`/`MosaicApp` pass `BackupViewModel` next to
+  `LibraryViewModel`.
+- Restore still replaces only folders/communities (one Room transaction) and then the theme;
+  `saved_copies` and saved media bytes are never read, deleted or rewritten by backup or restore.
+- `Pr7BackupFixtureIntegrationTest` imports the committed PR #7 fixture over Room v4 and covers
+  changed SAF URIs, membership/theme restore, skip semantics, invalid-archive safety, rollback,
+  Saved-copy preservation and rescan-based index rebuilding.
 
 ## Phase 2 implementation
 - `core/model/`: immutable metadata/selection models and typed scan outcomes.
