@@ -13,7 +13,42 @@ items. **No merge, tag, release, or version bump is authorized by this document.
 7. `context/progress-tracker.md`
 8. This handoff. Then verify the live repository state instead of assuming these facts are current.
 
-## Current change — Backup & Restore (PR #7) integrated into PR #6 (2026-10-31)
+## Current change — Multi-GIF feed playback, static thumbnails, playback lifecycle (2026-10-31)
+**Status: implemented and CI-verified on `arena/855dea2c-mosaic-app`; PR #8 not pushed to, nothing
+merged, no tag/release, no change to `applicationId`, signing, version, Room schema, backup v1,
+saved copies or MP4/audio policy.**
+
+- Commits `a149508`, `46d5ae6`, `7ae0b7c`, `b28ec5a`; parent/head of PR #8
+  `84f870f90f425255a038a00582f2b998a3579064`. Fast-forwarding PR #8's branch to `b28ec5a` (or
+  cherry-picking this series) publishes exactly this feature — no merge is authorized by this doc.
+- Verified run `41192764867`: SUCCESS, 289 tests, 0 failures, 0 errors, 2 skipped; lint,
+  `assembleDebug`, Room-schema check and packaged-APK privacy guard passed.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41192764867
+- Feed: every GIF whose measured preview is `>= 12%` inside the viewport animates at the same time
+  (retained down to `6%` while already animating), with no GIF cap; MP4 keeps its own single slot
+  (`activeVideoPreview` / `playbackVideoForAnchor`, 0.5 fraction, anchor must be a video). One gate,
+  `animatedPlaybackAllowed(eligible, playbackEnabled, transientlyBlocked, lifecycleResumed)`, stops
+  both when playback is disabled, a sort transition is running, or the app is backgrounded.
+- Inactive GIFs render a real first frame: `GifPreview` keeps an always-on `BitmapFactoryDecoder`
+  still layer (frame 0 of the original bytes, all API levels) under an animated layer that only
+  exists while eligible. The `"GIF · playback paused"` label is removed. Cache identities are
+  `"$uri@$modified:gif-still-frame"` and `"$uri@$modified:true"`; nothing is copied, renamed or
+  transcoded and `MediaKind.Gif` is unchanged.
+- Viewer animates only the current resumed page; zoom, chrome, chronological browsing, Save copy
+  and `VerticalPager(beyondViewportPageCount = 0)` are unchanged.
+- Decoder choice centralized in `core/media/GifDecoders.kt` (`AnimatedImageDecoder` API 28+,
+  `GifDecoder`/`Movie` below; the API-28 call sits in a `@RequiresApi(28)` function so lint can
+  prove the guard). `NearbyPhotoPrefetcher` stays static-photo-only (no GIF prefetch).
+- Tests: `GifPlaybackEligibilityTest`, `GifFeedPlaybackUiTest`, `GifFrameDecodingTest` over the
+  committed fixture `app/src/test/resources/media/two-frame.gif` (real 64x48, 2 frames: red then
+  blue). The still-frame decode is asserted to be the **first** frame on API 35 and API 26.
+- Limits: Robolectric cannot decode animated drawables (`ImageDecoder.decodeDrawable` and `Movie`
+  both unsupported), so 2 cases are `assumeTrue`-guarded device checks — several simultaneous GIFs,
+  scroll-in/out start/stop, background/resume, thumbnail-preserving pause, and the API 26/27
+  `Movie` path still need a physical device. **No device testing was performed.**
+- Engineering rationale and trade-offs: `docs/gif-playback-decision-record.md`.
+
+## Previous change — Backup & Restore (PR #7) integrated into PR #6 (2026-10-31)
 **Status: implemented on an intermediate branch; intermediate PR open, not merged.** No merge of
 this PR or of PR #6, no tag, no release, and no change to `applicationId`, signing, version or the
 format-v1 contract. `main`, PR #7 and PR #6's branch are untouched.

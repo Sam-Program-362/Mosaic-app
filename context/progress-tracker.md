@@ -1,5 +1,63 @@
 # Progress tracker
 
+## 2026-10-31 — Multi-GIF feed playback, static thumbnails, playback lifecycle (CI verified)
+**Branch/CI (verified this session):** commits `a149508`, `46d5ae6`, `7ae0b7c`, `b28ec5a` on
+`arena/855dea2c-mosaic-app`, whose parent is the PR #8 head
+`84f870f90f425255a038a00582f2b998a3579064` (itself PR #6 `7b252bc` + merged PR #7). The commit
+series is therefore exactly "PR #8 + this feature": the same commits can fast-forward PR #8's
+branch. **PR #8 itself was not pushed to and is still open/unmerged**; nothing was merged, tagged,
+released, force-pushed, or changed on `main`, PR #6 or PR #7.
+- Verified run `41192764867` (head `b28ec5a`, workflow `verify.yml`): **SUCCESS — 289 tests, 0
+  failures, 0 errors, 2 skipped**; unit tests, lint, `assembleDebug`, Room-schema consistency and
+  the packaged-APK privacy guard all passed. Artifact `mosaic-debug-and-reports`.
+  https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41192764867
+- Previous run `41192498265` (head `7ae0b7c`) was green with 288 tests; `41192008630` failed on a
+  test-authoring bug in the new corrupt-GIF case (`missing fixture corrupt.gif`) and `46d5ae6` +
+  `7ae0b7c` fixed it. `b28ec5a` adds the pre-API-28 decoder case (the 2 skips are the two
+  Robolectric-unsupported animated-drawable decodes; see below). Baseline before this work was
+  249 tests / 0 skipped (`41187842399`).
+
+Behaviour now implemented:
+- **Every meaningfully visible GIF animates, simultaneously.** `videoKeys` still competes for the
+  single MP4 slot (`activeVideoPreview`, `playbackVideoForAnchor`, 0.5 fraction, anchor must be a
+  video); `eligibleGifKeys` independently selects all GIFs with
+  `visibleFraction >= 0.12` (start) / `>= 0.06` (keep, hysteresis) and `overlap > 0`, sorted by feed
+  index. No GIF cap; no LazyColumn-composition-as-visibility.
+- **Inactive GIFs show a real first frame.** `GifPreview` composes an always-on still layer
+  (`BitmapFactoryDecoder` over the original URI; Skia returns frame 0 on every API level) plus an
+  animated layer that exists only while eligible. The label `"GIF · playback paused"` is gone.
+- **Separate cache identities** `"$uri@$modified:gif-still-frame"` (still) and `"$uri@$modified:true"`
+  (animated), so a still bitmap can never satisfy an animation request. No copies, renames,
+  transcodes, or thumbnail files; `MediaKind.Gif` and content detection unchanged.
+- **Gating in one place:** `animatedPlaybackAllowed(eligible, playbackEnabled, transientlyBlocked,
+  lifecycleResumed)` drives both the MP4 slot and GIF animation, so global playback off, sort
+  transitions and backgrounding stop animation. Hysteresis state is recreated per feed session
+  (folder/community/sort/epoch/search).
+- **Viewer** keeps `VerticalPager(beyondViewportPageCount = 0)`; only the current *resumed* page
+  animates (`pageActive`), and zoom/chrome/Save copy/chronological browsing are unchanged.
+- **Decoder choice centralized** in `core/media/GifDecoders.kt` (`AnimatedImageDecoder` on API 28+,
+  `GifDecoder` below; still frames always `BitmapFactoryDecoder`), reused by
+  `MosaicApplication.localImageLoader`.
+- **No GIF prefetch**: `NearbyPhotoPrefetcher` remains static-photo-only.
+- Decision record with problem/options/choice/trade-off for each of the above:
+  `docs/gif-playback-decision-record.md`.
+
+Verification detail and limits:
+- New tests: `GifPlaybackEligibilityTest` (19 pure cases: exact 12%/6% boundaries, multi-select,
+  ordering, off-screen/sliver/zero-height rejection, hysteresis, scroll changes, MP4 independence,
+  photo/GIF separation, shared playback gate), `GifFeedPlaybackUiTest` (10 Compose cases for
+  feed + viewer), `GifFrameDecodingTest` (10 Robolectric cases against the committed real
+  2-frame GIF `app/src/test/resources/media/two-frame.gif`: first-frame still decode on API 35 and
+  API 26, cache identities, decoder wiring, factory branch selection, corrupt bytes, and the two
+  assumption-guarded animated-drawable cases).
+- **2 skipped** are the animated-drawable decodes: Robolectric's native graphics implements
+  `ImageDecoder.decodeBitmap` but not `decodeDrawable`, and `Movie` decoding is unsupported, so
+  animations cannot be produced in the JVM. These are `assumeTrue` guards, not assertions that
+  were weakened. Device checks still required: several GIFs animating together, scroll in/out
+  start/stop, background/resume pause, pause-preserves-thumbnail, and the same on an API 26/27
+  device for the `Movie` path.
+- No real-device claim is made anywhere in this entry.
+
 ## 2026-10-31 — Backup & Restore (PR #7) integrated into PR #6 (intermediate PR #8; CI verified)
 **Branch/branching (verified against the live remote this session):**
 - Working branch **`feature/pr6-backup-v1-integration`**, created from the verified PR #6 head

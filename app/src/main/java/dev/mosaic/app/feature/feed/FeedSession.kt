@@ -253,6 +253,9 @@ internal fun animatedPlaybackAllowed(
 /**
  * Remembers the previous eligibility set so [eligibleGifKeys] can apply hysteresis.
  *
+ * One instance belongs to one feed session; the feed creates a fresh instance when the folder,
+ * community, sort, epoch or search changes, so retention can never leak across sessions.
+ *
  * [update] is idempotent for identical geometry, which keeps it safe to call from a
  * `derivedStateOf` recalculation.
  */
@@ -269,10 +272,6 @@ internal class GifAnimationEligibility {
         val next = eligibleGifKeys(visible, start, end, gifKeys, previouslyEligible)
         previouslyEligible = next
         return next
-    }
-
-    fun reset() {
-        previouslyEligible = emptySet()
     }
 }
 

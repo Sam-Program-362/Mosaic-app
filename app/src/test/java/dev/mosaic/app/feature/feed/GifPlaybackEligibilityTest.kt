@@ -233,10 +233,11 @@ class GifPlaybackEligibilityTest {
         )
         assertEquals(setOf("gif-b", "gif-c"), eligibility.update(after, 0, 1_000, gifKeys))
 
-        // Reset (new feed session) drops any retained key.
-        eligibility.reset()
-        assertEquals(setOf("gif-b", "gif-c"), eligibility.update(after, 0, 1_000, gifKeys))
-        assertEquals(emptySet<String>(), eligibility.update(listOf(
+        // A new feed session uses a fresh instance (this mirrors FeedScreen), which drops any
+        // retained key: 8% visible no longer qualifies once nothing is animating yet.
+        val nextSession = GifAnimationEligibility()
+        assertEquals(setOf("gif-b", "gif-c"), nextSession.update(after, 0, 1_000, gifKeys))
+        assertEquals(emptySet<String>(), nextSession.update(listOf(
             gif("gif-a", feedIndex = 0, offset = -460),
         ), 0, 1_000, setOf("gif-a")))
     }
