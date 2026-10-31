@@ -46,11 +46,15 @@ class GifFrameDecodingTest {
         ImageLoader.Builder(context).components { add(GifDecoders.animatedFactory()) }.build()
     }
 
-    private fun fixtureFile(name: String = "two-frame.gif", mutate: (ByteArray) -> ByteArray = { it }): File {
-        val bytes = checkNotNull(javaClass.getResourceAsStream("/media/$name")) { "missing fixture $name" }
+    /** Bytes of the committed, real two-frame GIF fixture. */
+    private fun fixtureBytes(): ByteArray =
+        checkNotNull(javaClass.getResourceAsStream("/media/two-frame.gif")) { "missing GIF fixture" }
             .use { it.readBytes() }
-        return File(context.cacheDir, name).apply { writeBytes(mutate(bytes)) }
-    }
+
+    private fun writeFixture(name: String, bytes: ByteArray): File =
+        File(context.cacheDir, name).apply { writeBytes(bytes) }
+
+    private fun fixtureFile(name: String = "two-frame.gif"): File = writeFixture(name, fixtureBytes())
 
     private fun execute(request: ImageRequest): ImageResult = runBlocking { imageLoader.execute(request) }
 
@@ -95,10 +99,11 @@ class GifFrameDecodingTest {
     }
 
     @Test fun unreadableGifBytesAreAHandleablePerItemFailureNeverAnAnimation() {
-        val corrupt = fixtureFile("corrupt.gif") { source ->
-            // Keep the GIF signature, then destroy the stream data.
-            source.copyOf(14).also { bytes -> for (i in 10 until bytes.size) bytes[i] = 0 }
-        }
+        // Keep the GIF signature (still detected as a GIF), then destroy the stream data.
+        val corrupt = writeFixture(
+            "corrupt.gif",
+            fixtureBytes().copyOf(14).also { bytes -> for (i in 10 until bytes.size) bytes[i] = 0 },
+        )
 
         val result = decodeStill(corrupt)
 
