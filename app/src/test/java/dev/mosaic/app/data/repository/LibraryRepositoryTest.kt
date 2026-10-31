@@ -194,6 +194,17 @@ class LibraryRepositoryTest {
             }
             publishCommunities()
         }
+        override suspend fun replaceLibraryConfiguration(
+            folders: List<FolderRecord>,
+            communities: List<CustomCommunity>,
+        ) {
+            val keep = folders.mapTo(mutableSetOf()) { it.id }
+            records.keys.filter { it !in keep }.forEach { removeFolder(it) }
+            folders.forEach { putFolder(it) }
+            this.communities.clear()
+            communities.forEach { this.communities[it.id] = it }
+            publishCommunities()
+        }
         override suspend fun getCustomCommunities() = communities.values.toList()
         override suspend fun createCustomCommunity(community: CustomCommunity) {
             communities[community.id] = community

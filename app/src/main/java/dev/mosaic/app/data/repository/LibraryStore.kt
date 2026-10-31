@@ -24,6 +24,17 @@ interface LibraryStore {
     /** Must retain media and folder identity on failure. */
     suspend fun markUnavailable(folderId: String, failure: ScanFailure)
 
+    /**
+     * Replace the folder/community configuration atomically in one transaction:
+     * upsert [folders], delete every other folder row (media cascades for removed
+     * folders only), delete all communities, then insert [communities] with their
+     * memberships. Saved-copy rows are never touched. No partial result on failure.
+     */
+    suspend fun replaceLibraryConfiguration(
+        folders: List<FolderRecord>,
+        communities: List<CustomCommunity>,
+    )
+
     val customCommunities: Flow<List<CustomCommunity>>
     suspend fun getCustomCommunities(): List<CustomCommunity>
     /** Insert the community and its membership atomically. Membership IDs must already be distinct. */

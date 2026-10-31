@@ -35,6 +35,11 @@ and next-phase proposal, start with the [fresh-session handoff](docs/session-han
 - Manage folders supports add, refresh, access recovery, and confirmed **Remove
   from Mosaic**. Removal drops Mosaic's index/community and attempts to release its
   saved read grant; it never alters or deletes original media.
+- **Export/Import backup (portable format v1):** Settings → Backup & Restore writes a
+  checksummed `.zip` containing selected folder labels, custom communities, and the
+  theme preference — never Saved copies, media rows, raw SAF URIs, or permissions —
+  and restores it with explicit folder reconnection, an explicit confirmation, and a
+  full outcome summary. See [docs/backup-format-v1.md](docs/backup-format-v1.md).
 - Room metadata, direct-child SAF scanning, unavailable-folder retention/retry, and
   selective warm-resume reconciliation. A cold process start or explicit refresh still
   fully scans; a warm resume refreshes other entries while preserving the active window.

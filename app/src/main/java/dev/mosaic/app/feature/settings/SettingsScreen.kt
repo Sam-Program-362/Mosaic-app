@@ -46,6 +46,7 @@ fun SettingsScreen(
     savedFolderRequiresSelection: Boolean = false,
     onChooseSavedFolder: () -> Unit = {},
     modifier: Modifier = Modifier,
+    backupSection: (@Composable () -> Unit)? = null,
 ) {
     val colors = LocalMosaicColors.current
     Column(
@@ -84,6 +85,13 @@ fun SettingsScreen(
                 LibraryStat("Folders", folderCount, Modifier.weight(1f))
                 LibraryStat("Communities", communityCount, Modifier.weight(1f))
                 LibraryStat("Saved", savedCount, Modifier.weight(1f))
+            }
+        }
+
+        if (backupSection != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SectionLabel("Backup & Restore")
+                backupSection()
             }
         }
 

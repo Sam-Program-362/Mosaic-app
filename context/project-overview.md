@@ -202,6 +202,18 @@ SDK and dependency set). Real-device GIF animation (Home + viewer), MediaStore/S
 file-manager visibility and migration over installed data remain unverified. See the
 [current handoff](../docs/session-handoff.md).
 
+## 2026-10-30 — Portable local backup/restore (implemented on a feature branch)
+Settings → Backup & Restore exports/imports folder labels, custom communities, and the
+theme preference as a portable checksummed ZIP (`docs/backup-format-v1.md`, format v1),
+independent of the Room schema so it moves between release-signed and debug-signed builds.
+Saved copies, media index rows, raw SAF URIs, and persisted permissions are excluded by
+design; folders are explicitly reconnected through the existing SAF picker after reinstall
+and the media index is rebuilt by rescanning. Import is staged: full archive validation →
+preview → per-folder reconnection → explicit confirmation → single Room transaction →
+rescan → theme write, with skipped/unavailable folders reported and memberships dropped
+rather than redirected. This exists so the user can export from the current release,
+uninstall, install the PR #6 debug build, and restore — PR #6 itself is untouched and
+stays open. See the session handoff for branch/CI status.
 ## Current stable release — v0.2.1 (2026-10-15)
 
 > **Live repository correction (2026-10-29):** `main` is at `99c6450` and tag **v0.3.0**

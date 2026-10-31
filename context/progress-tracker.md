@@ -61,6 +61,90 @@ tests) plus three bounded-header/export-naming checks passed. Robolectric/Compos
 and APK/lint checks were not executed. Real-device GIF animation, MediaStore/SAF export, and
 file-manager visibility remain unverified.
 
+## 2026-10-30 — Portable local backup/restore (PR #7; CI verified — GitHub Actions run 41130169375)
+Branch `feature/local-library-backup-restore` from `main` (`99c6450`), head `169d561`
+(commits `ae6119f` → `a81f374` → `5e82ebe` → `3053e2a` → `8eed7c3` (docs) → `169d561`
+(review fixes)),
+**PR #7 open and not merged**: https://github.com/Sam-Program-362/Mosaic-app/pull/7.
+**PR #6 (`fix/gif-detection-and-accessible-saved-copies`, head `7b252bc`) is untouched and
+stays open.** No merge, tag, release, version, signing, application-id, or Room schema change.
+
+Implemented (detail in `docs/session-handoff.md` and `docs/backup-format-v1.md`):
+- **Portable backup format v1** — checksummed ZIP (`manifest.json` + `settings.json` +
+  `folders.json` + `communities.json`), Room-schema independent, strict bounded parsing with
+  allowlisted entries only (no disk extraction), SHA-256/size verification before JSON parse,
+  and clear whole-archive errors (unsupported version, traversal, duplicates, unexpected or
+  missing entries, corrupt JSON, size/count/depth limits) — a failed validation never mutates
+  data. Two committed versioned fixtures under `app/src/test/resources/backup/`.
+- **Export** — Settings → Backup & Restore, SAF `ACTION_CREATE_DOCUMENT`, folder labels +
+  generated portable IDs, custom communities with portable memberships, theme; excludes Saved
+  copies, media rows, raw URIs, permissions; success only after the stream closes; cancellation
+  and errors reported.
+- **Import** — SAF `ACTION_OPEN_DOCUMENT` → validate/preview → per-folder reconnection through
+  the existing SAF picker (new tree URIs mapped to portable IDs; skips/failures drop only their
+  own memberships and are reported) → explicit confirmation → single Room transaction
+  (`replaceLibraryConfiguration`) → revoke removed folders' grants (only after commit;
+  failures reported) → rescan → theme write (Room-first; `themeRestored=false` is
+  reported honestly on theme failure; pre-commit failures roll back newly acquired grants
+  only). Saved copies are never touched.
+- **New tests:** `BackupArchiveTest` (30 cases, incl. 2 writer size-limit cases),
+  `BackupRestorePlannerTest` (6), `LibraryBackupRepositoryTest` (13 Room-backed cases, incl.
+  cancellation, transaction-failure and release-failure cases), `BackupViewModelTest` (6),
+  `BackupRestoreSectionUiTest` (8), plus a `SettingsScreenUiTest` slot assertion; the existing
+  `LibraryRepositoryTest.FakeStore` implements the new store method.
+- Docs: new `docs/backup-format-v1.md`; updated `README.md`, `context/architecture.md`,
+  `context/code-standards.md`, `context/ui-context.md`, `context/project-overview.md`,
+  `docs/session-handoff.md`.
+
+**Verification — GitHub Actions only** (the sandbox has no JDK/Android SDK, so local Gradle
+cannot start and no local pass is claimed): Verify Android run
+[41123210618](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41123210618) on
+`3053e2a` — **SUCCESS**. All prescribed checks passed in that single run:
+`./gradlew testDebugUnitTest` (**212 tests, 0 failures, 0 errors, 0 skipped** across 32
+classes — including the 57 new backup cases: BackupArchiveTest 28, BackupRestorePlannerTest 6,
+LibraryBackupRepositoryTest 9, BackupViewModelTest 6, BackupRestoreSectionUiTest 8, plus the
+SettingsScreenUiTest slot assertion), `./gradlew lint`, `./gradlew assembleDebug`, packaged-APK
+privacy check, Room schema-consistency step (schema unchanged), and the production source
+guard. Three earlier runs on this PR (41051985076, 41053383466, 41054812203) failed on
+compile/test defects that were fixed in commits `a81f374`, `5e82ebe`, `3053e2a`; only the final
+run above is claimed. Device-level SAF picker behavior (export/import/reconnection on a real
+provider) is **not** covered by CI and remains open for phone testing. A later docs-only run
+41124561931 on `8eed7c3` also passed (212 tests). After the review fixes below, run
+[41130169375](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41130169375) on
+`169d561` passed with **218 tests, 0 failures/errors/skips** across the same 32 classes — the
+212 above plus 6 new cases (2 in `BackupArchiveTest`, 4 in `LibraryBackupRepositoryTest`) —
+plus lint, `assembleDebug`, packaged-APK privacy, Room schema and production-source checks.
+
+### Read-only review fixes (2026-10-30, same PR)
+Three review findings were fixed on the same branch without touching the format contract:
+1. **Export/import size consistency** — `BackupArchiveWriter` now enforces the reader's
+   cumulative `MAX_TOTAL_UNCOMPRESSED_BYTES` (4 MiB) in addition to the per-entry cap,
+   throwing a clear `BackupExportException` while the archive is still being built, so
+   `exportTo` never writes to the destination or reports success for an archive its own
+   reader would reject. Regression tests: maximal legal draft round-trips through the real
+   reader; a draft over the total limit is refused; an oversized library export leaves the
+   destination untouched.
+2. **Cancellation during registration** — registration now runs inside the
+   rollback-protected operation: any failure after grants were taken (cancellation
+   included) releases the newly acquired grants under `NonCancellable` before
+   propagating, and never touches grants of folders that existed before the restore.
+   Test: cancellation after one successful registration rolls back only the new grant.
+3. **Existing permission release after commit** — removed folders' grants are revoked
+   only *after* `replaceLibraryConfiguration` commits, so a failed transaction leaves the
+   old configuration and its permissions intact; revocation failures are collected into
+   `RestoreOutcome/RestoreSummary.unreleasedFolderLabels` and shown in the result dialog,
+   and rollback-release failures attach to the primary error instead of being swallowed.
+   Tests: transaction failure keeps existing permissions; release failure (throw and
+   refusal) is reported while the committed restore stands.
+
+Verification of the fixes: GitHub Actions run
+[41130169375](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41130169375) on
+commit `169d561aad7f2518a7d8737fe43ec5d1df5d9d46` — **SUCCESS: 218 tests, 0 failures, 0
+errors, 0 skipped (32 classes), lint, `assembleDebug`, packaged-APK privacy check, Room
+schema-consistency step and the production source guard.** Still no local Gradle (no
+JDK/Android SDK), so CI remains the only code verification and no device-level SAF testing
+was performed. `BackupRestoreSectionUiTest.resultDialogSummarizesRestoredSkippedAndThemeOutcomes`
+also asserts the new "Folder access could not be released for: …" line.
 ## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
 **Current published stable release: Mosaic v0.2.1**
 (https://github.com/Sam-Program-362/Mosaic-app/releases/tag/v0.2.1) —
