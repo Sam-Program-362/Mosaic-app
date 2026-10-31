@@ -1,8 +1,9 @@
 # Progress tracker
 
-## 2026-10-30 — Portable local backup/restore (PR #7; CI verified — GitHub Actions run 41123210618)
-Branch `feature/local-library-backup-restore` from `main` (`99c6450`), head `3053e2a`
-(commits `ae6119f` → `a81f374` → `5e82ebe` → `3053e2a`),
+## 2026-10-30 — Portable local backup/restore (PR #7; CI verified — GitHub Actions run 41130169375)
+Branch `feature/local-library-backup-restore` from `main` (`99c6450`), head `169d561`
+(commits `ae6119f` → `a81f374` → `5e82ebe` → `3053e2a` → `8eed7c3` (docs) → `169d561`
+(review fixes)),
 **PR #7 open and not merged**: https://github.com/Sam-Program-362/Mosaic-app/pull/7.
 **PR #6 (`fix/gif-detection-and-accessible-saved-copies`, head `7b252bc`) is untouched and
 stays open.** No merge, tag, release, version, signing, application-id, or Room schema change.
@@ -25,8 +26,9 @@ Implemented (detail in `docs/session-handoff.md` and `docs/backup-format-v1.md`)
   failures reported) → rescan → theme write (Room-first; `themeRestored=false` is
   reported honestly on theme failure; pre-commit failures roll back newly acquired grants
   only). Saved copies are never touched.
-- **New tests:** `BackupArchiveTest` (28 cases), `BackupRestorePlannerTest` (6),
-  `LibraryBackupRepositoryTest` (9 Room-backed cases), `BackupViewModelTest` (6),
+- **New tests:** `BackupArchiveTest` (30 cases, incl. 2 writer size-limit cases),
+  `BackupRestorePlannerTest` (6), `LibraryBackupRepositoryTest` (13 Room-backed cases, incl.
+  cancellation, transaction-failure and release-failure cases), `BackupViewModelTest` (6),
   `BackupRestoreSectionUiTest` (8), plus a `SettingsScreenUiTest` slot assertion; the existing
   `LibraryRepositoryTest.FakeStore` implements the new store method.
 - Docs: new `docs/backup-format-v1.md`; updated `README.md`, `context/architecture.md`,
@@ -45,7 +47,12 @@ privacy check, Room schema-consistency step (schema unchanged), and the producti
 guard. Three earlier runs on this PR (41051985076, 41053383466, 41054812203) failed on
 compile/test defects that were fixed in commits `a81f374`, `5e82ebe`, `3053e2a`; only the final
 run above is claimed. Device-level SAF picker behavior (export/import/reconnection on a real
-provider) is **not** covered by CI and remains open for phone testing.
+provider) is **not** covered by CI and remains open for phone testing. A later docs-only run
+41124561931 on `8eed7c3` also passed (212 tests). After the review fixes below, run
+[41130169375](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41130169375) on
+`169d561` passed with **218 tests, 0 failures/errors/skips** across the same 32 classes — the
+212 above plus 6 new cases (2 in `BackupArchiveTest`, 4 in `LibraryBackupRepositoryTest`) —
+plus lint, `assembleDebug`, packaged-APK privacy, Room schema and production-source checks.
 
 ### Read-only review fixes (2026-10-30, same PR)
 Three review findings were fixed on the same branch without touching the format contract:
@@ -68,6 +75,15 @@ Three review findings were fixed on the same branch without touching the format 
    and rollback-release failures attach to the primary error instead of being swallowed.
    Tests: transaction failure keeps existing permissions; release failure (throw and
    refusal) is reported while the committed restore stands.
+
+Verification of the fixes: GitHub Actions run
+[41130169375](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41130169375) on
+commit `169d561aad7f2518a7d8737fe43ec5d1df5d9d46` — **SUCCESS: 218 tests, 0 failures, 0
+errors, 0 skipped (32 classes), lint, `assembleDebug`, packaged-APK privacy check, Room
+schema-consistency step and the production source guard.** Still no local Gradle (no
+JDK/Android SDK), so CI remains the only code verification and no device-level SAF testing
+was performed. `BackupRestoreSectionUiTest.resultDialogSummarizesRestoredSkippedAndThemeOutcomes`
+also asserts the new "Folder access could not be released for: …" line.
 
 ## Current status — v0.2.1 is the current stable release; waiting for the user's next instructions
 **Current published stable release: Mosaic v0.2.1**

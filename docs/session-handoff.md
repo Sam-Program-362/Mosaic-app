@@ -67,10 +67,15 @@ over the release):
   `3053e2a` — **SUCCESS: 212 tests / 0 failures / 0 skipped (32 classes), lint, assembleDebug,
   APK privacy check, Room schema check, and the production source guard all passed.** Three
   earlier runs (41051985076, 41053383466, 41054812203) failed on compile/test defects fixed in
-  `a81f374`, `5e82ebe`, `3053e2a`; only the final run is claimed. Details are in
-  `context/progress-tracker.md`. Local Gradle cannot run in this sandbox (no JDK/Android SDK),
-  so CI is the verification. Device-level SAF picker behavior remains unverified until phone
-  testing.
+  `a81f374`, `5e82ebe`, `3053e2a`; only the final run is claimed. After the read-only review
+  fixes (writer total-size limit, cancellation-safe registration rollback, release-after-commit
+  with reported failures), run
+  [41130169375](https://github.com/Sam-Program-362/Mosaic-app/actions/runs/41130169375) on
+  `169d561aad7f2518a7d8737fe43ec5d1df5d9d46` passed with **218 tests / 0 failures / 0 skipped
+  (32 classes)**, lint, `assembleDebug`, APK privacy, Room schema and source guard. Details are
+  in `context/progress-tracker.md`. Local Gradle cannot run in this sandbox (no JDK/Android
+  SDK), so CI is the verification. Device-level SAF picker behavior remains unverified until
+  phone testing.
 - Docs updated: `README.md`, new `docs/backup-format-v1.md`, `context/architecture.md`,
   `context/code-standards.md`, `context/ui-context.md`, `context/project-overview.md`;
   `context/progress-tracker.md` and this handoff record the change.
