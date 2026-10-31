@@ -169,6 +169,41 @@ class GifFrameDecodingTest {
         assertEquals(48, image.height)
     }
 
+    /**
+     * The pre-API-28 animation path (`android.graphics.Movie`) decoded from the same fixture.
+     * Robolectric may not implement `Movie` decoding; when it cannot, the case is skipped rather
+     * than pretending the legacy animation path was verified (see the device checklist).
+     */
+    @Test @Config(sdk = [27])
+    fun legacyMovieDecoderProducesADrawableAnimationForTheSameGif() {
+        val request = ImageRequest.Builder(context)
+            .data(fixtureFile().absolutePath.toPath())
+            .decoderFactory(GifDecoders.movieDecoderFactory())
+            .build()
+
+        val result = try {
+            execute(request)
+        } catch (error: Throwable) {
+            if (error is VirtualMachineError) throw error
+            org.junit.Assume.assumeNoException("Robolectric cannot run the Movie decoder", error)
+            return
+        }
+        if (result !is SuccessResult) {
+            org.junit.Assume.assumeTrue(
+                "Robolectric cannot decode an animated Movie; verify on an API 26/27 device",
+                false,
+            )
+            return
+        }
+        val image = requireNotNull(result.image)
+        assertTrue(
+            "below API 28 the legacy decoder must still yield an animation, not one frame",
+            image is coil3.DrawableImage,
+        )
+        assertEquals(64, image.width)
+        assertEquals(48, image.height)
+    }
+
     // --- request identities --------------------------------------------------------------
 
     @Test fun stillAndAnimatedRequestsUseSeparateCacheIdentities() {
