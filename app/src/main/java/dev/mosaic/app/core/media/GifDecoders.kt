@@ -1,6 +1,7 @@
 package dev.mosaic.app.core.media
 
 import android.os.Build
+import androidx.annotation.RequiresApi
 import coil3.decode.BitmapFactoryDecoder
 import coil3.decode.Decoder
 import coil3.gif.AnimatedImageDecoder
@@ -23,14 +24,22 @@ import coil3.gif.GifDecoder
 internal object GifDecoders {
 
     /** The animated decoder Mosaic registers for its image loader, chosen by platform capability. */
-    fun animatedFactory(sdkInt: Int = Build.VERSION.SDK_INT): Decoder.Factory =
-        if (sdkInt >= API_ANIMATED_IMAGE_DECODER) {
-            // ImageDecoder: animated GIF/WebP/HEIF with hardware-friendly decoding.
-            AnimatedImageDecoder.Factory()
+    fun animatedFactory(): Decoder.Factory =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            imageDecoderFactory()
         } else {
-            // android.graphics.Movie: the only animated GIF decoder before API 28.
-            GifDecoder.Factory()
+            movieDecoderFactory()
         }
+
+    /**
+     * API 28+: `ImageDecoder` decodes animated GIF/WebP/HEIF with hardware-friendly decoding.
+     * Kept in its own `@RequiresApi` function so the version guard above stays provable to lint.
+     */
+    @RequiresApi(Build.VERSION_CODES.P)
+    internal fun imageDecoderFactory(): Decoder.Factory = AnimatedImageDecoder.Factory()
+
+    /** Below API 28: `android.graphics.Movie`, the only animated GIF decoder available there. */
+    internal fun movieDecoderFactory(): Decoder.Factory = GifDecoder.Factory()
 
     /** Static first-frame decoding from the original GIF bytes; never returns an animation. */
     fun stillFrameFactory(): Decoder.Factory = BitmapFactoryDecoder.Factory()

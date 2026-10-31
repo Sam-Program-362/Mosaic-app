@@ -122,12 +122,16 @@ class GifFrameDecodingTest {
 
     // --- animated path -------------------------------------------------------------------
 
-    @Test fun animatedFactorySelectsThePlatformAnimatedDecoder() {
+    @Test fun animatedFactorySelectsTheImageDecoderPathOnApi28AndAbove() {
         assertEquals(28, GifDecoders.API_ANIMATED_IMAGE_DECODER)
-        assertTrue(GifDecoders.animatedFactory(35) is AnimatedImageDecoder.Factory)
-        assertTrue(GifDecoders.animatedFactory(28) is AnimatedImageDecoder.Factory)
-        assertTrue(GifDecoders.animatedFactory(27) is GifDecoder.Factory)
-        assertTrue(GifDecoders.animatedFactory(26) is GifDecoder.Factory)
+        // This test runs on API 35, so the platform branch selection is exercised for real.
+        assertTrue(GifDecoders.animatedFactory() is AnimatedImageDecoder.Factory)
+    }
+
+    @Test @Config(sdk = [27])
+    fun animatedFactoryFallsBackToTheMovieDecoderBelowApi28() {
+        // API 27 has no ImageDecoder: the legacy Movie-backed GIF decoder must be selected.
+        assertTrue(GifDecoders.animatedFactory() is GifDecoder.Factory)
     }
 
     @Test fun animatedRequestNeverPinsTheStillFrameDecoder() {
