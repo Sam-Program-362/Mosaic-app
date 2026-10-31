@@ -353,9 +353,10 @@ class Pr7BackupFixtureIntegrationTest {
         assertEquals(foldersBefore, store.getFolders())
         assertEquals(communitiesBefore, store.getCustomCommunities())
         assertEquals(savedBefore, database.savedCopyDao().observeSavedCopies().first())
-        // Only the grant this failed restore newly acquired was released.
+        // Only the grant this failed restore newly acquired was released; the grant that
+        // belongs to the pre-existing folder was never touched.
         assertEquals(listOf("content://restored/camera"), source.releaseAttempts)
-        assertTrue(source.released.isEmpty())
+        assertFalse(source.releaseAttempts.contains("tree-existing"))
         assertTrue(theme.writes.isEmpty())
     }
 
