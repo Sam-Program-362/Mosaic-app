@@ -117,8 +117,8 @@ class FeedSessionTest {
             VisibleMedia("gif", 0, 500, feedIndex = 2),
             VisibleMedia("video", 450, 400, feedIndex = 3),
         )
-        assertEquals("gif", activePreview(visible, 0, 1000, setOf("gif", "video")))
-        assertNull(activePreview(listOf(VisibleMedia("edge-video", -395, 400, feedIndex = 1)),
+        assertEquals("gif", activeVideoPreview(visible, 0, 1000, setOf("gif", "video")))
+        assertNull(activeVideoPreview(listOf(VisibleMedia("edge-video", -395, 400, feedIndex = 1)),
             0, 1000, setOf("edge-video")))
     }
 
@@ -138,7 +138,7 @@ class FeedSessionTest {
             assertEquals(expectedOverlap, visibleOverlapPixels(item, 0, 700))
             assertEquals(expectedOverlap.toFloat() / item.size, visibleFraction(item, 0, 700), 0.001f)
             val anchor = dominantVisibleMedia(listOf(item), 0, 700)?.key
-            assertEquals(item.key, playbackPreviewForAnchor(anchor, listOf(item), 0, 700, setOf(item.key)))
+            assertEquals(item.key, playbackVideoForAnchor(anchor, listOf(item), 0, 700, setOf(item.key)))
         }
     }
 
@@ -146,7 +146,7 @@ class FeedSessionTest {
         val portraitHeight = feedPreviewHeightDp(360f, 9f / 16f).roundToInt()
         val landscapeHeight = feedPreviewHeightDp(360f, 16f / 9f).roundToInt()
         val animated = setOf("portrait", "landscape")
-        fun selected(visible: List<VisibleMedia>): String? = playbackPreviewForAnchor(
+        fun selected(visible: List<VisibleMedia>): String? = playbackVideoForAnchor(
             dominantVisibleMedia(visible, 0, 700)?.key,
             visible,
             0,
@@ -187,8 +187,8 @@ class FeedSessionTest {
     @Test fun zeroOverlapAndPrecomposedMediaCannotAnchorOrPlay() {
         val visible = listOf(VisibleMedia("offscreen-video", 1_000, 400, feedIndex = 4))
         assertNull(dominantVisibleMedia(visible, 0, 1_000))
-        assertNull(activePreview(visible, 0, 1_000, setOf("offscreen-video")))
-        assertNull(playbackPreviewForAnchor(null, visible, 0, 1_000, setOf("offscreen-video")))
+        assertNull(activeVideoPreview(visible, 0, 1_000, setOf("offscreen-video")))
+        assertNull(playbackVideoForAnchor(null, visible, 0, 1_000, setOf("offscreen-video")))
     }
 
     @Test fun dominantAnchorUsesAllMediaKindsAndDoesNotStickToAnOldVideoEdge() {
@@ -198,7 +198,7 @@ class FeedSessionTest {
         )
 
         assertEquals("current-photo", dominantVisibleMedia(visible, 0, 600)?.key)
-        assertNull(activePreview(visible, 0, 600, setOf("old-video")))
+        assertNull(activeVideoPreview(visible, 0, 600, setOf("old-video")))
     }
 
     @Test fun dominantAnchorAndPlaybackSelectionCanDifferWithoutPlayingAPartialEdge() {
@@ -210,8 +210,8 @@ class FeedSessionTest {
 
         val anchor = dominantVisibleMedia(visible, 0, 600)?.key
         assertEquals("photo", anchor)
-        assertEquals("next-gif", activePreview(visible, 0, 600, setOf("old-video", "next-gif")))
-        assertNull(playbackPreviewForAnchor(anchor, visible, 0, 600, setOf("old-video", "next-gif")))
+        assertEquals("next-gif", activeVideoPreview(visible, 0, 600, setOf("old-video", "next-gif")))
+        assertNull(playbackVideoForAnchor(anchor, visible, 0, 600, setOf("old-video", "next-gif")))
     }
 
     @Test fun nearbyPhotoWindowRetainsCurrentAndNearestStaticPhotosOnly() {

@@ -189,7 +189,7 @@ class MediaViewerChromeUiTest {
                 Box(Modifier.size(300.dp)) {
                     LocalMediaPreview(
                         post = post("feed", MediaKind.Image),
-                        active = true,
+                        videoActive = true,
                         imageLoader = loader,
                         viewer = false,
                     )

@@ -62,7 +62,7 @@ class FeedUiTest {
                         Box(Modifier.fillMaxWidth().onSizeChanged { availableWidthsPx[index] = it.width }) {
                             LocalMediaPreview(
                                 post = photos[index],
-                                active = false,
+                                videoActive = false,
                                 imageLoader = loader,
                                 initialAspectRatio = aspectRatio,
                                 onBounds = { previewGeometries[index] = it },
@@ -93,7 +93,7 @@ class FeedUiTest {
         ))
         compose.setContent {
             MosaicTheme(ThemeMode.Dark) {
-                Column { MediaPostCard(FeedPost(media, DecorativeCounts(1, 0), null), loader, active = false) }
+                Column { MediaPostCard(FeedPost(media, DecorativeCounts(1, 0), null), loader, videoActive = false) }
             }
         }
 
@@ -111,7 +111,7 @@ class FeedUiTest {
                     MediaPostCard(
                         FeedPost(media, DecorativeCounts(1, 0), null),
                         loader,
-                        active = false,
+                        videoActive = false,
                         videoPreviewVisible = false,
                     )
                 }

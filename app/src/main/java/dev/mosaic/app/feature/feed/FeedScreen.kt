@@ -75,8 +75,19 @@ fun FeedScreen(
         visibleState.toSnapshot()
     }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    val animatedKeys = remember(visiblePosts) {
-        visiblePosts.filter { it.media.document.kind != MediaKind.Image }.map { it.media.key.stableKey }.toSet()
+    // MP4 selection and GIF eligibility are deliberately separate:
+    // - videoKeys compete for the single playback slot (existing one-active-video policy);
+    // - gifKeys animate independently whenever they are meaningfully visible.
+    val videoKeys = remember(visiblePosts) {
+        visiblePosts.filter { it.media.document.kind == MediaKind.Video }.map { it.media.key.stableKey }.toSet()
+    }
+    val gifKeys = remember(visiblePosts) {
+        visiblePosts.filter { it.media.document.kind == MediaKind.Gif }.map { it.media.key.stableKey }.toSet()
+    }
+    // Hysteresis bookkeeping belongs to one feed session only; a folder/community/sort/search
+    // change or a new epoch starts from a clean slate instead of inheriting the previous set.
+    val gifEligibility = remember(state.folderId, state.customCommunityId, state.sort, state.epoch, searchQuery) {
+        GifAnimationEligibility()
     }
     val feedIndexByKey = remember(visiblePosts) {
         visiblePosts.mapIndexed { index, post -> post.media.key.stableKey to index }.toMap()
@@ -111,15 +122,27 @@ fun FeedScreen(
             dominantVisibleMedia(visibleMediaState.value, viewportStart, viewportEnd)?.key
         }
     }
-    val activeKey by remember(animatedKeys, visibleMediaState, viewportStart, viewportEnd, viewportAnchorKey) {
+    val activeVideoKey by remember(videoKeys, visibleMediaState, viewportStart, viewportEnd, viewportAnchorKey) {
         derivedStateOf {
-            playbackPreviewForAnchor(
+            playbackVideoForAnchor(
                 viewportAnchorKey,
                 visibleMediaState.value,
                 viewportStart,
                 viewportEnd,
-                animatedKeys,
+                videoKeys,
             )
+        }
+    }
+    // Every meaningfully visible GIF may animate at once. Geometry comes from the measured
+    // preview placement inside the real viewport, never from LazyColumn composition alone.
+    //
+    // `GifAnimationEligibility` only memoizes the previous result for hysteresis: it holds a plain
+    // (non-observable) field, so the update inside the calculation is not a snapshot write and the
+    // derived state keeps depending on geometry alone. A new feed session gets a fresh instance,
+    // so retention never leaks across folders, sorts, searches or viewer sessions.
+    val eligibleGifKeys by remember(gifKeys, visibleMediaState, viewportStart, viewportEnd, gifEligibility) {
+        derivedStateOf {
+            gifEligibility.update(visibleMediaState.value, viewportStart, viewportEnd, gifKeys)
         }
     }
     val centerIndex = viewportAnchorKey?.let { feedIndexByKey[it] } ?: -1
@@ -130,9 +153,9 @@ fun FeedScreen(
             } ?: 0
         }
     }
-    val activeFractionBucket by remember(visibleMediaState, viewportStart, viewportEnd, activeKey) {
+    val activeFractionBucket by remember(visibleMediaState, viewportStart, viewportEnd, activeVideoKey) {
         derivedStateOf {
-            visibleMediaState.value.firstOrNull { it.key == activeKey }?.let {
+            visibleMediaState.value.firstOrNull { it.key == activeVideoKey }?.let {
                 (visibleFraction(it, viewportStart, viewportEnd) * 10f).roundToInt()
             } ?: 0
         }
@@ -156,7 +179,7 @@ fun FeedScreen(
     LaunchedEffect(
         viewportAnchorKey,
         centerIndex,
-        activeKey,
+        activeVideoKey,
         anchorFractionBucket,
         activeFractionBucket,
         photoWindow,
@@ -167,14 +190,14 @@ fun FeedScreen(
         val currentVisibleMedia = visibleMediaState.value
         val anchor = dominantVisibleMedia(currentVisibleMedia, viewportStart, viewportEnd)
         val anchorVisibleFraction = anchor?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
-        val activeMedia = activeKey?.let { key -> currentVisibleMedia.firstOrNull { it.key == key } }
+        val activeMedia = activeVideoKey?.let { key -> currentVisibleMedia.firstOrNull { it.key == key } }
         val activeVisibleFraction = activeMedia?.let { visibleFraction(it, viewportStart, viewportEnd) } ?: 0f
         val candidateSummary = photoWindow.joinToString(",") { candidate ->
             "${candidate.feedIndex}:${candidate.post.media.document.kind.name.lowercase()}:${candidate.direction}"
         }.ifBlank { "none" }
         val anchorKind = anchor?.let { visiblePosts.getOrNull(it.feedIndex)?.media?.document?.kind?.name?.lowercase() }
-        val activeIndex = activeKey?.let { feedIndexByKey[it] } ?: -1
-        val activeKind = activeKey?.let { key ->
+        val activeIndex = activeVideoKey?.let { feedIndexByKey[it] } ?: -1
+        val activeKind = activeVideoKey?.let { key ->
             visiblePosts.getOrNull(feedIndexByKey[key] ?: -1)?.media?.document?.kind?.name?.lowercase()
         }
         val visibleSummary = currentVisibleMedia.sortedBy { it.feedIndex }.joinToString(";") { item ->
@@ -191,14 +214,14 @@ fun FeedScreen(
                 "anchorId=${anchor?.key?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "anchorVisible=${(anchorVisibleFraction * 100f).roundToInt()}% " +
                 "activePos=$activeIndex activeKind=${activeKind ?: "none"} " +
-                "activeId=${activeKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
+                "activeId=${activeVideoKey?.let(MediaDiagnostics::shortId) ?: "none"} " +
                 "activeVisible=${(activeVisibleFraction * 100f).roundToInt()}% " +
                 "candidates=$candidateSummary visible=$visibleSummary",
         )
     }
     var previousSelection by remember { mutableStateOf<FeedSelectionIdentity?>(null) }
-    LaunchedEffect(viewportAnchorKey, activeKey) {
-        val current = FeedSelectionIdentity(viewportAnchorKey, activeKey)
+    LaunchedEffect(viewportAnchorKey, activeVideoKey) {
+        val current = FeedSelectionIdentity(viewportAnchorKey, activeVideoKey)
         val before = previousSelection
         val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
         MediaDiagnostics.log(
@@ -216,6 +239,17 @@ fun FeedScreen(
         previousSelection = current
     }
     var sorting by remember { mutableStateOf(false) }
+    // Debug-only observability for the multi-GIF policy: log only when the eligible set or its
+    // gating inputs change, so a trace shows GIF start/stop without per-frame noise.
+    val gifEligibilityTrace = eligibleGifKeys.sorted().joinToString(",")
+    LaunchedEffect(gifEligibilityTrace, playbackEnabled, sorting, lifecycle) {
+        MediaDiagnostics.log(
+            diagnosticContext,
+            "media gif-eligibility changed count=${eligibleGifKeys.size} " +
+                "ids=${eligibleGifKeys.joinToString(",") { MediaDiagnostics.shortId(it) }.ifBlank { "none" }} " +
+                "playback=$playbackEnabled sorting=$sorting lifecycle=${lifecycle.name}",
+        )
+    }
     val retainedCallback by rememberUpdatedState(onRetainedMediaChanged)
     LaunchedEffect(photoWindow) {
         retainedCallback(photoWindow.map { it.post.media.key }.toSet())
@@ -407,7 +441,18 @@ fun FeedScreen(
                         }
                     }
                 },
-                active = playbackEnabled && !sorting && lifecycle.isAtLeast(Lifecycle.State.RESUMED) && activeKey == key,
+                videoActive = animatedPlaybackAllowed(
+                    eligible = activeVideoKey == key,
+                    playbackEnabled = playbackEnabled,
+                    transientlyBlocked = sorting,
+                    lifecycleResumed = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+                ),
+                gifPlaybackEnabled = animatedPlaybackAllowed(
+                    eligible = key in eligibleGifKeys,
+                    playbackEnabled = playbackEnabled,
+                    transientlyBlocked = sorting,
+                    lifecycleResumed = lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+                ),
                 videoAudioSession = sharedVideoAudioSession,
                 onOpenViewer = { onOpenViewer(snapshot, index) },
                 onSaveCopy = onSaveCopy?.let { save -> { save(post) } },
@@ -437,7 +482,10 @@ private data class FeedSelectionIdentity(val anchorKey: String?, val activeKey: 
 internal fun MediaPostCard(
     post: FeedPost,
     imageLoader: ImageLoader,
-    active: Boolean,
+    /** This card owns the single MP4 playback slot right now. */
+    videoActive: Boolean,
+    /** This card's GIF is meaningfully visible and playback/lifecycle allow animation. */
+    gifPlaybackEnabled: Boolean = false,
     videoAudioSession: VideoAudioSession? = null,
     onCardSizeChanged: (IntSize) -> Unit = {},
     onPreviewBounds: (PreviewItemGeometry) -> Unit = {},
@@ -488,7 +536,8 @@ internal fun MediaPostCard(
         )
         LocalMediaPreview(
             post = post,
-            active = active,
+            videoActive = videoActive,
+            gifPlaybackEnabled = gifPlaybackEnabled,
             imageLoader = imageLoader,
             videoAudioSession = videoAudioSession,
             onBounds = onPreviewBounds,

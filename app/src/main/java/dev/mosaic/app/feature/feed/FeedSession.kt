@@ -150,18 +150,23 @@ fun dominantVisibleMedia(visible: List<VisibleMedia>, start: Int, end: Int): Vis
         .maxWithOrNull(compareBy<Pair<VisibleMedia, Int>> { it.second }.thenBy { it.first.feedIndex })
         ?.first
 
-/** Pick at most one visible animation/player; require meaningful overlap, not a one-pixel edge. */
-fun activePreview(
+/**
+ * Pick at most one visible **MP4** for the playback slot; require meaningful overlap, not a
+ * one-pixel edge. GIFs are deliberately excluded from this selection: they animate through the
+ * image pipeline whenever they are meaningfully visible (see [eligibleGifKeys]) and no longer
+ * compete with videos for this single slot.
+ */
+fun activeVideoPreview(
     visible: List<VisibleMedia>,
     start: Int,
     end: Int,
-    animatedKeys: Set<String>,
+    videoKeys: Set<String>,
     minimumVisibleFraction: Float = MIN_ACTIVE_PREVIEW_VISIBLE_FRACTION,
 ): String? {
     val viewportHeight = (end - start).coerceAtLeast(0)
     if (viewportHeight == 0) return null
     return visible.asSequence()
-        .filter { it.key in animatedKeys && it.size > 0 }
+        .filter { it.key in videoKeys && it.size > 0 }
         .map { item -> item to visibleOverlapPixels(item, start, end) }
         .filter { (_, pixels) -> pixels > 0 }
         .filter { (item, _) -> visibleFraction(item, start, end) >= minimumVisibleFraction }
@@ -170,19 +175,105 @@ fun activePreview(
 }
 
 /**
- * Playback requires an animated all-media anchor. If that tall/edge animation is below the
- * visibility threshold, hand off to the most-visible eligible animation instead of leaving
- * a fully visible video idle; a photo anchor still suppresses playback.
+ * MP4 playback requires a video anchor. If that tall/edge video is below the visibility
+ * threshold, hand off to the most-visible eligible video instead of leaving a fully visible
+ * video idle; a photo **or GIF** anchor still suppresses video playback, exactly as before.
  */
-fun playbackPreviewForAnchor(
+fun playbackVideoForAnchor(
     anchorKey: String?,
     visible: List<VisibleMedia>,
     start: Int,
     end: Int,
-    animatedKeys: Set<String>,
+    videoKeys: Set<String>,
 ): String? {
-    if (anchorKey == null || anchorKey !in animatedKeys) return null
-    return activePreview(visible, start, end, animatedKeys)
+    if (anchorKey == null || anchorKey !in videoKeys) return null
+    return activeVideoPreview(visible, start, end, videoKeys)
+}
+
+/** A GIF starts animating once at least this much of its preview is inside the viewport. */
+internal const val MIN_VISIBLE_GIF_FRACTION = 0.12f
+
+/**
+ * An already-animating GIF is retained down to this smaller fraction. The band between the two
+ * constants is hysteresis: scrolling a GIF across the enter threshold cannot start/stop its
+ * decoder on every frame.
+ */
+internal const val RETAIN_VISIBLE_GIF_FRACTION = 0.06f
+
+/**
+ * Every GIF that is meaningfully visible right now, so several GIFs can animate at once.
+ *
+ * Eligibility is derived from the measured preview geometry against the real viewport (never
+ * from LazyColumn composition), so a composed-but-off-screen card, a prefetched neighbour, or a
+ * one-pixel sliver can never animate. Items already animating use [retainVisibleFraction] so a
+ * GIF that is scrolling past the boundary is not stopped and restarted repeatedly.
+ */
+fun eligibleGifKeys(
+    visible: List<VisibleMedia>,
+    start: Int,
+    end: Int,
+    gifKeys: Set<String>,
+    previouslyEligible: Set<String> = emptySet(),
+    minimumVisibleFraction: Float = MIN_VISIBLE_GIF_FRACTION,
+    retainVisibleFraction: Float = RETAIN_VISIBLE_GIF_FRACTION,
+): Set<String> {
+    val viewportHeight = (end - start).coerceAtLeast(0)
+    if (viewportHeight == 0 || gifKeys.isEmpty()) return emptySet()
+    val retain = retainVisibleFraction.coerceAtMost(minimumVisibleFraction)
+    val eligible = visible.asSequence()
+        .filter { it.key in gifKeys && it.size > 0 }
+        .filter { visibleOverlapPixels(it, start, end) > 0 }
+        .filter { item ->
+            val threshold = if (item.key in previouslyEligible) retain else minimumVisibleFraction
+            visibleFraction(item, start, end) >= threshold
+        }
+        .sortedBy { it.feedIndex }
+        .map { it.key }
+        .toList()
+    return if (eligible.isEmpty()) emptySet() else LinkedHashSet(eligible)
+}
+
+/**
+ * Single gate for "may animated media play in this card right now".
+ *
+ * [eligible] carries the medium-specific geometry decision (GIF visibility for GIFs, the
+ * one-active-video slot for MP4), while the remaining signals are shared app state: the feed's
+ * playback switch, transient UI states such as an open sort menu/search/drawer or a sort
+ * transition, and lifecycle. Keeping them in one named function means a GIF can never animate
+ * when playback is globally disabled, backgrounded, or interrupted by a transition — and that
+ * the video gate stays exactly as strict as before.
+ */
+internal fun animatedPlaybackAllowed(
+    eligible: Boolean,
+    playbackEnabled: Boolean,
+    transientlyBlocked: Boolean,
+    lifecycleResumed: Boolean,
+): Boolean = eligible && playbackEnabled && !transientlyBlocked && lifecycleResumed
+
+/**
+ * Remembers the previous eligibility set so [eligibleGifKeys] can apply hysteresis.
+ *
+ * [update] is idempotent for identical geometry, which keeps it safe to call from a
+ * `derivedStateOf` recalculation.
+ */
+internal class GifAnimationEligibility {
+
+    private var previouslyEligible: Set<String> = emptySet()
+
+    fun update(
+        visible: List<VisibleMedia>,
+        start: Int,
+        end: Int,
+        gifKeys: Set<String>,
+    ): Set<String> {
+        val next = eligibleGifKeys(visible, start, end, gifKeys, previouslyEligible)
+        previouslyEligible = next
+        return next
+    }
+
+    fun reset() {
+        previouslyEligible = emptySet()
+    }
 }
 
 private const val MIN_ACTIVE_PREVIEW_VISIBLE_FRACTION = 0.5f

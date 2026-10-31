@@ -77,7 +77,7 @@ class TitleCopyUiTest {
                 MediaPostCard(
                     post = post,
                     imageLoader = loader,
-                    active = false,
+                    videoActive = false,
                     onOpenViewer = { opened = true },
                 )
             }

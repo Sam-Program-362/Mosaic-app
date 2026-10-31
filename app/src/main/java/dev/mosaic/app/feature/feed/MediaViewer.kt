@@ -220,9 +220,13 @@ fun MediaViewer(
             // and only this displayed destination item is ever requested.
             val pageTimeline = timeline?.takeIf { it.randomPage == page }
             val post = pageTimeline?.sequence?.getOrNull(pageTimeline.index) ?: randomPost
+            // Only the current, resumed viewer page animates its GIF; other pages stay still.
+            val pageActive = page == pagerState.currentPage &&
+                lifecycle.isAtLeast(Lifecycle.State.RESUMED)
             LocalMediaPreview(
                 post = post,
-                active = page == pagerState.currentPage && lifecycle.isAtLeast(Lifecycle.State.RESUMED),
+                videoActive = pageActive,
+                gifPlaybackEnabled = pageActive,
                 imageLoader = imageLoader,
                 viewer = true,
                 onViewerSurfaceTap = { chromeVisible = !chromeVisible },

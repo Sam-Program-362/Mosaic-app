@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -62,7 +63,8 @@ private class PreviewGeometryReporter {
 @Composable
 internal fun LocalMediaPreview(
     post: FeedPost,
-    active: Boolean,
+    /** This preview currently owns the single MP4 playback slot. */
+    videoActive: Boolean,
     imageLoader: ImageLoader,
     videoAudioSession: VideoAudioSession? = null,
     onBounds: (PreviewItemGeometry) -> Unit = {},
@@ -76,6 +78,12 @@ internal fun LocalMediaPreview(
     feedPosition: Int = -1,
     initialAspectRatio: Float? = null,
     onAspectRatioObserved: (Float, String) -> Unit = { _, _ -> },
+    /**
+     * True when this GIF may animate right now: meaningfully visible in the feed (or the
+     * current resumed viewer page) *and* global playback/lifecycle allow it. Independent of
+     * [videoActive]; a GIF never needs to win the MP4 slot to animate.
+     */
+    gifPlaybackEnabled: Boolean = false,
 ) {
     val document = post.media.document
     val colors = LocalMosaicColors.current
@@ -158,7 +166,7 @@ internal fun LocalMediaPreview(
                 photoAspectRatioEstablished = resolved.dimensionsEstablished
             }
             onAspectRatioObserved(nextRatio, source)
-            if (document.kind == MediaKind.Video && active) contentRatio = nextRatio
+            if (document.kind == MediaKind.Video && videoActive) contentRatio = nextRatio
         }
 
         val photoHeightDp = if (isFeedPhoto) {
@@ -173,7 +181,7 @@ internal fun LocalMediaPreview(
         }
         Box(previewSize, contentAlignment = Alignment.Center) {
             when {
-                document.kind == MediaKind.Video && active -> VideoPreview(
+                document.kind == MediaKind.Video && videoActive -> VideoPreview(
                     post = post,
                     audioSession = sharedVideoAudioSession,
                     viewer = viewer,
@@ -198,10 +206,10 @@ internal fun LocalMediaPreview(
                         onRatio = { observeRatio(it, "video-thumbnail") },
                     )
                 document.kind == MediaKind.Video -> Text("MP4 · playback paused", color = colors.textSecondary)
-                document.kind == MediaKind.Gif && !active -> Text("GIF · playback paused", color = colors.textSecondary)
-                else -> LocalImage(
-                    document.contentUri, document.modifiedAtMillis, imageLoader,
-                    description = mediaTitle(document.fullName), animated = document.kind == MediaKind.Gif,
+                document.kind == MediaKind.Gif -> GifPreview(
+                    post = post,
+                    imageLoader = imageLoader,
+                    animate = gifPlaybackEnabled,
                     // Zoom exists only in the full-screen viewer (the inner
                     // feed); the top-level feed renders the same images and
                     // GIFs without it. Videos never reach this branch.
@@ -213,12 +221,22 @@ internal fun LocalMediaPreview(
                     // Chronological browsing starts from still photos only;
                     // GIFs keep zoom/tap behaviour but no timeline gestures.
                     chronologicalActive = chronologicalActive,
-                    onChronologicalSwipe = if (viewer && document.kind == MediaKind.Image) {
-                        onChronologicalSwipe
-                    } else {
-                        null
-                    },
-                    onRatio = { observeRatio(it, if (document.kind == MediaKind.Gif) "gif-frame" else "image") },
+                    onRatio = { observeRatio(it, "gif-frame") },
+                )
+                else -> LocalImage(
+                    document.contentUri, document.modifiedAtMillis, imageLoader,
+                    description = mediaTitle(document.fullName),
+                    // Zoom exists only in the full-screen viewer (the inner
+                    // feed); the top-level feed renders the same images and
+                    // GIFs without it. Videos never reach this branch.
+                    zoomable = viewer,
+                    // Tapping the image toggles the viewer's chrome.
+                    onSingleTap = if (viewer) onViewerSurfaceTap else null,
+                    // Chronological browsing starts from still photos only;
+                    // GIFs keep zoom/tap behaviour but no timeline gestures.
+                    chronologicalActive = chronologicalActive,
+                    onChronologicalSwipe = if (viewer) onChronologicalSwipe else null,
+                    onRatio = { observeRatio(it, "image") },
                 )
             }
         }
@@ -226,15 +244,14 @@ internal fun LocalMediaPreview(
 }
 
 @Composable
-private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, animated: Boolean, zoomable: Boolean = false, onSingleTap: (() -> Unit)? = null, chronologicalActive: Boolean = false, onChronologicalSwipe: ((Int) -> Unit)? = null, onRatio: (Float) -> Unit) {
+private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, description: String, zoomable: Boolean = false, onSingleTap: (() -> Unit)? = null, chronologicalActive: Boolean = false, onChronologicalSwipe: ((Int) -> Unit)? = null, onRatio: (Float) -> Unit) {
     val context = LocalContext.current
-    val request = remember(uri, modified, animated, context) {
+    val request = remember(uri, modified, context) {
         ImageRequest.Builder(context).data(Uri.parse(uri))
-            .memoryCacheKey(if (animated) "$uri@$modified:true" else staticImageCacheKey(uri, modified))
-            .apply {
-                // Static photos (including WebP) must not silently become extra animated formats.
-                if (!animated) decoderFactory(BitmapFactoryDecoder.Factory())
-            }.build()
+            .memoryCacheKey(staticImageCacheKey(uri, modified))
+            // Static photos (including WebP) must not silently become extra animated formats.
+            .decoderFactory(BitmapFactoryDecoder.Factory())
+            .build()
     }
     var loading by remember(request) { mutableStateOf(true) }
     var failed by remember(request) { mutableStateOf(false) }
@@ -256,6 +273,93 @@ private fun LocalImage(uri: String, modified: Long?, imageLoader: ImageLoader, d
             )
             if (failed) Text("Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
                 Modifier.padding(16.dp), color = LocalMosaicColors.current.textSecondary)
+        }
+    }
+}
+
+/** Test-only seams: they identify the two GIF rendering paths without changing semantics. */
+internal const val GIF_STILL_FRAME_TEST_TAG = "gifStillFrame"
+internal const val GIF_ANIMATED_FRAME_TEST_TAG = "gifAnimatedFrame"
+
+/**
+ * A GIF rendered as an animated image, never as a video.
+ *
+ * Both layers come from the same original local GIF bytes and URI:
+ * - the still first frame is always composed (thumbnail while inactive, backdrop while the
+ *   animation decodes), so a paused or lifecycle-paused GIF keeps showing real media instead of
+ *   a blank area or a "playback paused" label;
+ * - the animated layer is composed **only** while [animate] is true and is drawn on top once its
+ *   first frame is ready. Coil draws nothing before that, so the still frame shows through and
+ *   switching states never flashes blank.
+ *
+ * Disposing the animated layer stops the animation: Coil's painter calls `stop()` on the
+ * `Animatable` drawable when it leaves the composition, which bounds decoder work to the cards
+ * that are actually eligible right now.
+ */
+@Composable
+private fun GifPreview(
+    post: FeedPost,
+    imageLoader: ImageLoader,
+    animate: Boolean,
+    zoomable: Boolean,
+    onSingleTap: (() -> Unit)?,
+    chronologicalActive: Boolean,
+    onRatio: (Float) -> Unit,
+) {
+    val context = LocalContext.current.applicationContext
+    val document = post.media.document
+    val description = mediaTitle(document.fullName)
+    val stillRequest = remember(document.contentUri, document.modifiedAtMillis, context) {
+        createGifStillFrameRequest(context, document)
+    }
+    val animatedRequest = remember(document.contentUri, document.modifiedAtMillis, context) {
+        createAnimatedGifRequest(context, document)
+    }
+    var failed by remember(stillRequest) { mutableStateOf(false) }
+    ZoomableImageViewport(
+        enabled = zoomable,
+        resetKey = stillRequest,
+        modifier = Modifier.fillMaxSize(),
+        onSingleTap = onSingleTap,
+        chronologicalActive = chronologicalActive,
+        onChronologicalSwipe = null,
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            AsyncImage(
+                model = stillRequest,
+                imageLoader = imageLoader,
+                contentDescription = description,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().testTag(GIF_STILL_FRAME_TEST_TAG),
+                onSuccess = {
+                    val image = it.result.image
+                    intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
+                },
+                onError = { failed = true },
+            )
+            if (animate) {
+                AsyncImage(
+                    model = animatedRequest,
+                    imageLoader = imageLoader,
+                    // The still frame above already exposes the accessible description; a second
+                    // announcement for the same media would only duplicate it.
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize().testTag(GIF_ANIMATED_FRAME_TEST_TAG),
+                    onSuccess = {
+                        failed = false
+                        val image = it.result.image
+                        intrinsicImageAspectRatio(image.width, image.height)?.let(onRatio)
+                    },
+                )
+            }
+            if (failed) {
+                Text(
+                    "Media is missing or cannot be decoded.\nThe rest of your feed is still available.",
+                    Modifier.padding(16.dp),
+                    color = LocalMosaicColors.current.textSecondary,
+                )
+            }
         }
     }
 }

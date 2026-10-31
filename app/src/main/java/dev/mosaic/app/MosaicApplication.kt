@@ -4,8 +4,7 @@ import android.app.Application
 import android.os.Build
 import androidx.room.Room
 import coil3.ImageLoader
-import coil3.gif.AnimatedImageDecoder
-import coil3.gif.GifDecoder
+import dev.mosaic.app.core.media.GifDecoders
 import dev.mosaic.app.core.playback.VideoAudioSession
 import dev.mosaic.app.data.backup.ContentBackupStorage
 import dev.mosaic.app.data.backup.DataStoreBackupThemeStore
@@ -35,11 +34,11 @@ class MosaicApplication : Application() {
      */
     val videoAudioSession: VideoAudioSession = VideoAudioSession()
 
-    // Deliberately no Coil network module or remote fetcher.
+    // Deliberately no Coil network module or remote fetcher. The animated GIF decoder is
+    // resolved centrally so the feed's animated requests and this loader cannot diverge.
     val localImageLoader: ImageLoader by lazy {
         ImageLoader.Builder(applicationContext).components {
-            if (Build.VERSION.SDK_INT >= 28) add(AnimatedImageDecoder.Factory())
-            else add(GifDecoder.Factory())
+            add(GifDecoders.animatedFactory())
         }.build()
     }
 
